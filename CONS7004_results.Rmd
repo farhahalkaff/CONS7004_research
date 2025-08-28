@@ -1,0 +1,58 @@
+---
+title: "Simulation results"
+output: 
+  html_document:
+    number_sections: FALSE
+    toc: true
+    toc_float: true
+    theme: united
+date: "2025-08-28"
+---
+
+```{r setup, include=FALSE}
+# load in packages 
+library(gamlss)
+library(gamlss.dist)
+library(ggplot2)
+library(dplyr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The setup 
+
+I'm using this just to show the results, together with the diagnostics, graphs and all the good stuff.
+
+<br>
+
+*Table 1: Simulations proposal of different changing parameters*
+
+|       | Mean         | Variance     | Skewness     | Kurtosis     |
+|-------|--------------|--------------|--------------|--------------|
+| Sim 1 | constant     | time-varying | \-           | \-           |
+| Sim 2 | time-varying | time-varying | \-           | \-           |
+| Sim 3 | time-varying | time-varying | constant     | \-           |
+| Sim 4 | time-varying | time-varying | \-           | constant     |
+| Sim 5 | time-varying | time-varying | constant     | constant     |
+| Sim 6 | time-varying | time-varying | time-varying | constant     |
+| Sim 7 | time-varying | time-varying | constant     | time-varying |
+| Sim 8 | time-varying | time-varying | time-varying | time-varying |
+
+<br> 
+
+Other things to consider: 
+
+1. Changing temporal resolution: match the resolution of the Helgoland data, then we could down-sample to see how resolution affects recovery 
+2. 
+
+
+<br>
+
+## Simulation 1
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
