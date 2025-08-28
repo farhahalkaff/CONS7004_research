@@ -1,0 +1,484 @@
+# =========================
+# Sim 1: time-varying variance (robust, no purrr)
+# =========================
+
+# ---- Packages ----
+need <- c("gamlss", "gamlss.dist", "ggplot2")
+library(gamlss)
+library(gamlss.dist)
+library(ggplot2)
+library(dplyr)
+
+set.seed(123)
+
+# ---- 1) SIMULATE ----
+n          <- 800
+t_index    <- seq_len(n)
+t_scaled   <- (t_index - 1)/(n - 1)   # 0..1
+mu0        <- 0
+sigma0     <- 2
+amp        <- 0.7                     # strength of variance modulation
+
+sigma_t <- sigma0 * (1 + amp * sin(2*pi*t_scaled) + 0.2 * t_scaled)
+sigma_t <- pmax(sigma_t, 0.2)         # keep positive
+y <- rnorm(n, mean = mu0, sd = sigma_t)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  sd_true = sigma_t,
+  mu_true = mu0
+)
+
+# ---- 2) FIT FULL-SERIES MODELS ----
+# M0: constant variance
+m0 <- gamlss(
+  y ~ 1,
+  sigma.fo = ~ 1,   # constant variance 
+  family = NO(),
+  data = dat,
+  trace = FALSE
+)
+
+# M1: sigma varies smoothly with time
+m1 <- gamlss(
+  y ~ 1,                     # Sim 1: mean is constant
+  sigma.fo = ~ pb(t_scaled),   # sigma(t)
+  family = NO(),
+  data = dat,
+  trace = FALSE
+)
+
+aic_tbl <- data.frame(
+  model = c("M0: const sigma", "M1: sigma(t)"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2))
+)
+print(aic_tbl)
+
+# ---- 3) ROLLING ONE-STEP-AHEAD EVALUATION ----
+# Helper: CRPS for Normal (no extra pkg needed)
+crps_norm_manual <- function(y, mean, sd) {
+  # Gneiting & Raftery (2007) closed form
+  if (sd <= 0) return(NA_real_)
+  z <- (y - mean)/sd
+  sd * (z*(2*pnorm(z)-1) + 2*dnorm(z) - 1/sqrt(pi))
+}
+
+k_start <- 200      # start after we have enough training data
+k_end   <- n - 1
+
+# Preallocate
+K <- k_end - k_start + 1
+logscore_M0 <- numeric(K); logscore_M1 <- numeric(K)
+crps_M0     <- numeric(K); crps_M1     <- numeric(K)
+cov95_M0    <- logical(K); cov95_M1    <- logical(K)
+
+i <- 0
+for (k in k_start:k_end) {
+  i <- i + 1
+  
+  # Train/test split
+  train <- dat[1:k, , drop = FALSE]
+  test1 <- dat[k + 1L, , drop = FALSE]
+  
+  # Fit M0 safely
+  m0_k <- try(
+    gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = train, trace = FALSE),
+    silent = TRUE
+  )
+  # Fit M1 safely
+  m1_k <- try(
+    gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = train, trace = FALSE),
+    silent = TRUE
+  )
+  
+  # If either fails (should be rare), carry NA and continue
+  if (inherits(m0_k, "try-error") || inherits(m1_k, "try-error")) {
+    logscore_M0[i] <- NA_real_; logscore_M1[i] <- NA_real_
+    crps_M0[i]     <- NA_real_; crps_M1[i]     <- NA_real_
+    cov95_M0[i]    <- NA;       cov95_M1[i]    <- NA
+    next
+  }
+  
+  # Predict params for the next point
+  p0 <- predictAll(m0_k, newdata = test1, type = "response")
+  p1 <- predictAll(m1_k, newdata = test1, type = "response")
+  
+  mu0_hat <- as.numeric(p0$mu);  sd0_hat <- as.numeric(p0$sigma)
+  mu1_hat <- as.numeric(p1$mu);  sd1_hat <- as.numeric(p1$sigma)
+  y_obs   <- test1$y
+  
+  # Log score (log predictive density under Normal)
+  logscore_M0[i] <- dNO(y_obs, mu = mu0_hat, sigma = sd0_hat, log = TRUE)
+  logscore_M1[i] <- dNO(y_obs, mu = mu1_hat, sigma = sd1_hat, log = TRUE)
+  
+  # CRPS
+  crps_M0[i] <- crps_norm_manual(y_obs, mu0_hat, sd0_hat)
+  crps_M1[i] <- crps_norm_manual(y_obs, mu1_hat, sd1_hat)
+  
+  # 95% coverage
+  q0_lo <- qNO(0.025, mu = mu0_hat, sigma = sd0_hat)
+  q0_hi <- qNO(0.975, mu = mu0_hat, sigma = sd0_hat)
+  q1_lo <- qNO(0.025, mu = mu1_hat, sigma = sd1_hat)
+  q1_hi <- qNO(0.975, mu = mu1_hat, sigma = sd1_hat)
+  
+  cov95_M0[i] <- (y_obs >= q0_lo) && (y_obs <= q0_hi)
+  cov95_M1[i] <- (y_obs >= q1_lo) && (y_obs <= q1_hi)
+}
+
+summary_tbl <- data.frame(
+  model          = c("M0: const sigma", "M1: sigma(t)"),
+  mean_log_score = c(mean(logscore_M0, na.rm = TRUE), mean(logscore_M1, na.rm = TRUE)), 
+  mean_crps      = c(mean(crps_M0,     na.rm = TRUE), mean(crps_M1,     na.rm = TRUE)),
+  cover95_rate   = c(mean(cov95_M0,    na.rm = TRUE), mean(cov95_M1,    na.rm = TRUE))
+)
+print(summary_tbl)
+
+# WHAT DO THEY MEAN?
+## mean_log_score = Average log predictive density at the observed values. Closer to 0 (less negative) 
+### is better, means that the model put more probability mass on what actually happened. So here, M1 is 
+### closer to 0, therefore that model gives systematically higher likelihood to observed outcomes.
+## mean_crps = Continuous Ranked Probability Score, it measure the accuracy of the whole predictive distribution 
+### (mean + spread), and lower is better. Here, M1 is lower, hence its predictive distribution are sharper and 
+### better aligned with reality 
+## cover95_rate = its the coverage of 95% interval, looking at how often the realized value fell inside the 
+### 95% predictive interval. we want it to be ~ 0.95 (predictive intervals are well calibrated). Here, M0 is ~ 97%, 
+### while M1 is ~ 93%. M0 is playing is too safe by predicting larger interval that rarely miss, but waste sharpness 
+### (overestimating uncertainty). M1 is too bold by predicting narrower interval that miss a bit more often than they 
+### should. Both are close to ~95% so they're well calibrated 
+
+
+# ---- 4) VISUAL CHECKS ----
+# True vs fitted sigma (full-series M1)
+sig_hat <- as.numeric(fitted(m1, "sigma"))
+
+print(ggplot(dat, aes(t)) +
+        geom_line(aes(y = sd_true)) +
+        geom_line(aes(y = sig_hat), colour = "red") +
+        labs(title = "Sim 1: SD true (black) vs fitted sigma(t) (red)",
+             x = "time", y = "SD"))
+
+# PIT histogram for M1 (quick calibration feel)
+pa_full <- predictAll(m1, type = "response")
+u <- pNO(dat$y, mu = as.numeric(pa_full$mu), sigma = as.numeric(pa_full$sigma))
+
+print(ggplot(data.frame(u = u), aes(u)) +
+        geom_histogram(bins = 20) +
+        labs(title = "PIT histogram (M1)", x = "u", y = "count"))
+
+
+
+
+# =========================
+# Sim 2: time-varying mean + variance
+# =========================
+
+set.seed(456)
+
+# ---- 1) SIMULATE ----
+n          <- 800
+t_index    <- seq_len(n)
+t_scaled   <- (t_index - 1)/(n - 1)
+
+# Mean varies smoothly (sinusoidal + drift)
+mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+
+# Variance varies with time
+sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
+sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+
+y <- rnorm(n, mean = mu_t, sd = sigma_t)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  mu_true = mu_t,
+  sd_true = sigma_t
+)
+
+# ---- 2) FIT MODELS ON FULL SERIES ----
+# M0: constant mean + constant variance
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M1: time-varying mean only
+m1 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M2: time-varying mean + time-varying variance
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M3: constant mean + time-varying variance 
+m3 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+aic_tbl <- data.frame(
+  model = c("M0: const mu,sigma", "M1: mu(t), const sigma", "M2: mu(t), sigma(t)", "M3: const mu, sigma(t)"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2))
+)
+print(aic_tbl)
+
+# ---- 3) ROLLING ONE-STEP-AHEAD EVALUATION ----
+crps_norm_manual <- function(y, mean, sd) {
+  if (sd <= 0) return(NA_real_)
+  z <- (y - mean)/sd
+  sd * (z*(2*pnorm(z)-1) + 2*dnorm(z) - 1/sqrt(pi))
+}
+
+k_start <- 200
+k_end   <- n - 1
+K <- k_end - k_start + 1
+
+results <- data.frame(
+  k = integer(),
+  model = character(),
+  log_score = numeric(),
+  crps = numeric(),
+  cover95 = logical(),
+  stringsAsFactors = FALSE
+)
+
+for (k in k_start:k_end) {
+  train <- dat[1:k, ]
+  test1 <- dat[k+1, , drop=FALSE]
+  
+  # Fit models on training data
+  m0_k <- try(gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = train, trace = FALSE), silent = TRUE)
+  m1_k <- try(gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = train, trace = FALSE), silent = TRUE)
+  m2_k <- try(gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = train, trace = FALSE), silent = TRUE)
+  m3_k <- try(gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = train, trace = FALSE), silent = TRUE)
+  
+  
+  fits <- list(M0 = m0_k, M1 = m1_k, M2 = m2_k, M3 = m3_k)
+  
+  for (mod in names(fits)) {
+    fit <- fits[[mod]]
+    if (inherits(fit, "try-error")) next
+    
+    pa <- suppressWarnings(predictAll(fit, newdata = test1, type = "response"))
+    mu_hat <- as.numeric(pa$mu); sd_hat <- as.numeric(pa$sigma)
+    y_obs  <- test1$y
+    
+    ls  <- dNO(y_obs, mu = mu_hat, sigma = sd_hat, log = TRUE)
+    cr  <- crps_norm_manual(y_obs, mu_hat, sd_hat)
+    qlo <- qNO(0.025, mu = mu_hat, sigma = sd_hat)
+    qhi <- qNO(0.975, mu = mu_hat, sigma = sd_hat)
+    cov <- (y_obs >= qlo) && (y_obs <= qhi)
+    
+    results <- rbind(results, data.frame(
+      k = k, model = mod, log_score = ls, crps = cr, cover95 = cov, stringsAsFactors = FALSE
+    ))
+  }
+}
+
+summary_tbl <- results %>%
+  group_by(model) %>%
+  summarise(
+    mean_log_score = mean(log_score, na.rm = TRUE),
+    mean_crps      = mean(crps, na.rm = TRUE),
+    cover95_rate   = mean(cover95, na.rm = TRUE),
+    .groups = "drop"
+  )
+print(summary_tbl)
+
+# WHAT DO THEY MEAN?
+## mean_log_score = Average log predictive density at the observed values. Closer to 0 (less negative) 
+### is better, means that the model put more probability mass on what actually happened. So here, M2 is 
+### closer to 0, therefore that model gives systematically higher likelihood to observed outcomes.
+## mean_crps = Continuous Ranked Probability Score, it measure the accuracy of the whole predictive distribution 
+### (mean + spread), and lower is better. Here, M2 is lower, hence its predictive distribution are sharper and 
+### better aligned with reality 
+## cover95_rate = its the coverage of 95% interval, looking at how often the realized value fell inside the 
+### 95% predictive interval. we want it to be ~ 0.95 (predictive intervals are well calibrated). Here, M1 and M3
+### are ~95%, means that they are well calibrated (the predictive intervals are the right 'width'). M0 and M2 are 
+### under-covering with ~93%. The intervals are slightly too tight (too confident). Makes sense for M0 has it ignore 
+### both mean and variance changes. M2 is interesting cause the smooth penalties in pb() can make it slightly under-dispersed 
+### in finite samples
+
+
+# ---- 4) VISUAL CHECK ----
+# True vs fitted mean (M2)
+mu_hat <- fitted(m2, "mu")
+
+ggplot(dat, aes(t)) +
+  geom_line(aes(y = mu_true), colour="black") +
+  geom_line(aes(y = mu_hat), colour="red") +
+  labs(title="Sim 2: true mean (black) vs fitted mu(t) (red)", y="mean")
+
+# True vs fitted sigma (M2)
+sig_hat <- fitted(m2, "sigma")
+
+ggplot(dat, aes(t)) +
+  geom_line(aes(y = sd_true), colour="black") +
+  geom_line(aes(y = sig_hat), colour="blue") +
+  labs(title="Sim 2: true sd (black) vs fitted sigma(t) (blue)", y="sd")
+
+
+
+
+# =========================
+# Sim 3 (robust): mu(t), sigma(t) vary; skew & kurtosis constant
+# Auto-detect skew-t generator; fall back to t if needed
+# =========================
+set.seed(1234)
+
+# ---- 0) Helpers: pick a skew-t variant that exists ----
+pick_skewt <- function() {
+  # return list with random gen function and family constructor
+  if (exists("rST",   mode = "function")) return(list(rfun = rST,   fam = ST))
+  if (exists("rST3",  mode = "function")) return(list(rfun = rST3,  fam = ST3))
+  if (exists("rST1",  mode = "function")) return(list(rfun = rST1,  fam = ST1))
+  if (exists("rST2",  mode = "function")) return(list(rfun = rST2,  fam = ST2))
+  if (exists("rST4",  mode = "function")) return(list(rfun = rST4,  fam = ST4))
+  NULL
+}
+st <- pick_skewt()
+use_skewt <- !is.null(st)
+
+# ---- 1) SIMULATE ----
+n        <- 800
+t_idx    <- seq_len(n)
+t_scaled <- (t_idx - 1)/(n - 1)
+
+mu_t    <- 1.2*sin(2*pi*t_scaled) + 0.5*t_scaled
+sigma_t <- 1.2 + 0.4*sin(4*pi*t_scaled + 0.6) + 0.25*t_scaled
+sigma_t <- pmax(sigma_t, 0.15)
+
+nu_const  <- 2     # skew parameter (constant)
+tau_const <- 7     # tail/heaviness (constant)
+
+if (use_skewt) {
+  # Many skew-t variants use same arg names: mu, sigma, nu, tau
+  y <- st$rfun(n, mu = mu_t, sigma = sigma_t, nu = nu_const, tau = tau_const)
+} else {
+  # Fallback: Student-t (no skew). We'll still fit skew-t later.
+  # TF(): mu, sigma, nu (df)
+  y <- rTF(n, mu = mu_t, sigma = sigma_t, nu = tau_const)
+}
+
+dat <- data.frame(
+  t = t_idx, t_scaled = t_scaled, y = y,
+  mu_true = mu_t, sd_true = sigma_t, nu_true = nu_const, tau_true = tau_const
+)
+
+
+# ---- 2) FULL-SERIES FITS ----
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m1 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m3 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), 
+             data = dat, trace = FALSE)
+m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = TF(),
+  data = dat, trace = FALSE)
+
+
+aic_tbl <- data.frame(
+  model = c("M0: NO const mu,sigma", 
+            "M1: NO mu(t), const sigma",
+            "M2: NO mu(t), sigma(t)",
+            "M3: NO const mu, sigma(t)",
+            "M4: SHASHo mu(t), sigma(t), const nu, const tau",
+            "M5: TF mu(t), sigma(t), const nu"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2,k = 2), GAIC(m3,k = 2), GAIC(m4, k = 2), GAIC(m5, k =2))
+)
+
+print(aic_tbl)
+
+
+# ---- 3) ROLLING ONE-STEP-AHEAD EVALUATION ----
+crps_mc <- function(y, samp) {
+  if (length(samp) < 2) return(NA_real_)
+  e1 <- mean(abs(samp - y))
+  e2 <- mean(abs(samp - sample(samp, length(samp), replace = TRUE)))
+  e1 - 0.5*e2
+}
+
+draw_pred <- function(fam, pars, n_samp = 400L) {
+  if (fam == "NO") {
+    rNO(n_samp, mu = pars$mu, sigma = pars$sigma)
+  } else if (fam == "ST") {
+    rST(n_samp, mu = pars$mu, sigma = pars$sigma, nu = pars$nu, tau = pars$tau)
+  } else stop("Unknown family")
+}
+
+score_one <- function(fit, newrow, fam) {
+  pa <- suppressWarnings(predictAll(fit, newdata = newrow, type = "response"))
+  y_obs <- newrow$y
+  
+  if (fam == "NO") {
+    mu <- as.numeric(pa$mu); sg <- as.numeric(pa$sigma)
+    ls <- dNO(y_obs, mu = mu, sigma = sg, log = TRUE)
+    q  <- qNO(c(0.025, 0.975), mu = mu, sigma = sg)
+    samp <- draw_pred("NO", list(mu = mu, sigma = sg))
+  } else { # ST
+    mu <- as.numeric(pa$mu); sg <- as.numeric(pa$sigma)
+    nu <- as.numeric(pa$nu); ta <- as.numeric(pa$tau)
+    ls <- dST(y_obs, mu = mu, sigma = sg, nu = nu, tau = ta, log = TRUE)
+    q  <- qST(c(0.025, 0.975), mu = mu, sigma = sg, nu = nu, tau = ta)
+    samp <- draw_pred("ST", list(mu = mu, sigma = sg, nu = nu, tau = ta))
+  }
+  
+  list(log_score = ls,
+       crps      = crps_mc(y_obs, samp),
+       cover95   = (y_obs >= q[1]) && (y_obs <= q[2]))
+}
+
+k_start <- 200
+k_end   <- n - 1
+
+res <- data.frame(k = integer(), model = character(),
+                  log_score = numeric(), crps = numeric(), cover95 = logical(),
+                  stringsAsFactors = FALSE)
+
+for (k in k_start:k_end) {
+  train <- dat[1:k, ]
+  test1 <- dat[k+1, , drop = FALSE]
+  
+  fits <- list(
+    M0 = try(gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = train, trace = FALSE), silent = TRUE),
+    M1 = try(gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = train, trace = FALSE), silent = TRUE),
+    M2 = try(gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled),  family = NO(), data = train, trace = FALSE), silent = TRUE),
+    M3 = try(gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled),  family = NO(), data = train, trace = FALSE), silent = TRUE),
+    M4 = try(gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled),  nu.fo = ~ 1,   tau.fo = ~ 1,   family = SHASHo(), data = train, trace = FALSE), silent = TRUE),
+    M5 = try(gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled),  nu.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = TF(), data = train, trace = FALSE), silent = TRUE),
+)
+  
+  for (nm in names(fits)) {
+    fit <- fits[[nm]]
+    if (inherits(fit, "try-error")) next
+    fam <- ifelse(nm %in% c("M0","M1","M2","M3"), "NO", "ST")
+    sc  <- score_one(fit, test1, fam)
+    res <- rbind(res, data.frame(k = k, model = nm,
+                                 log_score = sc$log_score,
+                                 crps = sc$crps,
+                                 cover95 = sc$cover95,
+                                 stringsAsFactors = FALSE))
+  }
+}
+
+summary_tbl <- res %>%
+  dplyr::group_by(model) %>%
+  dplyr::summarise(
+    mean_log_score = mean(log_score, na.rm = TRUE),
+    mean_crps      = mean(crps,      na.rm = TRUE),
+    cover95_rate   = mean(cover95,   na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  dplyr::arrange(desc(mean_log_score))
+print(summary_tbl)
+
+# ---- 4) VISUAL CHECKS (full-series fits) ----
+# True vs fitted mu, sigma for the truth-like model (M4)
+mu_hat  <- as.numeric(fitted(m4, "mu"))
+sig_hat <- as.numeric(fitted(m4, "sigma"))
+
+print(ggplot(dat, aes(t)) +
+        geom_line(aes(y = mu_true)) +
+        geom_line(aes(y = mu_hat), colour = "red") +
+        labs(title = "Sim 3: true mu (black) vs fitted mu(t) in M4 (red)", y = "mu"))
+
+print(ggplot(dat, aes(t)) +
+        geom_line(aes(y = sd_true)) +
+        geom_line(aes(y = sig_hat), colour = "blue") +
+        labs(title = "Sim 3: true sd (black) vs fitted sigma(t) in M4 (blue)", y = "sd"))
+
