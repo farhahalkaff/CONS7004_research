@@ -18,6 +18,8 @@ library(dplyr)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+------------------------------------------------------------------------
+
 ## The setup 
 
 I'm using this just to show the results, together with the diagnostics, graphs and all the good stuff.
@@ -41,18 +43,931 @@ I'm using this just to show the results, together with the diagnostics, graphs a
 
 Other things to consider: 
 
-1. Changing temporal resolution: match the resolution of the Helgoland data, then we could down-sample to see how resolution affects recovery 
+1. **Changing temporal resolution:** match the resolution of the Helgoland data, then we could down-sample to see how resolution affects recovery 
 2. 
-
 
 <br>
 
-## Simulation 1
+------------------------------------------------------------------------
 
-You can also embed plots, for example:
+## Simulation 1 {.tabset}
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+<br>
+
+#### constant mean + time-varying variance 
+
+<br>
+
+### Models
+
+<br>
+
+```{r sim 1 setup, echo=FALSE}
+n          <- 800
+t_index    <- seq_len(n)
+t_scaled   <- (t_index - 1)/(n - 1)   # 0..1
+mu0        <- 0
+sigma0     <- 2
+amp        <- 0.7                     # strength of variance modulation
+
+sigma_t <- sigma0 * (1 + amp * sin(2*pi*t_scaled) + 0.2 * t_scaled)
+sigma_t <- pmax(sigma_t, 0.2)         # keep positive
+y <- rnorm(n, mean = mu0, sd = sigma_t)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  sd_true = sigma_t,
+  mu_true = mu0
+)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r plot sim 1, echo=FALSE}
+# plot the sim 
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+Fitted two models:
+
+1. M0 -> Intercept model (constant variance)
+2. M1 -> variance varies smoothly with time 
+
+<br>
+
+```{r fit the models}
+# M0: constant variance
+m0 <- gamlss(
+  y ~ 1,
+  sigma.fo = ~ 1,   # constant variance 
+  family = NO(),
+  data = dat,
+  trace = FALSE
+)
+```
+
+```{r}
+# M1: sigma varies smoothly with time
+m1 <- gamlss(
+  y ~ 1,                     
+  sigma.fo = ~ pb(t_scaled),   # sigma(t)
+  family = NO(),
+  data = dat,
+  trace = FALSE
+)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Full model summary 
+
+```{r sim 1 model summary }
+summary(m0)
+summary(m1)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Significant diagnostics
+
+#### AIC 
+
+```{r AIC, echo=FALSE}
+aic_tbl <- data.frame(
+  model = c("M0: const sigma", "M1: sigma(t)"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2))
+)
+print(aic_tbl)
+```
+
+As expected, the AIC of the model where variance is in the function of time is lower, therefore a better model fit
+
+<br>
+
+#### Sigma coefficient 
+
+```{r}
+summary(m0$sigma.coefficients)
+summary(m1$sigma.coefficients)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Cross-validation
+
+```{r}
+
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+## Simulation 2 {.tabset}
+
+<br>
+
+#### time-varying mean + time-varying variance 
+
+<br>
+
+### Models
+
+<br>
+
+```{r sim 2 setup, echo=FALSE}
+# simulate
+n          <- 800
+t_index    <- seq_len(n)
+t_scaled   <- (t_index - 1)/(n - 1)
+
+# Mean varies smoothly (sinusoidal + drift)
+mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+
+# Variance varies with time
+sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
+sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+
+y <- rnorm(n, mean = mu_t, sd = sigma_t)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  mu_true = mu_t,
+  sd_true = sigma_t
+)
+```
+
+```{r plot sim 2, echo=FALSE}
+# plot the sim 
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+Fitted four models:
+
+1. M0 -> Intercept model (constant mean and variance)
+2. M1 -> Only variance varies smoothly with time 
+3. M2 -> Only mean varies smoothly with time
+4. M3 -> time-varying mean + time-varying variance
+
+<br>
+
+```{r models}
+# M0: constant mean + constant variance
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M1: time-varying variance only + constant mean
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M2: time-varying mean only + constant variance 
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M3: time-varying mean + time-varying variance
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Full model summary
+
+```{r}
+summary(m0)
+summary(m1)
+summary(m2)
+summary(m3)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Significant diagnostics
+
+#### AIC 
+
+```{r sim 2 AIC, echo=FALSE}
+aic_tbl <- data.frame(
+  model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2))
+)
+print(aic_tbl)
+```
+
+<br>
+
+#### Sigma coefficient 
+
+<br>
+
+------------------------------------------------------------------------
+
+### Cross-validation
+
+<br> 
+
+------------------------------------------------------------------------
+
+## Simulation 3 {.tabset}
+
+<br>
+
+#### time-varying mean + time-varying variance + constant skewness 
+
+<br>
+
+### Models
+
+<br>
+
+```{r sim 3 setup, echo=FALSE}
+# simulate
+n          <- 800
+t_index    <- seq_len(n)
+t_scaled   <- (t_index - 1)/(n - 1)
+
+# Mean varies smoothly (sinusoidal + drift)
+mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+
+# Variance varies with time
+sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
+sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+
+# constant skew
+nu_const  <- 4     # skew parameter (constant)
+
+y <- rSN1(n, mu = mu_t, sigma = sigma_t, nu = nu_const)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  mu_true = mu_t,
+  sd_true = sigma_t,
+  nu_true = nu_const
+)
+```
+
+```{r plot sim 3, echo=FALSE}
+# plot the sim 
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+Fitted five models:
+
+1. M0 -> Intercept model (constant mean and variance)
+2. M1 -> Only variance varies smoothly with time 
+3. M2 -> Only mean varies smoothly with time
+4. M3 -> time-varying mean + time-varying variance
+5. M4 -> time-varying mean + time-varying variance + constant skewness 
+
+<br>
+
+```{r sim 3 models}
+# M0: constant mean + constant variance
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M1: time-varying variance only + constant mean
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M2: time-varying mean only + constant variance 
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M3: time-varying mean + time-varying variance
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M4: time-varying mean + time-varying variance + constant skewness
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = SN1(), data = dat, trace = FALSE)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Full model summary
+
+```{r}
+summary(m0)
+summary(m1)
+summary(m2)
+summary(m3)
+summary(m4)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Significant diagnostics
+
+#### AIC 
+
+```{r sim 3 AIC, echo=FALSE}
+aic_tbl <- data.frame(
+  model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2))
+)
+print(aic_tbl)
+```
+
+<br>
+
+#### Sigma coefficient 
+
+<br>
+
+------------------------------------------------------------------------
+
+### Cross-validation
+
+<br> 
+
+------------------------------------------------------------------------
+
+## Simulation 4 {.tabset}
+
+<br>
+
+#### time-varying mean + time-varying variance + constant kurtosis 
+
+<br>
+
+### Models
+
+<br>
+
+```{r sim 4 setup, echo=FALSE}
+# simulate
+n          <- 800
+t_index    <- seq_len(n)
+t_scaled   <- (t_index - 1)/(n - 1)
+
+# Mean varies smoothly (sinusoidal + drift)
+mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+
+# Variance varies with time
+sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
+sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+
+# constant tail heaviness
+tau_const <- 5     # tail/heaviness (constant)
+
+y <- rTF(n, mu = mu_t, sigma = sigma_t, nu = tau_const)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  mu_true = mu_t,
+  sd_true = sigma_t,
+  tau_true = tau_const
+)
+```
+
+```{r plot sim 4, echo=FALSE}
+# plot the sim 
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+Fitted five models:
+
+1. M0 -> Intercept model (constant mean and variance)
+2. M1 -> Only variance varies smoothly with time 
+3. M2 -> Only mean varies smoothly with time
+4. M3 -> time-varying mean + time-varying variance
+5. M4 -> time-varying mean + time-varying variance + constant kurtosis 
+
+<br>
+
+```{r sim 4 models}
+# M0: constant mean + constant variance
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M1: time-varying variance only + constant mean
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M2: time-varying mean only + constant variance 
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M3: time-varying mean + time-varying variance
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M4: time-varying mean + time-varying variance + constant skewness
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = TF(), data = dat, trace = FALSE)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Full model summary
+
+```{r}
+summary(m0)
+summary(m1)
+summary(m2)
+summary(m3)
+summary(m4)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Significant diagnostics
+
+#### AIC 
+
+```{r sim 4 AIC, echo=FALSE}
+aic_tbl <- data.frame(
+  model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), tau const"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2))
+)
+print(aic_tbl)
+```
+
+<br>
+
+#### Sigma coefficient 
+
+<br>
+
+------------------------------------------------------------------------
+
+### Cross-validation
+
+<br> 
+
+------------------------------------------------------------------------
+
+## Simulation 5 {.tabset}
+
+<br>
+
+#### time-varying mean + time-varying variance + constant skewness + constant kurtosis 
+
+<br>
+
+### Models
+
+<br>
+
+```{r sim 5 setup, echo=FALSE}
+# simulate
+n          <- 800
+t_index    <- seq_len(n)
+t_scaled   <- (t_index - 1)/(n - 1)
+
+# Mean varies smoothly (sinusoidal + drift)
+mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+
+# Variance varies with time
+sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
+sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+
+# constant skewness and tail heaviness
+nu_const  <- 4     # skew parameter (constant)
+tau_const <- 5     # tail/heaviness (constant)
+
+y <- rSHASHo(n, mu = mu_t, sigma = sigma_t, nu = nu_const, tau = tau_const)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  mu_true = mu_t,
+  sd_true = sigma_t,
+  nu_true = nu_const,
+  tau_true = tau_const
+)
+```
+
+```{r plot sim 5, echo=FALSE}
+# plot the sim 
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+Fitted seven models:
+
+1. M0 -> Intercept model (constant mean and variance)
+2. M1 -> Only variance varies smoothly with time 
+3. M2 -> Only mean varies smoothly with time
+4. M3 -> time-varying mean + time-varying variance
+5. M4 -> time-varying mean + time-varying variance + constant skewness 
+6. M5 -> time-varying mean + time-varying variance + constant kurtosis
+7. M6 -> time-varying mean + time-varying variance + constant skewness + constant kurtosis
+
+<br>
+
+```{r sim 5 models, warning=FALSE}
+# M0: constant mean + constant variance
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M1: time-varying variance only + constant mean
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M2: time-varying mean only + constant variance 
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M3: time-varying mean + time-varying variance
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M4: time-varying mean + time-varying variance + constant skewness
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SN1(), data = dat, trace = FALSE)
+
+# M5: time-varying mean + time-varying variance + constant kurtosis
+m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = TF(), data = dat, trace = FALSE)
+
+# M6: time-varying mean + time-varying variance + constant skewness + constant kurtosis
+m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Full model summary
+
+```{r}
+summary(m0)
+summary(m1)
+summary(m2)
+summary(m3)
+summary(m4)
+summary(m5)
+summary(m6)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Significant diagnostics
+
+#### AIC 
+
+```{r sim 5 AIC, echo=FALSE}
+aic_tbl <- data.frame(
+  model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const", "M5: my(t), sigma(t), tau const", "M6: my(t), sigma(t), nu const, tau const"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2), GAIC(m5, k = 2), GAIC(m6, k =2))
+)
+print(aic_tbl)
+```
+
+<br>
+
+#### Sigma coefficient 
+
+<br>
+
+------------------------------------------------------------------------
+
+### Cross-validation
+
+<br> 
+
+------------------------------------------------------------------------
+
+## Simulation 6 {.tabset}
+
+<br>
+
+#### time-varying mean + time-varying variance + time-varying skewness + constant kurtosis 
+
+<br>
+
+### Models
+
+<br>
+
+```{r sim 6 setup, echo=FALSE}
+# simulate
+n          <- 800
+t_index    <- seq_len(n)
+t_scaled   <- (t_index - 1)/(n - 1)
+
+# Mean varies smoothly (sinusoidal + drift)
+mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+
+# Variance varies with time
+sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
+sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+
+# skewness and tail heaviness
+nu_t  <- 0.8 * sin(2*pi*t_scaled + 0.9) # skew vary with time
+tau_const <- 5     # tail/heaviness (constant)
+
+y <- rSHASHo(n, mu = mu_t, sigma = sigma_t, nu = nu_t, tau = tau_const)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  mu_true = mu_t,
+  sd_true = sigma_t,
+  nu_true = nu_t,
+  tau_true = tau_const
+)
+```
+
+```{r plot sim 6, echo=FALSE}
+# plot the sim 
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+Fitted seven models:
+
+1. M0 -> Intercept model (constant mean and variance)
+2. M1 -> Only variance varies smoothly with time 
+3. M2 -> Only mean varies smoothly with time
+4. M3 -> time-varying mean + time-varying variance
+5. M4 -> time-varying mean + time-varying variance + constant skewness 
+6. M5 -> time-varying mean + time-varying variance + constant kurtosis
+7. M6 -> time-varying mean + time-varying variance + constant skewness + constant kurtosis
+8. M7 -> time-varying mean + time-varying variance + time-varying skewness + constant kurtosis
+
+<br>
+
+```{r sim 6 models, warning=FALSE}
+# M0: constant mean + constant variance
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M1: time-varying variance only + constant mean
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M2: time-varying mean only + constant variance 
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M3: time-varying mean + time-varying variance
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M4: time-varying mean + time-varying variance + constant skewness
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SN1(), data = dat, trace = FALSE)
+
+# M5: time-varying mean + time-varying variance + constant kurtosis
+m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = TF(), data = dat, trace = FALSE)
+
+# M6: time-varying mean + time-varying variance + constant skewness + constant kurtosis
+m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
+
+# M7: time-varying mean + time-varying variance + time-varying skewness + constant kurtosis
+m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Full model summary
+
+```{r}
+summary(m0)
+summary(m1)
+summary(m2)
+summary(m3)
+summary(m4)
+summary(m5)
+summary(m6)
+summary(m7)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Significant diagnostics
+
+#### AIC 
+
+```{r sim 6 AIC, echo=FALSE}
+aic_tbl <- data.frame(
+  model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const", "M5: my(t), sigma(t), tau const", "M6: mu(t), sigma(t), nu const, tau const", "M7: mu(t), sigma(t), nu(t), tau const"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2), GAIC(m5, k = 2), GAIC(m6, k = 2), GAIC(m7, k = 2))
+)
+print(aic_tbl)
+```
+
+<br>
+
+#### Sigma coefficient 
+
+<br>
+
+------------------------------------------------------------------------
+
+### Cross-validation
+
+<br> 
+
+------------------------------------------------------------------------
+
+## Simulation 7 {.tabset}
+
+<br>
+
+#### time-varying mean + time-varying variance + constant skewness + time-varying kurtosis 
+
+<br>
+
+### Models
+
+<br>
+
+```{r sim 7 setup, echo=FALSE}
+# simulate
+n          <- 800
+t_index    <- seq_len(n)
+t_scaled   <- (t_index - 1)/(n - 1)
+
+# Mean varies smoothly (sinusoidal + drift)
+mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+
+# Variance varies with time
+sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
+sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+
+# skewness and tail heaviness
+nu_const <-  4     # constant skewness
+tau_t <- 1.2 + 0.5*sin(2*pi*t_scaled + 0.4)      # swings around ~1.2
+
+y <- rSHASHo(n, mu = mu_t, sigma = sigma_t, nu = nu_const, tau = tau_t)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  mu_true = mu_t,
+  sd_true = sigma_t,
+  nu_true = nu_const,
+  tau_true = tau_t
+)
+```
+
+```{r plot sim 7, echo=FALSE}
+# plot the sim 
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+Fitted seven models:
+
+1. M0 -> Intercept model (constant mean and variance)
+2. M1 -> Only variance varies smoothly with time 
+3. M2 -> Only mean varies smoothly with time
+4. M3 -> time-varying mean + time-varying variance
+5. M4 -> time-varying mean + time-varying variance + constant skewness 
+6. M5 -> time-varying mean + time-varying variance + constant kurtosis
+7. M6 -> time-varying mean + time-varying variance + constant skewness + constant kurtosis
+8. M7 -> time-varying mean + time-varying variance + constant skewness + time-varying kurtosis
+
+<br>
+
+```{r sim 7 models, warning=FALSE}
+# M0: constant mean + constant variance
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M1: time-varying variance only + constant mean
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M2: time-varying mean only + constant variance 
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+
+# M3: time-varying mean + time-varying variance
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+
+# M4: time-varying mean + time-varying variance + constant skewness
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SN1(), data = dat, trace = FALSE)
+
+# M5: time-varying mean + time-varying variance + constant kurtosis
+m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = TF(), data = dat, trace = FALSE)
+
+# M6: time-varying mean + time-varying variance + constant skewness + constant kurtosis
+m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
+
+# M7: time-varying mean + time-varying variance + constant skewness + time-varying kurtosis
+m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ pb(t_scaled), family = SHASHo(), data = dat, trace = FALSE)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Full model summary
+
+```{r}
+summary(m0)
+summary(m1)
+summary(m2)
+summary(m3)
+summary(m4)
+summary(m5)
+summary(m6)
+summary(m7)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Significant diagnostics
+
+#### AIC 
+
+```{r sim 7 AIC, echo=FALSE}
+aic_tbl <- data.frame(
+  model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const", "M5: my(t), sigma(t), tau const", "M6: mu(t), sigma(t), nu const, tau const", "M7: mu(t), sigma(t), nu const, tau(t)"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2), GAIC(m5, k = 2), GAIC(m6, k = 2), GAIC(m7, k = 2))
+)
+print(aic_tbl)
+```
+
+<br>
+
+#### Sigma coefficient 
+
+<br>
+
+------------------------------------------------------------------------
+
+### Cross-validation
+
+<br> 
+
+------------------------------------------------------------------------
