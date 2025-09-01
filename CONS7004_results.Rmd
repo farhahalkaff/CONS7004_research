@@ -15,6 +15,7 @@ library(gamlss)
 library(gamlss.dist)
 library(ggplot2)
 library(dplyr)
+library(gamlss.ggplots)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -63,10 +64,10 @@ Other things to consider:
 <br> 
 
 ```{r}
-n.       <- 800
+n        <- 800
 t_index  <- seq_len(n)
 t_scaled <- (t_index - 1)/(n - 1)
-m0       <- 0
+mu0       <- 0
 sigma0   <- 2
 nu0      <- 4
 tau0     <- 5
@@ -104,6 +105,7 @@ ggplot(dat, aes(x = t)) +
     linewidth = 0.8
   ) +
   labs(
+    title = "SST",
     x = "Time",
     y = "Value"
   ) +
@@ -117,6 +119,7 @@ ggplot(dat, aes(x = t)) +
     linewidth = 0.8
   ) +
   labs(
+    title = "TF2",
     x = "Time",
     y = "Value"
   ) +
@@ -128,10 +131,83 @@ SSTmodel <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SS
 
 TF2model <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat1, trace = FALSE)
 
-summary(SSTmodel)
-summary(TF2model)
+SSTmodel2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat1, trace = FALSE)
+
+TF2model2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat, trace = FALSE)
 ```
 
+<br> 
+
+### Residuals 
+
+```{r}
+# SST model
+resid_qqplot(SSTmodel, value=10)+
+        ggtitle("(SST model)")+
+        theme_bw()+ 
+        theme(legend.position = "none")
+
+y_hist(SSTmodel$residuals, title="(SST model)") + 
+   xlab("residuals") +
+   theme_bw()
+
+# TF2 model
+resid_qqplot(TF2model, value=10)+
+        ggtitle("(TF2 model)")+
+        theme_bw()+ 
+        theme(legend.position = "none")
+
+y_hist(TF2model$residuals, title="(TF2 model)") + 
+   xlab("residuals") +
+   theme_bw()
+
+## SST model 2
+resid_qqplot(SSTmodel2, value=10)+
+        ggtitle("(SST model 2)")+
+        theme_bw()+ 
+        theme(legend.position = "none")
+
+y_hist(SSTmodel2$residuals, title="(SST model 2)") + 
+   xlab("residuals") +
+   theme_bw()
+
+## TF2 model 2
+resid_qqplot(TF2model2, value=10)+
+        ggtitle("(TF2 model 2)")+
+        theme_bw()+ 
+        theme(legend.position = "none")
+
+y_hist(TF2model2$residuals, title="(TF2 model 2)") + 
+   xlab("residuals") +
+   theme_bw()
+```
+
+<br>
+
+### Full model summary 
+
+```{r}
+summary(SSTmodel)
+summary(TF2model)
+summary(SSTmodel2)
+summary(TF2model2)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Significant diagnostics
+
+#### AIC 
+
+```{r, echo=FALSE}
+aic_tbl <- data.frame(
+  model = c("SSTmodel", "TF2model", "SSTmodel2", "TF2model2"),
+  AIC   = c(GAIC(SSTmodel, k = 2), GAIC(TF2model, k = 2), GAIC(SSTmodel2, k = 2), GAIC(TF2model2, k = 2))
+)
+print(aic_tbl)
+```
 
 <br>
 
@@ -154,11 +230,11 @@ n          <- 800
 t_index    <- seq_len(n)
 t_scaled   <- (t_index - 1)/(n - 1)   # 0..1
 mu0        <- 0
-sigma0     <- 2
-amp        <- 0.7                     # strength of variance modulation
+sigma0     <- 1
+beta      <- 2                    
 
-sigma_t <- sigma0 * (1 + amp * sin(2*pi*t_scaled) + 0.2 * t_scaled)
-sigma_t <- pmax(sigma_t, 0.2)         # keep positive
+sigma_t <- pmax(0, sigma0 + beta * t_scaled)
+
 y <- rnorm(n, mean = mu0, sd = sigma_t)
 
 dat <- data.frame(
@@ -183,6 +259,10 @@ ggplot(dat, aes(x = t)) +
     y = "Value"
   ) +
   theme_minimal(base_size = 14)
+```
+
+```{r}
+plot(sigma_t~t_scaled)
 ```
 
 Fitted two models:
@@ -521,7 +601,7 @@ print(aic_tbl)
 
 <br>
 
-```{r sim 4 setup, echo=FALSE}
+```{r sim 4 setup, echo=FALSE, eval=FALSE}
 # simulate
 n          <- 800
 t_index    <- seq_len(n)
@@ -549,7 +629,7 @@ dat <- data.frame(
 )
 ```
 
-```{r plot sim 4, echo=FALSE}
+```{r plot sim 4, echo=FALSE, eval=FALSE}
 # plot the sim 
 ggplot(dat, aes(x = t)) +
   geom_line(
@@ -574,7 +654,7 @@ Fitted five models:
 
 <br>
 
-```{r sim 4 models}
+```{r sim 4 models, eval=FALSE}
 # M0: constant mean + constant variance
 m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
 
@@ -597,7 +677,7 @@ m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family =
 
 ### Full model summary
 
-```{r}
+```{r, eval=FALSE}
 summary(m0)
 summary(m1)
 summary(m2)
@@ -613,7 +693,7 @@ summary(m4)
 
 #### AIC 
 
-```{r sim 4 AIC, echo=FALSE}
+```{r sim 4 AIC, echo=FALSE, eval=FALSE}
 aic_tbl <- data.frame(
   model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), tau const"),
   AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2))
@@ -647,7 +727,7 @@ print(aic_tbl)
 
 <br>
 
-```{r sim 5 setup, echo=FALSE}
+```{r sim 5 setup, echo=FALSE, eval=FALSE}
 # simulate
 n          <- 800
 t_index    <- seq_len(n)
@@ -677,7 +757,7 @@ dat <- data.frame(
 )
 ```
 
-```{r plot sim 5, echo=FALSE}
+```{r plot sim 5, echo=FALSE, eval=FALSE}
 # plot the sim 
 ggplot(dat, aes(x = t)) +
   geom_line(
@@ -704,7 +784,7 @@ Fitted seven models:
 
 <br>
 
-```{r sim 5 models, warning=FALSE}
+```{r sim 5 models, warning=FALSE, eval=FALSE}
 # M0: constant mean + constant variance
 m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
 
@@ -727,7 +807,7 @@ m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = 
 m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
 ```
 
-```{r testing }
+```{r testing, eval=FALSE}
 m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
 ```
 
@@ -737,7 +817,7 @@ m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = 
 
 ### Full model summary
 
-```{r}
+```{r, eval=FALSE}
 summary(m0)
 summary(m1)
 summary(m2)
@@ -755,7 +835,7 @@ summary(m6)
 
 #### AIC 
 
-```{r sim 5 AIC, echo=FALSE}
+```{r sim 5 AIC, echo=FALSE, eval=FALSE}
 aic_tbl <- data.frame(
   model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const", "M5: my(t), sigma(t), tau const", "M6: my(t), sigma(t), nu const, tau const"),
   AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2), GAIC(m5, k = 2), GAIC(m6, k =2))
@@ -789,7 +869,7 @@ print(aic_tbl)
 
 <br>
 
-```{r sim 6 setup, echo=FALSE}
+```{r sim 6 setup, echo=FALSE,eval=FALSE}
 # simulate
 n          <- 800
 t_index    <- seq_len(n)
@@ -819,7 +899,7 @@ dat <- data.frame(
 )
 ```
 
-```{r plot sim 6, echo=FALSE}
+```{r plot sim 6, echo=FALSE, eval=FALSE}
 # plot the sim 
 ggplot(dat, aes(x = t)) +
   geom_line(
@@ -847,7 +927,7 @@ Fitted seven models:
 
 <br>
 
-```{r sim 6 models, warning=FALSE}
+```{r sim 6 models, warning=FALSE, eval=FALSE}
 # M0: constant mean + constant variance
 m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
 
@@ -879,7 +959,7 @@ m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ pb(t_scaled)
 
 ### Full model summary
 
-```{r}
+```{r, eval=FALSE}
 summary(m0)
 summary(m1)
 summary(m2)
@@ -898,7 +978,7 @@ summary(m7)
 
 #### AIC 
 
-```{r sim 6 AIC, echo=FALSE}
+```{r sim 6 AIC, echo=FALSE, eval=FALSE}
 aic_tbl <- data.frame(
   model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const", "M5: my(t), sigma(t), tau const", "M6: mu(t), sigma(t), nu const, tau const", "M7: mu(t), sigma(t), nu(t), tau const"),
   AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2), GAIC(m5, k = 2), GAIC(m6, k = 2), GAIC(m7, k = 2))
