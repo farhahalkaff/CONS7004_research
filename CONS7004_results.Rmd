@@ -50,6 +50,93 @@ Other things to consider:
 
 ------------------------------------------------------------------------
 
+## Difference between SST and TF2 {.tabset}
+
+<br>
+
+#### keep everything constant with skewness
+
+<br>
+
+### Models 
+
+<br> 
+
+```{r}
+n.       <- 800
+t_index  <- seq_len(n)
+t_scaled <- (t_index - 1)/(n - 1)
+m0       <- 0
+sigma0   <- 2
+nu0      <- 4
+tau0     <- 5
+
+y <- rSST(n, mu = mu0, sigma = sigma0, nu = nu0, tau = tau0)
+y1 <- rTF2(n, mu = mu0, sigma = sigma0, nu = nu0)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  sd_true = sigma0,
+  mu_true = mu0,
+  nu_true = nu0,
+  tau_true = tau0
+)
+
+dat1 <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y1,
+  sd_true = sigma0,
+  mu_true = mu0,
+  nu_true = nu0,
+  tau_true = tau0
+)
+```
+
+```{r, echo=FALSE}
+# plot SST
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+
+# plot TF 
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y1),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+```{r}
+SSTmodel <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat, trace = FALSE)
+
+TF2model <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat1, trace = FALSE)
+
+summary(SSTmodel)
+summary(TF2model)
+```
+
+
+<br>
+
+------------------------------------------------------------------------
+
 ## Simulation 1 {.tabset}
 
 <br>
@@ -640,6 +727,10 @@ m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = 
 m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
 ```
 
+```{r testing }
+m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
+```
+
 <br>
 
 ------------------------------------------------------------------------
@@ -841,7 +932,7 @@ print(aic_tbl)
 
 <br>
 
-```{r sim 7 setup, echo=FALSE}
+```{r sim 7 setup, echo=FALSE, eval=FALSE}
 # simulate
 n          <- 800
 t_index    <- seq_len(n)
@@ -871,7 +962,7 @@ dat <- data.frame(
 )
 ```
 
-```{r plot sim 7, echo=FALSE}
+```{r plot sim 7, echo=FALSE, eval=FALSE}
 # plot the sim 
 ggplot(dat, aes(x = t)) +
   geom_line(
@@ -899,7 +990,7 @@ Fitted seven models:
 
 <br>
 
-```{r sim 7 models, warning=FALSE}
+```{r sim 7 models, warning=FALSE, eval=FALSE}
 # M0: constant mean + constant variance
 m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
 
@@ -931,7 +1022,7 @@ m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = 
 
 ### Full model summary
 
-```{r}
+```{r, eval=FALSE}
 summary(m0)
 summary(m1)
 summary(m2)
@@ -950,7 +1041,7 @@ summary(m7)
 
 #### AIC 
 
-```{r sim 7 AIC, echo=FALSE}
+```{r sim 7 AIC, echo=FALSE, eval=FALSE}
 aic_tbl <- data.frame(
   model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const", "M5: my(t), sigma(t), tau const", "M6: mu(t), sigma(t), nu const, tau const", "M7: mu(t), sigma(t), nu const, tau(t)"),
   AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2), GAIC(m5, k = 2), GAIC(m6, k = 2), GAIC(m7, k = 2))
