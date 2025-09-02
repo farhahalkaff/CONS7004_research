@@ -51,7 +51,7 @@ Other things to consider:
 
 ------------------------------------------------------------------------
 
-## Difference between SST and TF2 {.tabset}
+## Difference between SST and TF2 (*diff*) {.tabset}
 
 <br>
 
@@ -59,21 +59,22 @@ Other things to consider:
 
 <br>
 
-### Models 
+### Model
 
 <br> 
 
-```{r}
+```{r, tis looks different}
 n        <- 800
 t_index  <- seq_len(n)
 t_scaled <- (t_index - 1)/(n - 1)
-mu0       <- 0
+mu0       <- 10
 sigma0   <- 2
-nu0      <- 4
-tau0     <- 5
+nu0      <- 4  # For SST, 1 = symmetrical, > 1 = right skewed, < 1 = left skewed
+tau0     <- 5  # for TF2, nu = 10 means close to normal, the lower the number the heavier                    the tails
+               # for SST, large tau (e.g 7) thinner tails, close to normal. Small tau means                  fatter tails 
 
 y <- rSST(n, mu = mu0, sigma = sigma0, nu = nu0, tau = tau0)
-y1 <- rTF2(n, mu = mu0, sigma = sigma0, nu = nu0)
+y1 <- rTF2(n, mu = mu0, sigma = sigma0, nu = tau0)
 
 dat <- data.frame(
   t = t_index,
@@ -91,8 +92,189 @@ dat1 <- data.frame(
   y = y1,
   sd_true = sigma0,
   mu_true = mu0,
-  nu_true = nu0,
   tau_true = tau0
+)
+```
+
+```{r, echo=FALSE}
+# plot SST
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    title = "SST",
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+
+# plot TF 
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y1),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    title = "TF2",
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+
+
+```{r}
+SSTmodel <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat, trace = FALSE)
+
+TF2model <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat1, trace = FALSE)
+
+SSTmodel2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat1, trace = FALSE)
+
+TF2model2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat, trace = FALSE)
+```
+
+<br> 
+
+### Residuals 
+
+```{r}
+# SST model
+resid_qqplot(SSTmodel, value=10)+
+        ggtitle("(SST model)")+
+        theme_bw()+ 
+        theme(legend.position = "none")
+
+y_hist(SSTmodel$residuals, title="(SST model)") + 
+   xlab("residuals") +
+   theme_bw()
+
+# TF2 model
+resid_qqplot(TF2model, value=10)+
+        ggtitle("(TF2 model)")+
+        theme_bw()+ 
+        theme(legend.position = "none")
+
+y_hist(TF2model$residuals, title="(TF2 model)") + 
+   xlab("residuals") +
+   theme_bw()
+
+## SST model 2
+resid_qqplot(SSTmodel2, value=10)+
+        ggtitle("(SST model 2)")+
+        theme_bw()+ 
+        theme(legend.position = "none")
+
+y_hist(SSTmodel2$residuals, title="(SST model 2)") + 
+   xlab("residuals") +
+   theme_bw()
+
+## TF2 model 2
+resid_qqplot(TF2model2, value=10)+
+        ggtitle("(TF2 model 2)")+
+        theme_bw()+ 
+        theme(legend.position = "none")
+
+y_hist(TF2model2$residuals, title="(TF2 model 2)") + 
+   xlab("residuals") +
+   theme_bw()
+```
+
+```{r}
+moment_bucket(TF2model2) + 
+   theme_bw() + 
+   ggtitle("(c)") +
+   theme(legend.position = "none")
+```
+
+<br>
+
+### Full model summary 
+
+```{r}
+summary(SSTmodel)
+summary(TF2model)
+summary(SSTmodel2)
+summary(TF2model2)
+```
+
+<br>
+
+------------------------------------------------------------------------
+
+### Significant diagnostics
+
+#### AIC 
+
+```{r, echo=FALSE}
+aic_tbl <- data.frame(
+  model = c("SSTmodel", "TF2model", "SSTmodel2", "TF2model2"),
+  AIC   = c(GAIC(SSTmodel, k = 2), GAIC(TF2model, k = 2), GAIC(SSTmodel2, k = 2), GAIC(TF2model2, k = 2))
+)
+print(aic_tbl)
+```
+
+<br>
+
+```{r, eval=FALSE}
+# assess real line of distribution 
+#?gamlss::fitDist
+ma <- fitDist(y = dat$y, type = "realline")
+ma$family
+
+ma1 <- fitDist(y = dat1$y, type = "realline")
+ma1$family
+
+#?SEP3
+```
+
+```{r}
+SEP3model <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SEP3(), data = dat, trace = FALSE)
+
+AIC(SEP3model)
+
+SHINmodel <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo2(), data = dat, trace = FALSE)
+
+AIC(SHINmodel)
+```
+
+<br> 
+
+------------------------------------------------------------------------
+
+## Difference between SST and TF2 (*same*) {.tabset}
+
+<br> 
+
+### Model
+
+```{r, make them the same}
+# both slightly skewed and slightly heavy tails
+y <- rSST(n, mu = mu0, sigma = sigma0, nu = 1.2, tau = 5)
+y1 <- rTF2(n, mu = mu0, sigma = sigma0, nu = 7)
+
+dat <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y,
+  sd_true = sigma0,
+  mu_true = mu0,
+  nu_true = 1.2,
+  tau_true = 5
+)
+
+dat1 <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y1,
+  sd_true = sigma0,
+  mu_true = mu0,
+  nu_true = 0
+  tau_true = 7
 )
 ```
 
@@ -182,6 +364,13 @@ y_hist(TF2model2$residuals, title="(TF2 model 2)") +
    theme_bw()
 ```
 
+```{r}
+moment_bucket(TF2model2) + 
+   theme_bw() + 
+   ggtitle("(c)") +
+   theme(legend.position = "none")
+```
+
 <br>
 
 ### Full model summary 
@@ -210,6 +399,18 @@ print(aic_tbl)
 ```
 
 <br>
+
+```{r, eval=FALSE}
+# assess real line of distribution 
+#?gamlss::fitDist
+ma <- fitDist(y = dat$y, type = "realline")
+ma$family
+
+ma1 <- fitDist(y = dat1$y, type = "realline")
+ma1$family
+```
+
+<br> 
 
 ------------------------------------------------------------------------
 
@@ -259,10 +460,6 @@ ggplot(dat, aes(x = t)) +
     y = "Value"
   ) +
   theme_minimal(base_size = 14)
-```
-
-```{r}
-plot(sigma_t~t_scaled)
 ```
 
 Fitted two models:
@@ -363,13 +560,15 @@ summary(m1$sigma.coefficients)
 n          <- 800
 t_index    <- seq_len(n)
 t_scaled   <- (t_index - 1)/(n - 1)
+sigma0 <- 1
+mu0 <- 10
+beta <- 2
 
-# Mean varies smoothly (sinusoidal + drift)
-mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+# Mean varies smoothly 
+mu_t     <- pmax(0, mu0 + beta * t_scaled)
 
 # Variance varies with time
-sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
-sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+sigma_t  <- pmax(0, sigma0 + beta * t_scaled)
 
 y <- rnorm(n, mean = mu_t, sd = sigma_t)
 
