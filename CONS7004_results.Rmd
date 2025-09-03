@@ -69,7 +69,7 @@ t_index  <- seq_len(n)
 t_scaled <- (t_index - 1)/(n - 1)
 mu0       <- 10
 sigma0   <- 2
-nu0      <- 4  # For SST, 1 = symmetrical, > 1 = right skewed, < 1 = left skewed
+nu0      <- 2  # For SST, 1 = symmetrical, > 1 = right skewed, < 1 = left skewed
 tau0     <- 5  # for TF2, nu = 10 means close to normal, the lower the number the heavier                    the tails
                # for SST, large tau (e.g 7) thinner tails, close to normal. Small tau means                  fatter tails 
 
@@ -83,7 +83,8 @@ dat <- data.frame(
   sd_true = sigma0,
   mu_true = mu0,
   nu_true = nu0,
-  tau_true = tau0
+  tau_true = tau0,
+  dist = "SST"
 )
 
 dat1 <- data.frame(
@@ -92,38 +93,70 @@ dat1 <- data.frame(
   y = y1,
   sd_true = sigma0,
   mu_true = mu0,
-  tau_true = tau0
+  tau_true = tau0,
+  dist = "TF2"
 )
+
+dat_all <- bind_rows(dat, dat1)
+
 ```
 
 ```{r, echo=FALSE}
-# plot SST
-ggplot(dat, aes(x = t)) +
+# faceted time series plot
+ggplot(dat_all, aes(x = t)) +
   geom_line(
     aes(y = y),
     color = "darkred",
     linewidth = 0.8
   ) +
   labs(
-    title = "SST",
     x = "Time",
     y = "Value"
   ) +
-  theme_minimal(base_size = 14)
+  theme_minimal(base_size = 14) +
+  facet_wrap(~dist)
 
-# plot TF 
-ggplot(dat, aes(x = t)) +
-  geom_line(
-    aes(y = y1),
-    color = "darkred",
+# density plots
+ggplot(dat_all, aes(y = y)) +
+  geom_density(
+    aes(color = dist),
     linewidth = 0.8
   ) +
   labs(
-    title = "TF2",
     x = "Time",
     y = "Value"
   ) +
-  theme_minimal(base_size = 14)
+  theme_minimal(base_size = 14) +
+  coord_flip()
+
+
+# # plot SST
+# ggplot(dat, aes(x = t)) +
+#   geom_line(
+#     aes(y = y),
+#     color = "darkred",
+#     linewidth = 0.8
+#   ) +
+#   labs(
+#     title = "SST",
+#     x = "Time",
+#     y = "Value"
+#   ) +
+#   theme_minimal(base_size = 14)
+# 
+# # plot TF 
+# ggplot(dat, aes(x = t)) +
+#   geom_line(
+#     aes(y = y1),
+#     color = "darkred",
+#     linewidth = 0.8
+#   ) +
+#   labs(
+#     title = "TF2",
+#     x = "Time",
+#     y = "Value"
+#   ) +
+#   theme_minimal(base_size = 14)
 ```
 
 
@@ -264,7 +297,8 @@ dat <- data.frame(
   sd_true = sigma0,
   mu_true = mu0,
   nu_true = 1.2,
-  tau_true = 5
+  tau_true = 5,
+  dist = "SST"
 )
 
 dat1 <- data.frame(
@@ -273,39 +307,55 @@ dat1 <- data.frame(
   y = y1,
   sd_true = sigma0,
   mu_true = mu0,
-  nu_true = 0
-  tau_true = 7
+  nu_true = 0,
+  tau_true = 7,
+  dist = "TF2"
 )
+
+dat_all <- rbind(dat, dat1)
 ```
 
 ```{r, echo=FALSE}
 # plot SST
-ggplot(dat, aes(x = t)) +
+ggplot(dat_all, aes(x = t)) +
   geom_line(
     aes(y = y),
     color = "darkred",
     linewidth = 0.8
   ) +
   labs(
-    title = "SST",
     x = "Time",
     y = "Value"
   ) +
-  theme_minimal(base_size = 14)
+  theme_minimal(base_size = 14) +
+  facet_wrap(~dist)
 
-# plot TF 
-ggplot(dat, aes(x = t)) +
-  geom_line(
-    aes(y = y1),
-    color = "darkred",
-    linewidth = 0.8
-  ) +
-  labs(
-    title = "TF2",
-    x = "Time",
-    y = "Value"
-  ) +
-  theme_minimal(base_size = 14)
+# ggplot(dat, aes(x = t)) +
+#   geom_line(
+#     aes(y = y),
+#     color = "darkred",
+#     linewidth = 0.8
+#   ) +
+#   labs(
+#     title = "SST",
+#     x = "Time",
+#     y = "Value"
+#   ) +
+#   theme_minimal(base_size = 14)
+# 
+# # plot TF 
+# ggplot(dat, aes(x = t)) +
+#   geom_line(
+#     aes(y = y1),
+#     color = "darkred",
+#     linewidth = 0.8
+#   ) +
+#   labs(
+#     title = "TF2",
+#     x = "Time",
+#     y = "Value"
+#   ) +
+#   theme_minimal(base_size = 14)
 ```
 
 ```{r}
