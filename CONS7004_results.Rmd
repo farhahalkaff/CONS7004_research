@@ -51,7 +51,7 @@ Other things to consider:
 
 ------------------------------------------------------------------------
 
-## Difference between SST and TF2 (*diff*) {.tabset}
+## Difference between SST and TF2 {.tabset}
 
 <br>
 
@@ -69,12 +69,22 @@ t_index  <- seq_len(n)
 t_scaled <- (t_index - 1)/(n - 1)
 mu0       <- 10
 sigma0   <- 2
-nu0      <- 2  # For SST, 1 = symmetrical, > 1 = right skewed, < 1 = left skewed
+nu0      <- 1  # For SST, 1 = symmetrical, > 1 = right skewed, < 1 = left skewed
 tau0     <- 5  # for TF2, nu = 10 means close to normal, the lower the number the heavier                    the tails
                # for SST, large tau (e.g 7) thinner tails, close to normal. Small tau means                  fatter tails 
 
-y <- rSST(n, mu = mu0, sigma = sigma0, nu = nu0, tau = tau0)
-y1 <- rTF2(n, mu = mu0, sigma = sigma0, nu = tau0)
+# Slopes (linear change rates)
+beta_sigma <- 0.5   # scale increases by 0.5 over full range of t_scaled
+beta_nu    <- 0.3   # skewness increases linearly
+beta_tau   <- -1    # kurtosis decreases linearly
+
+# changes with time
+sigma_t <- pmax(0, sigma0 + beta_sigma * t_scaled)
+nu_t    <- nu0    + beta_nu  * t_scaled
+tau_t   <- tau0   + beta_tau * t_scaled
+
+y <- rSST(n, mu = mu0, sigma = sigma0, nu = nu0, tau = tau_t)
+y1 <- rTF2(n, mu = mu0, sigma = sigma0, nu = tau_t)
 
 dat <- data.frame(
   t = t_index,
@@ -83,7 +93,7 @@ dat <- data.frame(
   sd_true = sigma0,
   mu_true = mu0,
   nu_true = nu0,
-  tau_true = tau0,
+  tau_true = tau_t,
   dist = "SST"
 )
 
@@ -93,13 +103,14 @@ dat1 <- data.frame(
   y = y1,
   sd_true = sigma0,
   mu_true = mu0,
-  tau_true = tau0,
+  tau_true = tau_t,
   dist = "TF2"
 )
 
 dat_all <- bind_rows(dat, dat1)
 
 ```
+
 
 ```{r, echo=FALSE}
 # faceted time series plot
@@ -129,46 +140,30 @@ ggplot(dat_all, aes(y = y)) +
   theme_minimal(base_size = 14) +
   coord_flip()
 
-
-# # plot SST
-# ggplot(dat, aes(x = t)) +
-#   geom_line(
-#     aes(y = y),
-#     color = "darkred",
-#     linewidth = 0.8
-#   ) +
-#   labs(
-#     title = "SST",
-#     x = "Time",
-#     y = "Value"
-#   ) +
-#   theme_minimal(base_size = 14)
-# 
-# # plot TF 
-# ggplot(dat, aes(x = t)) +
-#   geom_line(
-#     aes(y = y1),
-#     color = "darkred",
-#     linewidth = 0.8
-#   ) +
-#   labs(
-#     title = "TF2",
-#     x = "Time",
-#     y = "Value"
-#   ) +
-#   theme_minimal(base_size = 14)
 ```
 
 
 
 ```{r}
-SSTmodel <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat, trace = FALSE)
+SSTdat <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~pb(t_scaled), family = SST(), data = dat, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = TRUE)
+)
 
-TF2model <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat1, trace = FALSE)
+TF2dat <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~pb(t_scaled), family = TF2(), data = dat, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = TRUE)
+)
 
-SSTmodel2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat1, trace = FALSE)
+SSTdat1 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~pb(t_scaled), family = SST(), data = dat1, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = TRUE)
+)
 
-TF2model2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat, trace = FALSE)
+TF2dat1 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~pb(t_scaled), family = TF2(), data = dat1, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = TRUE)
+)
 ```
 
 <br> 
@@ -176,49 +171,12 @@ TF2model2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = T
 ### Residuals 
 
 ```{r}
-# SST model
-resid_qqplot(SSTmodel, value=10)+
-        ggtitle("(SST model)")+
-        theme_bw()+ 
-        theme(legend.position = "none")
+moment_bucket(SSTdat) + 
+   theme_bw() + 
+   ggtitle("(c)") +
+   theme(legend.position = "none")
 
-y_hist(SSTmodel$residuals, title="(SST model)") + 
-   xlab("residuals") +
-   theme_bw()
-
-# TF2 model
-resid_qqplot(TF2model, value=10)+
-        ggtitle("(TF2 model)")+
-        theme_bw()+ 
-        theme(legend.position = "none")
-
-y_hist(TF2model$residuals, title="(TF2 model)") + 
-   xlab("residuals") +
-   theme_bw()
-
-## SST model 2
-resid_qqplot(SSTmodel2, value=10)+
-        ggtitle("(SST model 2)")+
-        theme_bw()+ 
-        theme(legend.position = "none")
-
-y_hist(SSTmodel2$residuals, title="(SST model 2)") + 
-   xlab("residuals") +
-   theme_bw()
-
-## TF2 model 2
-resid_qqplot(TF2model2, value=10)+
-        ggtitle("(TF2 model 2)")+
-        theme_bw()+ 
-        theme(legend.position = "none")
-
-y_hist(TF2model2$residuals, title="(TF2 model 2)") + 
-   xlab("residuals") +
-   theme_bw()
-```
-
-```{r}
-moment_bucket(TF2model2) + 
+moment_bucket(TF2dat) + 
    theme_bw() + 
    ggtitle("(c)") +
    theme(legend.position = "none")
@@ -229,10 +187,10 @@ moment_bucket(TF2model2) +
 ### Full model summary 
 
 ```{r}
-summary(SSTmodel)
-summary(TF2model)
-summary(SSTmodel2)
-summary(TF2model2)
+summary(SSTdat)
+summary(TF2dat)
+summary(SSTdat1)
+summary(TF2dat1)
 ```
 
 <br>
@@ -245,8 +203,8 @@ summary(TF2model2)
 
 ```{r, echo=FALSE}
 aic_tbl <- data.frame(
-  model = c("SSTmodel", "TF2model", "SSTmodel2", "TF2model2"),
-  AIC   = c(GAIC(SSTmodel, k = 2), GAIC(TF2model, k = 2), GAIC(SSTmodel2, k = 2), GAIC(TF2model2, k = 2))
+  model = c("SSTdat", "TF2dat", "SSTdat1", "TF2dat1"),
+  AIC   = c(GAIC(SSTdat, k = 2), GAIC(TF2dat, k = 2), GAIC(SSTdat1, k = 2), GAIC(TF2dat1, k = 2))
 )
 print(aic_tbl)
 ```
@@ -266,198 +224,13 @@ ma1$family
 ```
 
 ```{r}
-SEP3model <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SEP3(), data = dat, trace = FALSE)
+SEP3model <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SEP3(), data = dat1, trace = FALSE)
 
 AIC(SEP3model)
 
-SHINmodel <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo2(), data = dat, trace = FALSE)
+SHINmodel <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo2(), data = dat1, trace = FALSE)
 
 AIC(SHINmodel)
-```
-
-<br> 
-
-------------------------------------------------------------------------
-
-## Difference between SST and TF2 (*same*) {.tabset}
-
-<br> 
-
-### Model
-
-```{r, make them the same}
-# both slightly skewed and slightly heavy tails
-y <- rSST(n, mu = mu0, sigma = sigma0, nu = 1.2, tau = 5)
-y1 <- rTF2(n, mu = mu0, sigma = sigma0, nu = 7)
-
-dat <- data.frame(
-  t = t_index,
-  t_scaled = t_scaled,
-  y = y,
-  sd_true = sigma0,
-  mu_true = mu0,
-  nu_true = 1.2,
-  tau_true = 5,
-  dist = "SST"
-)
-
-dat1 <- data.frame(
-  t = t_index,
-  t_scaled = t_scaled,
-  y = y1,
-  sd_true = sigma0,
-  mu_true = mu0,
-  nu_true = 0,
-  tau_true = 7,
-  dist = "TF2"
-)
-
-dat_all <- rbind(dat, dat1)
-```
-
-```{r, echo=FALSE}
-# plot SST
-ggplot(dat_all, aes(x = t)) +
-  geom_line(
-    aes(y = y),
-    color = "darkred",
-    linewidth = 0.8
-  ) +
-  labs(
-    x = "Time",
-    y = "Value"
-  ) +
-  theme_minimal(base_size = 14) +
-  facet_wrap(~dist)
-
-# ggplot(dat, aes(x = t)) +
-#   geom_line(
-#     aes(y = y),
-#     color = "darkred",
-#     linewidth = 0.8
-#   ) +
-#   labs(
-#     title = "SST",
-#     x = "Time",
-#     y = "Value"
-#   ) +
-#   theme_minimal(base_size = 14)
-# 
-# # plot TF 
-# ggplot(dat, aes(x = t)) +
-#   geom_line(
-#     aes(y = y1),
-#     color = "darkred",
-#     linewidth = 0.8
-#   ) +
-#   labs(
-#     title = "TF2",
-#     x = "Time",
-#     y = "Value"
-#   ) +
-#   theme_minimal(base_size = 14)
-```
-
-```{r}
-SSTmodel <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat, trace = FALSE)
-
-TF2model <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat1, trace = FALSE)
-
-SSTmodel2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat1, trace = FALSE)
-
-TF2model2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat, trace = FALSE)
-```
-
-<br> 
-
-### Residuals 
-
-```{r}
-# SST model
-resid_qqplot(SSTmodel, value=10)+
-        ggtitle("(SST model)")+
-        theme_bw()+ 
-        theme(legend.position = "none")
-
-y_hist(SSTmodel$residuals, title="(SST model)") + 
-   xlab("residuals") +
-   theme_bw()
-
-# TF2 model
-resid_qqplot(TF2model, value=10)+
-        ggtitle("(TF2 model)")+
-        theme_bw()+ 
-        theme(legend.position = "none")
-
-y_hist(TF2model$residuals, title="(TF2 model)") + 
-   xlab("residuals") +
-   theme_bw()
-
-## SST model 2
-resid_qqplot(SSTmodel2, value=10)+
-        ggtitle("(SST model 2)")+
-        theme_bw()+ 
-        theme(legend.position = "none")
-
-y_hist(SSTmodel2$residuals, title="(SST model 2)") + 
-   xlab("residuals") +
-   theme_bw()
-
-## TF2 model 2
-resid_qqplot(TF2model2, value=10)+
-        ggtitle("(TF2 model 2)")+
-        theme_bw()+ 
-        theme(legend.position = "none")
-
-y_hist(TF2model2$residuals, title="(TF2 model 2)") + 
-   xlab("residuals") +
-   theme_bw()
-```
-
-```{r}
-moment_bucket(TF2model2) + 
-   theme_bw() + 
-   ggtitle("(c)") +
-   theme(legend.position = "none")
-```
-
-<br>
-
-### Full model summary 
-
-```{r}
-summary(SSTmodel)
-summary(TF2model)
-summary(SSTmodel2)
-summary(TF2model2)
-```
-
-<br>
-
-------------------------------------------------------------------------
-
-### Significant diagnostics
-
-#### AIC 
-
-```{r, echo=FALSE}
-aic_tbl <- data.frame(
-  model = c("SSTmodel", "TF2model", "SSTmodel2", "TF2model2"),
-  AIC   = c(GAIC(SSTmodel, k = 2), GAIC(TF2model, k = 2), GAIC(SSTmodel2, k = 2), GAIC(TF2model2, k = 2))
-)
-print(aic_tbl)
-```
-
-<br>
-
-```{r, eval=FALSE}
-# assess real line of distribution 
-#?gamlss::fitDist
-ma <- fitDist(y = dat$y, type = "realline")
-ma$family
-
-ma1 <- fitDist(y = dat1$y, type = "realline")
-ma1$family
 ```
 
 <br> 
@@ -486,14 +259,16 @@ beta      <- 2
 
 sigma_t <- pmax(0, sigma0 + beta * t_scaled)
 
-y <- rnorm(n, mean = mu0, sd = sigma_t)
+y <- rSST(n, mu = mu0, sigma = sigma_t, nu = 1, tau = 7)
 
 dat <- data.frame(
   t = t_index,
   t_scaled = t_scaled,
   y = y,
   sd_true = sigma_t,
-  mu_true = mu0
+  mu_true = mu0,
+  nu_true = 1,
+  tau_true = 7
 )
 ```
 
@@ -524,7 +299,7 @@ Fitted two models:
 m0 <- gamlss(
   y ~ 1,
   sigma.fo = ~ 1,   # constant variance 
-  family = NO(),
+  family = SST(),
   data = dat,
   trace = FALSE
 )
@@ -535,7 +310,7 @@ m0 <- gamlss(
 m1 <- gamlss(
   y ~ 1,                     
   sigma.fo = ~ pb(t_scaled),   # sigma(t)
-  family = NO(),
+  family = SST(),
   data = dat,
   trace = FALSE
 )
@@ -620,14 +395,16 @@ mu_t     <- pmax(0, mu0 + beta * t_scaled)
 # Variance varies with time
 sigma_t  <- pmax(0, sigma0 + beta * t_scaled)
 
-y <- rnorm(n, mean = mu_t, sd = sigma_t)
+y <- rSST(n, mu = mu_t, sigma = sigma_t, nu = 1, tau = 7)
 
 dat <- data.frame(
   t = t_index,
   t_scaled = t_scaled,
   y = y,
   mu_true = mu_t,
-  sd_true = sigma_t
+  sd_true = sigma_t,
+  nu_true = 1,
+  tau_true = 7
 )
 ```
 
@@ -657,16 +434,16 @@ Fitted four models:
 
 ```{r models}
 # M0: constant mean + constant variance
-m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = SST(), data = dat, trace = FALSE)
 
 # M1: time-varying variance only + constant mean
-m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, trace = FALSE)
 
 # M2: time-varying mean only + constant variance 
-m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = SST(), data = dat, trace = FALSE)
 
 # M3: time-varying mean + time-varying variance
-m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, trace = FALSE)
 ```
 
 <br>
@@ -700,6 +477,10 @@ print(aic_tbl)
 
 <br>
 
+The model where the sigma is the function of time and constant mu, has a lower AIC compared to the one where mu is in the function of time and constant sigma, which tells us that sigma is the more important parameter?
+
+<br>
+
 #### Sigma coefficient 
 
 <br>
@@ -729,18 +510,18 @@ print(aic_tbl)
 n          <- 800
 t_index    <- seq_len(n)
 t_scaled   <- (t_index - 1)/(n - 1)
+beta <- 2
 
-# Mean varies smoothly (sinusoidal + drift)
-mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+# Mean varies linearly
+mu_t     <- pmax(0, mu0 + beta * t_scaled)
 
-# Variance varies with time
-sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
-sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+# Variance varies with time linearly
+sigma_t  <- pmax(0, sigma0 + beta * t_scaled)
 
 # constant skew
 nu_const  <- 4     # skew parameter (constant)
 
-y <- rSN1(n, mu = mu_t, sigma = sigma_t, nu = nu_const)
+y <- rSST(n, mu = mu_t, sigma = sigma_t, nu = nu_const, tau = 7)
 
 dat <- data.frame(
   t = t_index,
@@ -748,7 +529,8 @@ dat <- data.frame(
   y = y,
   mu_true = mu_t,
   sd_true = sigma_t,
-  nu_true = nu_const
+  nu_true = nu_const,
+  tau_true = 7
 )
 ```
 
@@ -779,19 +561,29 @@ Fitted five models:
 
 ```{r sim 3 models}
 # M0: constant mean + constant variance
-m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M1: time-varying variance only + constant mean
-m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = SST(), data = dat,  
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M2: time-varying mean only + constant variance 
-m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = SST(), data = dat,  
+  method =     mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M3: time-varying mean + time-varying variance
-m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M4: time-varying mean + time-varying variance + constant skewness
-m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = SN1(), data = dat, trace = FALSE)
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = SST(), data = dat,  
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 ```
 
 <br>
@@ -855,18 +647,19 @@ print(aic_tbl)
 n          <- 800
 t_index    <- seq_len(n)
 t_scaled   <- (t_index - 1)/(n - 1)
+beta <- 2
 
-# Mean varies smoothly (sinusoidal + drift)
-mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+# Mean varies linear 
+mu_t     <- pmax(0, mu0 + beta * t_scaled)
 
 # Variance varies with time
-sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
-sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+sigma_t  <- pmax(0, sigma0 + beta * t_scaled)
+
 
 # constant tail heaviness
 tau_const <- 5     # tail/heaviness (constant)
 
-y <- rTF(n, mu = mu_t, sigma = sigma_t, nu = tau_const)
+y <- rSST(n, mu = mu_t, sigma = sigma_t, nu = 1, tau = tau_const)
 
 dat <- data.frame(
   t = t_index,
@@ -874,6 +667,7 @@ dat <- data.frame(
   y = y,
   mu_true = mu_t,
   sd_true = sigma_t,
+  nu_true = 1,
   tau_true = tau_const
 )
 ```
@@ -905,19 +699,29 @@ Fitted five models:
 
 ```{r sim 4 models, eval=FALSE}
 # M0: constant mean + constant variance
-m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M1: time-varying variance only + constant mean
-m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M2: time-varying mean only + constant variance 
-m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M3: time-varying mean + time-varying variance
-m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M4: time-varying mean + time-varying variance + constant skewness
-m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = TF(), data = dat, trace = FALSE)
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SST(),
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 ```
 
 <br>
@@ -981,19 +785,19 @@ print(aic_tbl)
 n          <- 800
 t_index    <- seq_len(n)
 t_scaled   <- (t_index - 1)/(n - 1)
+beta <- 2
 
-# Mean varies smoothly (sinusoidal + drift)
-mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+# Mean varies linear 
+mu_t     <- pmax(0, mu0 + beta * t_scaled)
 
 # Variance varies with time
-sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
-sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+sigma_t  <- pmax(0, sigma0 + beta * t_scaled)
 
 # constant skewness and tail heaviness
 nu_const  <- 4     # skew parameter (constant)
 tau_const <- 5     # tail/heaviness (constant)
 
-y <- rSHASHo(n, mu = mu_t, sigma = sigma_t, nu = nu_const, tau = tau_const)
+y <- rSST(n, mu = mu_t, sigma = sigma_t, nu = nu_const, tau = tau_const)
 
 dat <- data.frame(
   t = t_index,
@@ -1035,29 +839,39 @@ Fitted seven models:
 
 ```{r sim 5 models, warning=FALSE, eval=FALSE}
 # M0: constant mean + constant variance
-m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = SST(), data = dat,
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M1: time-varying variance only + constant mean
-m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M2: time-varying mean only + constant variance 
-m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M3: time-varying mean + time-varying variance
-m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M4: time-varying mean + time-varying variance + constant skewness
-m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SN1(), data = dat, trace = FALSE)
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M5: time-varying mean + time-varying variance + constant kurtosis
-m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = TF(), data = dat, trace = FALSE)
+m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M6: time-varying mean + time-varying variance + constant skewness + constant kurtosis
-m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
-```
-
-```{r testing, eval=FALSE}
-m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
+m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 ```
 
 <br>
@@ -1123,19 +937,23 @@ print(aic_tbl)
 n          <- 800
 t_index    <- seq_len(n)
 t_scaled   <- (t_index - 1)/(n - 1)
+beta <- 2
 
-# Mean varies smoothly (sinusoidal + drift)
-mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+# Mean varies linear 
+mu_t     <- pmax(0, mu0 + beta * t_scaled)
 
 # Variance varies with time
-sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
-sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+sigma_t  <- pmax(0, sigma0 + beta * t_scaled)
 
-# skewness and tail heaviness
-nu_t  <- 0.8 * sin(2*pi*t_scaled + 0.9) # skew vary with time
-tau_const <- 5     # tail/heaviness (constant)
+# skewness and tail heaviness constant
+nu_const <- 4
+tau_const <- 5  
 
-y <- rSHASHo(n, mu = mu_t, sigma = sigma_t, nu = nu_t, tau = tau_const)
+# nu varies with time
+nu_t    <- nu_const    + beta  * t_scaled
+  
+
+y <- rSST(n, mu = mu_t, sigma = sigma_t, nu = nu_t, tau = tau_const)
 
 dat <- data.frame(
   t = t_index,
@@ -1178,28 +996,44 @@ Fitted seven models:
 
 ```{r sim 6 models, warning=FALSE, eval=FALSE}
 # M0: constant mean + constant variance
-m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = SST(), data = dat,  
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M1: time-varying variance only + constant mean
-m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = SST(), data = dat,  
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M2: time-varying mean only + constant variance 
-m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = SST(), data = dat,  
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M3: time-varying mean + time-varying variance
-m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M4: time-varying mean + time-varying variance + constant skewness
-m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SN1(), data = dat, trace = FALSE)
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SST(), data = dat,  
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M5: time-varying mean + time-varying variance + constant kurtosis
-m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = TF(), data = dat, trace = FALSE)
+m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = SST(), data = dat,  method =       
+  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M6: time-varying mean + time-varying variance + constant skewness + constant kurtosis
-m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
+m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat,  
+  method =       mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M7: time-varying mean + time-varying variance + time-varying skewness + constant kurtosis
-m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
+m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SST(), data = dat,  
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 ```
 
 <br>
@@ -1266,19 +1100,23 @@ print(aic_tbl)
 n          <- 800
 t_index    <- seq_len(n)
 t_scaled   <- (t_index - 1)/(n - 1)
+beta <- 2
+beta_tau   <- -1 
 
-# Mean varies smoothly (sinusoidal + drift)
-mu_t     <- 2 * sin(2*pi*t_scaled) + 0.5 * t_scaled
+# Mean varies linear 
+mu_t     <- pmax(0, mu0 + beta * t_scaled)
 
 # Variance varies with time
-sigma_t  <- 1.5 + 0.5*sin(4*pi*t_scaled) + 0.3*t_scaled
-sigma_t  <- pmax(sigma_t, 0.2)  # keep >0
+sigma_t  <- pmax(0, sigma0 + beta * t_scaled)
 
-# skewness and tail heaviness
-nu_const <-  4     # constant skewness
-tau_t <- 1.2 + 0.5*sin(2*pi*t_scaled + 0.4)      # swings around ~1.2
+# skewness and tail heaviness constant
+nu_const <- 4
+tau_const <- 5  
 
-y <- rSHASHo(n, mu = mu_t, sigma = sigma_t, nu = nu_const, tau = tau_t)
+# nu varies with time
+tau_t    <- tau_const    + beta_tau * t_scaled
+
+y <- rSST(n, mu = mu_t, sigma = sigma_t, nu = nu_const, tau = tau_t)
 
 dat <- data.frame(
   t = t_index,
@@ -1321,28 +1159,52 @@ Fitted seven models:
 
 ```{r sim 7 models, warning=FALSE, eval=FALSE}
 # M0: constant mean + constant variance
-m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = SST(), data = dat, 
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+# testing my theory model 
+wth <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat, 
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M1: time-varying variance only + constant mean
-m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M2: time-varying mean only + constant variance 
-m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = NO(), data = dat, trace = FALSE)
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = SST(), data = dat, 
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M3: time-varying mean + time-varying variance
-m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = NO(), data = dat, trace = FALSE)
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M4: time-varying mean + time-varying variance + constant skewness
-m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SN1(), data = dat, trace = FALSE)
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), tau.fo = ~ 1, family = SST(), data = dat, 
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M5: time-varying mean + time-varying variance + constant kurtosis
-m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = TF(), data = dat, trace = FALSE)
+m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = SST(), data = dat, 
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M6: time-varying mean + time-varying variance + constant skewness + constant kurtosis
-m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SHASHo(), data = dat, trace = FALSE)
+m6 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat, 
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M7: time-varying mean + time-varying variance + constant skewness + time-varying kurtosis
-m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ pb(t_scaled), family = SHASHo(), data = dat, trace = FALSE)
+m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+  method =  mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+coefAll(wth)
+coefAll(m0)
 ```
 
 <br>
@@ -1372,8 +1234,8 @@ summary(m7)
 
 ```{r sim 7 AIC, echo=FALSE, eval=FALSE}
 aic_tbl <- data.frame(
-  model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const", "M5: my(t), sigma(t), tau const", "M6: mu(t), sigma(t), nu const, tau const", "M7: mu(t), sigma(t), nu const, tau(t)"),
-  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2), GAIC(m5, k = 2), GAIC(m6, k = 2), GAIC(m7, k = 2))
+  model = c("M0: const mu sigma", "wth", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const", "M5: my(t), sigma(t), tau const", "M6: mu(t), sigma(t), nu const, tau const", "M7: mu(t), sigma(t), nu const, tau(t)"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(wth, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2), GAIC(m5, k = 2), GAIC(m6, k = 2), GAIC(m7, k = 2))
 )
 print(aic_tbl)
 ```
