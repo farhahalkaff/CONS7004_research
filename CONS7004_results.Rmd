@@ -83,8 +83,10 @@ sigma_t <- pmax(0, sigma0 + beta_sigma * t_scaled)
 nu_t    <- nu0    + beta_nu  * t_scaled
 tau_t   <- tau0   + beta_tau * t_scaled
 
-y <- rSST(n, mu = mu0, sigma = sigma0, nu = nu0, tau = tau_t)
-y1 <- rTF2(n, mu = mu0, sigma = sigma0, nu = tau_t)
+y <- rSST(n, mu = mu0, sigma = sigma0, nu = nu0, tau = tau0)
+y1 <- rTF2(n, mu = mu0, sigma = sigma0, nu = tau0)
+y2 <- rLO(n, mu = mu0, sigma = 1)
+y3 <- rSN1(n, mu = mu0, sigma = 1.75, nu = 0)
 
 dat <- data.frame(
   t = t_index,
@@ -93,7 +95,7 @@ dat <- data.frame(
   sd_true = sigma0,
   mu_true = mu0,
   nu_true = nu0,
-  tau_true = tau_t,
+  tau_true = tau0,
   dist = "SST"
 )
 
@@ -103,11 +105,30 @@ dat1 <- data.frame(
   y = y1,
   sd_true = sigma0,
   mu_true = mu0,
-  tau_true = tau_t,
+  tau_true = tau0,
   dist = "TF2"
 )
 
-dat_all <- bind_rows(dat, dat1)
+dat2 <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y2,
+  sd_true = 1,
+  mu_true = mu0,
+  dist = "LO"
+)
+
+dat3 <- data.frame(
+  t = t_index,
+  t_scaled = t_scaled,
+  y = y3,
+  sd_true = 1.75,
+  mu_true = mu0,
+  nu_true = 0,
+  dist = "SN1"
+)
+
+dat_all <- bind_rows(dat, dat1, dat2, dat3)
 
 ```
 
@@ -134,35 +155,98 @@ ggplot(dat_all, aes(y = y)) +
     linewidth = 0.8
   ) +
   labs(
-    x = "Time",
+    x = "Density",
     y = "Value"
   ) +
   theme_minimal(base_size = 14) +
   coord_flip()
-
 ```
 
 
 
 ```{r}
-SSTdat <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~pb(t_scaled), family = SST(), data = dat, 
+## Different family on SST distribution
+SSTdat <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat, 
   method = mixed(5, 200),
-  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = TRUE)
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
 )
 
-TF2dat <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~pb(t_scaled), family = TF2(), data = dat, 
+TF2dat <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat, 
   method = mixed(5, 200),
-  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = TRUE)
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
 )
 
-SSTdat1 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~pb(t_scaled), family = SST(), data = dat1, 
+LOdat <-  gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = LO(), data = dat, 
   method = mixed(5, 200),
-  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = TRUE)
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
 )
 
-TF2dat1 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~pb(t_scaled), family = TF2(), data = dat1, 
+SN1dat <-  gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SN1(), data = dat, 
   method = mixed(5, 200),
-  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = TRUE)
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+## Different family for TF2 distribution
+SSTdat1 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat1, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+TF2dat1 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat1, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+LOdat1 <-  gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = LO(), data = dat1, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+SN1dat1 <-  gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SN1(), data = dat1, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+## Different family for LO distribution
+SSTdat2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat2, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+TF2dat2 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat2, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+LOdat2 <-  gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = LO(), data = dat2, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+SN1dat2 <-  gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SN1(), data = dat2, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+## Different family for SN1 distribution
+SSTdat3 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat3, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+TF2dat3 <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = TF2(), data = dat3, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+LOdat3 <-  gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = LO(), data = dat3, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
+)
+
+SN1dat3 <-  gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SN1(), data = dat3, 
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE)
 )
 ```
 
@@ -189,8 +273,19 @@ moment_bucket(TF2dat) +
 ```{r}
 summary(SSTdat)
 summary(TF2dat)
+summary(LOdat)
+#
 summary(SSTdat1)
 summary(TF2dat1)
+summary(LOdat1)
+#
+summary(SSTdat2)
+summary(TF2dat2)
+summary(LOdat2)
+#
+summary(SSTdat3)
+summary(TF2dat3)
+summary(LOdat3)
 ```
 
 <br>
@@ -203,8 +298,8 @@ summary(TF2dat1)
 
 ```{r, echo=FALSE}
 aic_tbl <- data.frame(
-  model = c("SSTdat", "TF2dat", "SSTdat1", "TF2dat1"),
-  AIC   = c(GAIC(SSTdat, k = 2), GAIC(TF2dat, k = 2), GAIC(SSTdat1, k = 2), GAIC(TF2dat1, k = 2))
+  model = c("SSTdat", "TF2dat","LOdat","SN1dat","SSTdat1", "TF2dat1", "LOdat1", "SN1dat1","SSTdat2", "TF2dat2", "LOdat2", "SN1dat2", "SSTdat3","TF2dat3", "LOdat3", "SN1dat3"),
+  AIC   = c(GAIC(SSTdat, k = 2), GAIC(TF2dat, k = 2), GAIC(LOdat, k = 2), GAIC(SN1dat, k = 2),GAIC(SSTdat1, k = 2), GAIC(TF2dat1, k = 2), GAIC(LOdat1, k = 2), GAIC(SN1dat1, k = 2),GAIC(SSTdat2, k = 2), GAIC(TF2dat2, k = 2), GAIC(LOdat2, k = 2), GAIC(SN1dat2, k = 2), GAIC(SSTdat3, k = 2), GAIC(TF2dat3, k = 2), GAIC(LOdat3, k = 2), GAIC(SN1dat3, k = 2))
 )
 print(aic_tbl)
 ```
@@ -561,29 +656,36 @@ Fitted five models:
 
 ```{r sim 3 models}
 # M0: constant mean + constant variance
-m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = SST(), data = dat, 
+m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = LO(), data = dat, 
   method =       mixed(5, 200),
   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M1: time-varying variance only + constant mean
-m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = SST(), data = dat,  
+m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = LO(), data = dat,  
   method =       mixed(5, 200),
   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M2: time-varying mean only + constant variance 
-m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = SST(), data = dat,  
+m2 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ 1, family = LO(), data = dat,  
   method =     mixed(5, 200),
   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M3: time-varying mean + time-varying variance
-m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
+m3 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), family = LO(), data = dat, 
   method = mixed(5, 200),
   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 # M4: time-varying mean + time-varying variance + constant skewness
-m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = SST(), data = dat,  
+m4 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = SN1(), data = dat,  
   method = mixed(5, 200),
   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+# M5: time-varying mean + time-varying variance + constant skewness + constant kurtosis (with SST family)
+m5 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, family = SST(), data = dat,  
+  method = mixed(5, 200),
+  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+#?LO
 ```
 
 <br>
@@ -598,6 +700,7 @@ summary(m1)
 summary(m2)
 summary(m3)
 summary(m4)
+summary(m5)
 ```
 
 <br>
@@ -610,8 +713,8 @@ summary(m4)
 
 ```{r sim 3 AIC, echo=FALSE}
 aic_tbl <- data.frame(
-  model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const"),
-  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2))
+  model = c("M0: const mu sigma", "M1: sigma(t), const mu", "M2: mu(t), const sigma", "M3: mu(t), sigma(t)", "M4: my(t), sigma(t), nu const", "M5: SST family"),
+  AIC   = c(GAIC(m0, k = 2), GAIC(m1, k = 2), GAIC(m2, k = 2), GAIC(m3, k = 2), GAIC(m4, k = 2), GAIC(m5, k = 2))
 )
 print(aic_tbl)
 ```
@@ -1163,11 +1266,6 @@ m0 <- gamlss(y ~ 1, sigma.fo = ~ 1, family = SST(), data = dat,
   method =  mixed(5, 200),
   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-# testing my theory model 
-wth <- gamlss(y ~ 1, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, family = SST(), data = dat, 
-  method =  mixed(5, 200),
-  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
 # M1: time-varying variance only + constant mean
 m1 <- gamlss(y ~ 1, sigma.fo = ~ pb(t_scaled), family = SST(), data = dat, 
   method =  mixed(5, 200),
@@ -1203,8 +1301,8 @@ m7 <- gamlss(y ~ pb(t_scaled), sigma.fo = ~ pb(t_scaled), nu.fo = ~ 1, tau.fo = 
   method =  mixed(5, 200),
   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-coefAll(wth)
-coefAll(m0)
+# logLik(m0)
+# logLik(wth)
 ```
 
 <br>
@@ -1215,6 +1313,7 @@ coefAll(m0)
 
 ```{r, eval=FALSE}
 summary(m0)
+summary(wth)
 summary(m1)
 summary(m2)
 summary(m3)
