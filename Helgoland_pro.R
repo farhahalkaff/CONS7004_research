@@ -183,13 +183,22 @@ ggplot(df_long, aes(month, z, color = variable, group = variable)) +
 
 # create own df to remove NAs 
 Nitrate <- df %>% filter(!is.na(Nitrate)) %>% 
-  select(Date, Nitrate)
+  select(Date, Nitrate, year)
+
 
 # plot that sucka
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "black", na.rm = TRUE) +
   labs(x = "Time", y = "Nitrate (µmol/l)") +
   theme_minimal()
+
+# plot a specific year 
+ggplot(dplyr::filter(Nitrate, year(Date) == 1994),
+       aes(Date, Nitrate)) +
+  geom_line(color = "black")
+
+
+
 
 
 
@@ -237,7 +246,7 @@ AIC(niTF2m)
 AIC(niTF2mtest)
 
 
-niSSTm_1 <- gamlss(Nitrate ~ Date, family = SST(), data = na.omit(df), 
+niSSTm_1 <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate, 
                  method = mixed(5, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_1)
@@ -245,21 +254,49 @@ with(Nitrate, plot(Nitrate ~ Date))
 curve(cbind(1,x)%*%coef(niSSTm_1), add =T, col = "red", lwd=2)
 
 
-niSSTm_sig <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = SST(), data = na.omit(df), 
+niSSTm_sig <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = SST(), data = Nitrate, 
                    method = mixed(5, 200),
                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_sig)
 
-niSSTm_nu <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = na.omit(df), 
+niSSTm_nu <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate, 
                      method = mixed(5, 200),
                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_nu)
 
 niSSTm_tau <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), 
-                     data = na.omit(df), 
+                     data = Nitrate, 
                     method = mixed(5, 200),
                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_tau)
+
+omit <- na.omit(df)
+
+##########=====================================================
+# niSSTm_1 <- gamlss(Nitrate ~ Date, family = SST(), data = na.omit(df), 
+#                    method = mixed(5, 200),
+#                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_1)
+# with(Nitrate, plot(Nitrate ~ Date))
+# curve(cbind(1,x)%*%coef(niSSTm_1), add =T, col = "red", lwd=2)
+# 
+# 
+# niSSTm_sig <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = SST(), data = na.omit(df), 
+#                      method = mixed(5, 200),
+#                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_sig)
+# 
+# niSSTm_nu <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = na.omit(df), 
+#                     method = mixed(5, 200),
+#                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_nu)
+# 
+# niSSTm_tau <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), 
+#                      data = na.omit(df), 
+#                      method = mixed(5, 200),
+#                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_tau)
+##########======================================================
 
 
 # summary
@@ -272,17 +309,15 @@ param_summary <- data.frame(
                  (exp(coefAll(niSSTm_sig)$tau) + 2), "NA", AIC(niSSTm_sig)),
   niSSTm_nu = c(coefAll(niSSTm_nu)$mu[1],coefAll(niSSTm_nu)$mu[2], exp(coefAll(niSSTm_nu)$sigma[1]),
                  exp(coefAll(niSSTm_nu)$sigma[2]), exp(coefAll(niSSTm_nu)$nu[1]),exp(coefAll(niSSTm_nu)$nu[2]), 
-                 (exp(coefAll(niSSTm_nu)$tau) + 2), "NA", AIC(niSSTm_nu)),
-  niSSTm_tau = c(coefAll(niSSTm_tau)$mu[1],coefAll(niSSTm_tau)$mu[2], exp(coefAll(niSSTm_tau)$sigma[1]),
-                exp(coefAll(niSSTm_tau)$sigma[2]), exp(coefAll(niSSTm_tau)$nu[1]),exp(coefAll(niSSTm_tau)$nu[2]), 
-                (exp(coefAll(niSSTm_tau)$tau[1]) + 2), (exp(coefAll(niSSTm_tau)$tau[2]) + 2), AIC(niSSTm_tau))
+                 (exp(coefAll(niSSTm_nu)$tau) + 2), "NA", AIC(niSSTm_nu))
 )
 print(param_summary)
 
 
-# log
+#############################################
+############################################# LOG
 
-niSSTm_1b <- gamlss(log(Nitrate) ~ Date, family = SST(), data = na.omit(df), 
+niSSTm_1b <- gamlss(log(Nitrate) ~ Date, family = SST(), data = Nitrate, 
                    method = mixed(5, 200),
                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_1b)
@@ -290,22 +325,48 @@ with(Nitrate, plot(Nitrate ~ Date))
 curve(exp(cbind(1,x)%*%coef(niSSTm_1b)), add =T, col = "red", lwd=2)
 
 
-niSSTm_sigb <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, family = SST(), data = na.omit(df), 
+niSSTm_sigb <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, family = SST(), data = Nitrate, 
                      method = mixed(5, 200),
                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_sigb)
 
-niSSTm_nub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = na.omit(df), 
+niSSTm_nub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate, 
                     method = mixed(5, 200),
                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_nub)
 
 niSSTm_taub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), 
-                     data = na.omit(df), 
+                     data = Nitrate, 
                      method = mixed(5, 200),
                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_taub)
 
+
+##########=========================================================
+# niSSTm_1b <- gamlss(log(Nitrate) ~ Date, family = SST(), data = na.omit(df), 
+#                     method = mixed(5, 200),
+#                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_1b)
+# with(Nitrate, plot(Nitrate ~ Date))
+# curve(exp(cbind(1,x)%*%coef(niSSTm_1b)), add =T, col = "red", lwd=2)
+# 
+# 
+# niSSTm_sigb <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, family = SST(), data = na.omit(df), 
+#                       method = mixed(5, 200),
+#                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_sigb)
+# 
+# niSSTm_nub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = na.omit(df), 
+#                      method = mixed(5, 200),
+#                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_nub)
+# 
+# niSSTm_taub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), 
+#                       data = na.omit(df), 
+#                       method = mixed(5, 200),
+#                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_taub)
+############==========================================================
 
 param_summary <- data.frame(
   param = c("mu","mu(time)" , "SD","SD(time)","nu", "nu(time)", "tau", "tau(time)", "AIC"), 
@@ -320,7 +381,10 @@ param_summary <- data.frame(
 )
 print(param_summary)
 
-# boxcox
+
+
+#############################################
+############################################# BOX-COX
 
 niSSTm_1c <- gamlss(Nitrate ~ Date, family = BCT(), data = Nitrate, 
                    method = mixed(5, 200),
@@ -347,6 +411,32 @@ niSSTm_tauc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo 
 summary(niSSTm_tau)
 
 
+#####================
+# niSSTm_1c <- gamlss(Nitrate ~ Date, family = BCT(), data = na.omit(df), 
+#                     method = mixed(5, 200),
+#                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_1c)
+# with(Nitrate, plot(Nitrate ~ Date))
+# curve(cbind(1,x)%*%coef(niSSTm_1), add =T, col = "red", lwd=2)
+# 
+# 
+# niSSTm_sigc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = BCT(), data = na.omit(df), 
+#                       method = mixed(5, 200),
+#                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_sig)
+# 
+# niSSTm_nuc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = BCT(), data = na.omit(df), 
+#                      method = mixed(5, 200),
+#                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_nu)
+# 
+# niSSTm_tauc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = BCT(), 
+#                       data = na.omit(df), 
+#                       method = mixed(5, 200),
+#                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(niSSTm_tau)
+#######==================
+
 # summary
 param_summary <- data.frame(
   param = c("mu","mu(time)" , "SD","SD(time)","nu", "nu(time)", "tau", "tau(time)", "AIC"), 
@@ -364,40 +454,58 @@ param_summary <- data.frame(
 )
 print(param_summary)
 
-# 
-# n <- 6000
-# t_index  <- seq_len(n)
-# t_scaled <- (t_index - 1)/(n - 1)
-# mu0 <- 0
-# mu_t <- pmax(0, mu0 + 0.005 * n)
-# sigma0 <- 4
-# sigma_t <- pmax(0, sigma0 + 1 * n)
-# nu0 <- 20
-# nu_t <- pmax(0, nu0 + 1 * n)
-# tau0 <- 2.1
-# 
-# y <- rSST(n, mu = mu_t, sigma = sigma_t, nu = nu0, tau = tau0)
-# test <- data.frame(
-#   t = t_index,
-#   t_scaled = n,
-#   y = y,
-#   sd_true = sigma_t,
-#   mu_true = mu_t,
-#   nu_true = nu0,
-#   tau_true = tau0
-# )
-#   
-# ggplot(test, aes(x = t)) +
-#   geom_line(
-#     aes(y = y),
-#     color = "darkred",
-#     linewidth = 0.8
-#   ) +
-#   labs(
-#     x = "Time",
-#     y = "Value"
-#   ) +
-#   theme_minimal(base_size = 14)
+
+
+
+#############################################
+############################################# Skew exponential 
+
+niSEPm_1 <- gamlss(Nitrate ~ Date, family = SEP3(), data = Nitrate, 
+                   method = mixed(5, 200),
+                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(niSEPm_1)
+
+
+niSEPm_sig <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = SEP3(), data = Nitrate, 
+                      method = mixed(5, 200),
+                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+
+niSEPm_nu <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = SEP3(), data = Nitrate, 
+                      method = mixed(5, 200),
+                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+# summary 
+param_summary <- data.frame(
+  param = c("mu","mu(time)" , "SD","SD(time)","nu", "nu(time)", "tau", "tau(time)", "AIC"), 
+  niSEPm_1 = c(coefAll(niSEPm_1)$mu[1],coefAll(niSEPm_1)$mu[2] ,exp(coefAll(niSEPm_1)$sigma),"NA", 
+                exp(coefAll(niSEPm_1)$nu),"NA", (exp(coefAll(niSEPm_1)$tau) + 2), "NA", AIC(niSEPm_1)),
+  niSEPm_sig = c(coefAll(niSEPm_sig)$mu[1],coefAll(niSEPm_sig)$mu[2] ,exp(coefAll(niSEPm_sig)$sigma[1]),
+                  exp(coefAll(niSEPm_sig)$sigma[2]), exp(coefAll(niSEPm_sig)$nu),"NA", 
+                  (exp(coefAll(niSEPm_sig)$tau) + 2), "NA", AIC(niSEPm_sig)),
+  niSEPm_nu = c(coefAll(niSEPm_nu)$mu[1],coefAll(niSEPm_nu)$mu[2], exp(coefAll(niSEPm_nu)$sigma[1]),
+                 exp(coefAll(niSEPm_nu)$sigma[2]), exp(coefAll(niSEPm_nu)$nu[1]),exp(coefAll(niSEPm_nu)$nu[2]), 
+                 (exp(coefAll(niSEPm_nu)$tau) + 2), "NA", AIC(niSEPm_nu))
+)
+print(param_summary)
+
+
+#############################################
+############################################# SST left-truncated
+
+library(gamlss.tr)
+gen.trun(0,"SST",type="left")
+
+niSSTm_1 <- gamlss(Nitrate ~ Date, family = SSTtr(), data = Nitrate, 
+                   method = mixed(5, 200),
+                   control = gamlss.control(n.cyc = 900, c.crit = 0.01, trace = FALSE))
+
+
+
+
+
+
+
 
 ######################################################
 ### Phosphate and fit models of different families ###
