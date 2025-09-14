@@ -20,6 +20,12 @@ library(patchwork)
 library(lubridate)
 library(tidyr)
 
+library(mvgam)           # Fit, interrogate and forecast DGAMs
+library(forecast)        # Construct fourier terms for time series
+library(gratia)          # Graceful plotting of smooth terms
+library(marginaleffects) # Interrogating regression models
+library(janitor)         # Creating clean, tidy variable names
+
 # add year as a column
 df$year <- year(ymd_hm(df$Date))
 df <- df %>%
@@ -185,22 +191,21 @@ ggplot(df_long, aes(month, z, color = variable, group = variable)) +
 Nitrate <- df %>% filter(!is.na(Nitrate)) %>% 
   select(Date, Nitrate, year)
 
-
 # plot that sucka
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "black", na.rm = TRUE) +
   labs(x = "Time", y = "Nitrate (µmol/l)") +
   theme_minimal()
 
-# plot a specific year 
+# plot a for a specific year 
 ggplot(dplyr::filter(Nitrate, year(Date) == 1994),
        aes(Date, Nitrate)) +
   geom_line(color = "black")
 
+stl(Nitrate$Nitrate, s.window = 9) %>%
+  autoplot()
 
-
-
-
+head(Nitrate, 24)
 
 ### CHECK DISTRIBUTION ###
 
@@ -220,7 +225,7 @@ ggplot(Nitrate, aes(y = Nitrate)) +
   coord_flip()
 
 
-### MODELS ###
+### DIFFERENT FAMILY MODELS ###
 
 niSSTm <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = na.omit(df), 
              method = mixed(5, 200),
@@ -245,6 +250,8 @@ summary(niTF2m)
 AIC(niTF2m)
 AIC(niTF2mtest)
 
+
+### SST FAMILY MODELS WITH TIME-VARYING PARAMETERS ###
 
 niSSTm_1 <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate, 
                  method = mixed(5, 200),
@@ -456,7 +463,6 @@ print(param_summary)
 
 
 
-
 #############################################
 ############################################# Skew exponential 
 
@@ -502,10 +508,31 @@ niSSTm_1 <- gamlss(Nitrate ~ Date, family = SSTtr(), data = Nitrate,
 
 
 
+#======================
+# SEASONALITY
+#======================
+ 
+# Average values of nitrate per months each year 
+Nitrate_monthly <- Nitrate %>%
+  mutate(Year = year(Date),
+         Month = factor(month(Date), levels = 1:12, labels = month.abb)) %>%
+  group_by(Year, Month) %>%
+  summarize(Nitrate = mean(Nitrate, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = Month, values_from = Nitrate) %>%
+  arrange(Year)
 
+# check that shit out 
+head(Nitrate_monthly, 24)
 
+stl(Nitrate_monthly, s.window = 9) %>%
+  autoplot()
 
-
+# Fill up missing NAs for Jan 1970 
+Nitrate_monthly[9,2] <- ((Nitrate_monthly[8,13] + Nitrate_monthly[9,3])/2)
+# Fill up missing NAs for May 1965 
+Nitrate_monthly[4,6] <- 25.82
+# Fill up missing NAs for June 1965 
+Nitrate_monthly[4,7] <- 19.265
 
 ######################################################
 ### Phosphate and fit models of different families ###
@@ -513,13 +540,18 @@ niSSTm_1 <- gamlss(Nitrate ~ Date, family = SSTtr(), data = Nitrate,
 
 # create own df to remove NAs
 bluh <- df %>% filter(!is.na(Phosphate)) %>% 
-  select(Date, Phosphate)
+  select(Date, Phosphate, year)
 
 # plot that sucka
 ggplot(bluh, aes(x = Date, y = Phosphate)) +
   geom_line(color = "black") +
   labs(x = "Time", y = "Phosphate (µmol/l)") +
   theme_minimal()
+
+# plot a for a specific year 
+ggplot(dplyr::filter(bluh, year(Date) == 1970),
+       aes(Date, Phosphate)) +
+  geom_line(color = "black")
 
 
 ### CHECK DISTRIBUTION ###
@@ -566,19 +598,25 @@ AIC(phSN1m)
 AIC(phNOm)
 
 
+
 ####################################################
 ### Nitrite and fit models of different families ###
 ####################################################
 
 # Create own df to remove NAs
 Nitrite <- df %>% filter(!is.na(Nitrite)) %>% 
-  select(Date, Nitrite)
+  select(Date, Nitrite, year)
 
 # plot that sucka
 ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
   geom_line(color = "black") + 
   labs(x = "Time", y = "Nitrite (µmol/l)") +
   theme_minimal()
+
+# plot a for a specific year 
+ggplot(dplyr::filter(Nitrite, year(Date) == 1970),
+       aes(Date, Nitrite)) +
+  geom_line(color = "black")
 
 
 ### CHECK DISTRIBUTION ###
@@ -675,13 +713,18 @@ print(param_summary)
 
 # create it's own df to remove NAs
 DIN <- df %>% filter(!is.na(DIN)) %>% 
-  select(Date, DIN)
+  select(Date, DIN, year)
 
 # plot that sucka
 ggplot(DIN, aes(x = Date, y = DIN)) +
   geom_line(color = "black") +
   labs(x = "Time", y = "DIN (µmol/l)") +
   theme_minimal()
+
+# plot a for a specific year 
+ggplot(dplyr::filter(DIN, year(Date) == 1970),
+       aes(Date, DIN)) +
+  geom_line(color = "black")
 
 
 ### CHECK DISTRIBUTION ###
@@ -773,13 +816,18 @@ print(param_summary)
 
 # create own df to remove NAs 
 Silicate <- df %>% filter(!is.na(Silicate)) %>% 
-  select(Date, Silicate)
+  select(Date, Silicate, year)
 
 # plot that sucka 
 ggplot(Silicate, aes(x = Date, y = Silicate)) +
   geom_line(color = "black") +
   labs(x = "Time", y = "Silicate (µmol/l)") +
   theme_minimal()
+
+# plot a for a specific year 
+ggplot(dplyr::filter(Silicate, year(Date) == 1972),
+       aes(Date, Silicate)) +
+  geom_line(color = "black")
 
 
 ### CHECK DISTRIBUTION ###
@@ -869,13 +917,18 @@ print(param_summary)
 
 # create own df to remove NAs 
 Ammonium <- df %>% filter(!is.na(Ammonium)) %>% 
-  select(Date, Ammonium)
+  select(Date, Ammonium, year)
 
 # plot that sucka
 ggplot(Ammonium, aes(x = Date, y = Ammonium)) +
   geom_line(color = "black") +
   labs(x = "Time", y = "Ammonium (µmol/l)") +
   theme_minimal()
+
+# plot a for a specific year 
+ggplot(dplyr::filter(Ammonium, year(Date) == 1970),
+       aes(Date, Ammonium)) +
+  geom_line(color = "black")
 
 
 ### CHECK DISTRIBUTION ###
