@@ -227,12 +227,11 @@ ggplot(Nitrate, aes(y = Nitrate)) +
 
 ### DIFFERENT FAMILY MODELS ###
 
-niSSTm <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = na.omit(df), 
+niSSTm <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate, 
              method = mixed(5, 200),
              control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-
-niTF2m <- gamlss(Nitrate ~ Date, family = TF2(), data = na.omit(df), 
+niTF2m <- gamlss(Nitrate ~ Date, family = TF2(), data = Nitrate, 
              method = mixed(5, 200),
              control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
@@ -277,7 +276,7 @@ niSSTm_tau <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo =
                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_tau)
 
-omit <- na.omit(df)
+#omit <- na.omit(df)
 
 ##########=====================================================
 # niSSTm_1 <- gamlss(Nitrate ~ Date, family = SST(), data = na.omit(df), 
@@ -319,6 +318,16 @@ param_summary <- data.frame(
                  (exp(coefAll(niSSTm_nu)$tau) + 2), "NA", AIC(niSSTm_nu))
 )
 print(param_summary)
+
+
+# V = 1 --> symmetrical 
+# V > 1 --> positively skewed 
+# 0 < V < 1 --> negatively skewed 
+# Decreasing T increases the heaviness of the tail
+# When V = 1, = TF2 distribution 
+# As V reached infinity, it tends to be half t distribution TF
+# As T reaches infinity, it tends to Skew normal type 2, SN2
+# If both V and T reaches infinity, it tends to a half normal distribution
 
 
 #############################################
@@ -391,22 +400,20 @@ print(param_summary)
 
 
 #############################################
-############################################# BOX-COX
+############################################# SHASHo
 
-niSSTm_1c <- gamlss(Nitrate ~ Date, family = BCT(), data = Nitrate, 
+niSSTm_1c <- gamlss(log(Nitrate) ~ Date, family = SHASHo(), data = Nitrate, 
                    method = mixed(5, 200),
                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(niSSTm_1)
-with(Nitrate, plot(Nitrate ~ Date))
-curve(cbind(1,x)%*%coef(niSSTm_1), add =T, col = "red", lwd=2)
+summary(niSSTm_1c)
 
 
-niSSTm_sigc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = BCT(), data = Nitrate, 
+niSSTm_sigc <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, family = SHASHo(), data = Nitrate, 
                      method = mixed(5, 200),
                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(niSSTm_sig)
+summary(niSSTm_sigc)
 
-niSSTm_nuc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = BCT(), data = Nitrate, 
+niSSTm_nuc <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SHASHo(), data = Nitrate, 
                     method = mixed(5, 200),
                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_nu)
@@ -448,52 +455,63 @@ summary(niSSTm_tau)
 param_summary <- data.frame(
   param = c("mu","mu(time)" , "SD","SD(time)","nu", "nu(time)", "tau", "tau(time)", "AIC"), 
   niSSTm_1c = c(coefAll(niSSTm_1c)$mu[1],coefAll(niSSTm_1c)$mu[2] ,exp(coefAll(niSSTm_1c)$sigma),"NA", 
-               exp(coefAll(niSSTm_1c)$nu),"NA", (exp(coefAll(niSSTm_1c)$tau) + 2), "NA", AIC(niSSTm_1c)),
+               coefAll(niSSTm_1c)$nu,"NA", (exp(coefAll(niSSTm_1c)$tau)), "NA", AIC(niSSTm_1c)),
   niSSTm_sigc = c(coefAll(niSSTm_sigc)$mu[1],coefAll(niSSTm_sigc)$mu[2] ,exp(coefAll(niSSTm_sigc)$sigma[1]),
-                 exp(coefAll(niSSTm_sigc)$sigma[2]), exp(coefAll(niSSTm_sigc)$nu),"NA", 
-                 (exp(coefAll(niSSTm_sigc)$tau) + 2), "NA", AIC(niSSTm_sigc)),
+                 exp(coefAll(niSSTm_sigc)$sigma[2]), coefAll(niSSTm_sigc)$nu,"NA", 
+                 (exp(coefAll(niSSTm_sigc)$tau)), "NA", AIC(niSSTm_sigc)),
   niSSTm_nuc = c(coefAll(niSSTm_nuc)$mu[1],coefAll(niSSTm_nuc)$mu[2], exp(coefAll(niSSTm_nuc)$sigma[1]),
-                exp(coefAll(niSSTm_nuc)$sigma[2]), exp(coefAll(niSSTm_nuc)$nu[1]),exp(coefAll(niSSTm_nuc)$nu[2]), 
-                (exp(coefAll(niSSTm_nuc)$tau) + 2), "NA", AIC(niSSTm_nuc)),
-  niSSTm_tauc = c(coefAll(niSSTm_tauc)$mu[1],coefAll(niSSTm_tauc)$mu[2], exp(coefAll(niSSTm_tauc)$sigma[1]),
-                 exp(coefAll(niSSTm_tauc)$sigma[2]), exp(coefAll(niSSTm_tauc)$nu[1]),exp(coefAll(niSSTm_tauc)$nu[2]), 
-                 (exp(coefAll(niSSTm_tauc)$tau[1]) + 2), (exp(coefAll(niSSTm_tauc)$tau[2]) + 2), AIC(niSSTm_tauc))
+                exp(coefAll(niSSTm_nuc)$sigma[2]), coefAll(niSSTm_nuc)$nu[1], coefAll(niSSTm_nuc)$nu[2], 
+                (exp(coefAll(niSSTm_nuc)$tau)), "NA", AIC(niSSTm_nuc))
 )
 print(param_summary)
 
+# V = 0 --> symmetrical 
+# V > 0 --> positively skewed 
+# V < 0 --> negatively skewed 
+# T < 1 --> heavier tails than normal
+# T > 1 --> lighter tails than normal
+# centile skewness and kurtosis
 
 
 #############################################
 ############################################# Skew exponential 
 
-niSEPm_1 <- gamlss(Nitrate ~ Date, family = SEP3(), data = Nitrate, 
+niSEPm_1 <- gamlss(log(Nitrate) ~ Date, family = SEP3(), data = Nitrate, 
                    method = mixed(5, 200),
                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSEPm_1)
 
 
-niSEPm_sig <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = SEP3(), data = Nitrate, 
+niSEPm_sig <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, family = SEP3(), data = Nitrate, 
                       method = mixed(5, 200),
                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
-niSEPm_nu <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = SEP3(), data = Nitrate, 
+niSEPm_nu <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SEP3(), data = Nitrate, 
                       method = mixed(5, 200),
                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(niSEPm_nu)
 
 # summary 
 param_summary <- data.frame(
   param = c("mu","mu(time)" , "SD","SD(time)","nu", "nu(time)", "tau", "tau(time)", "AIC"), 
   niSEPm_1 = c(coefAll(niSEPm_1)$mu[1],coefAll(niSEPm_1)$mu[2] ,exp(coefAll(niSEPm_1)$sigma),"NA", 
-                exp(coefAll(niSEPm_1)$nu),"NA", (exp(coefAll(niSEPm_1)$tau) + 2), "NA", AIC(niSEPm_1)),
+                exp(coefAll(niSEPm_1)$nu),"NA", (exp(coefAll(niSEPm_1)$tau)), "NA", AIC(niSEPm_1)),
   niSEPm_sig = c(coefAll(niSEPm_sig)$mu[1],coefAll(niSEPm_sig)$mu[2] ,exp(coefAll(niSEPm_sig)$sigma[1]),
                   exp(coefAll(niSEPm_sig)$sigma[2]), exp(coefAll(niSEPm_sig)$nu),"NA", 
-                  (exp(coefAll(niSEPm_sig)$tau) + 2), "NA", AIC(niSEPm_sig)),
+                  (exp(coefAll(niSEPm_sig)$tau)), "NA", AIC(niSEPm_sig)),
   niSEPm_nu = c(coefAll(niSEPm_nu)$mu[1],coefAll(niSEPm_nu)$mu[2], exp(coefAll(niSEPm_nu)$sigma[1]),
                  exp(coefAll(niSEPm_nu)$sigma[2]), exp(coefAll(niSEPm_nu)$nu[1]),exp(coefAll(niSEPm_nu)$nu[2]), 
-                 (exp(coefAll(niSEPm_nu)$tau) + 2), "NA", AIC(niSEPm_nu))
+                 (exp(coefAll(niSEPm_nu)$tau)), "NA", AIC(niSEPm_nu))
 )
 print(param_summary)
+
+# V = 0 --> symmetrical 
+# V > 1 --> positively skewed 
+# 0 < V < 1 --> negatively skewed 
+# T < 2 --> moment leptokurtic (heavy tails)
+# T > 2 --> moment platykurtic (lighter tials) or leptokurtic
+
 
 
 #############################################
@@ -502,9 +520,11 @@ print(param_summary)
 library(gamlss.tr)
 gen.trun(0,"SST",type="left")
 
-niSSTm_1 <- gamlss(Nitrate ~ Date, family = SSTtr(), data = Nitrate, 
+niSSTm_1tr <- gamlss(Nitrate ~ Date, family = SSTtr(), data = Nitrate, 
                    method = mixed(5, 200),
                    control = gamlss.control(n.cyc = 900, c.crit = 0.01, trace = FALSE))
+
+
 
 
 
@@ -545,7 +565,7 @@ Nitrate_monthly_v <- ts(
 head(Nitrate_monthly_v, 72)
 
 # STL decomposition (Seasonal and Trend decomposition using Loess)
-stl(Nitrate_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOE ==#
+stl(Nitrate_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
   autoplot()
 ?stl
 
@@ -600,8 +620,7 @@ ggplot(Phosphate, aes(y = Phosphate)) +
 
 ### MODELS ###
 
-phSSTm <- gamlss(Phosphate ~ poly(Date,2), family = SST(), data = na.omit(df), 
-                 sigma.start = max(sd(df$Phosphate, na.rm = TRUE), 1e-6),
+phSSTm <- gamlss(Phosphate ~ poly(Date,2), family = SST(), data = Phosphate, 
              method = mixed(5, 200),
              control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
