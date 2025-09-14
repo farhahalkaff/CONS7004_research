@@ -512,12 +512,27 @@ niSSTm_1 <- gamlss(Nitrate ~ Date, family = SSTtr(), data = Nitrate,
 # SEASONALITY
 #======================
  
+# See missing values for each month of each year
+Nitrate_NA <- Nitrate %>%
+  mutate(Year = year(Date),
+         Month = factor(month(Date), levels = 1:12, labels = month.abb)) %>%
+  group_by(Year, Month) %>%
+  summarize(Nitrate = mean(Nitrate, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = Month, values_from = Nitrate) %>%
+  arrange(Year)
+
 # Average values of nitrate per months each year 
 Nitrate_monthly <- Nitrate %>%
   mutate(Year = year(Date), Month = month(Date)) %>%
   group_by(Year, Month) %>%
-  summarize(Nitrate = mean(Nitrate, na.rm = TRUE), .groups = "drop") %>%
+  summarize(Nitrate = mean(Nitrate), .groups = "drop") %>%
   arrange(Year, Month)
+
+# Add missing data (May and June of 1965, Jan of 1970)
+Nitrate_monthly <- Nitrate_monthly %>% 
+  add_row(Year = 1965, Month = 5, Nitrate = 25.82, .after = 40) %>% 
+  add_row(Year = 1965, Month = 6, Nitrate = 19.265, .after = 41) %>% 
+  add_row(Year = 1970, Month = 1, Nitrate = 8.29, .after = 96)
 
 # turn dataset into vector 
 Nitrate_monthly_v <- ts(
@@ -527,7 +542,7 @@ Nitrate_monthly_v <- ts(
 )
 
 # check that shit out 
-head(Nitrate_monthly_v, 24)
+head(Nitrate_monthly_v, 72)
 
 # STL decomposition (Seasonal and Trend decomposition using Loess)
 stl(Nitrate_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOE ==#
@@ -550,17 +565,17 @@ plot_mvgam_series(data = NM$data_train,
 ######################################################
 
 # create own df to remove NAs
-bluh <- df %>% filter(!is.na(Phosphate)) %>% 
+Phosphate <- df %>% filter(!is.na(Phosphate)) %>% 
   select(Date, Phosphate, year)
 
 # plot that sucka
-ggplot(bluh, aes(x = Date, y = Phosphate)) +
+ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
   geom_line(color = "black") +
   labs(x = "Time", y = "Phosphate (µmol/l)") +
   theme_minimal()
 
 # plot a for a specific year 
-ggplot(dplyr::filter(bluh, year(Date) == 1970),
+ggplot(dplyr::filter(Phosphate, year(Date) == 1970),
        aes(Date, Phosphate)) +
   geom_line(color = "black")
 
@@ -568,10 +583,10 @@ ggplot(dplyr::filter(bluh, year(Date) == 1970),
 ### CHECK DISTRIBUTION ###
 
 # histogram 
-hist(bluh$Phosphate)
+hist(Phosphate$Phosphate)
 
 # density plot 
-ggplot(bluh, aes(y = Phosphate)) +
+ggplot(Phosphate, aes(y = Phosphate)) +
   geom_density(
     linewidth = 0.8
   ) +
@@ -613,22 +628,36 @@ AIC(phNOm)
 # SEASONALITY
 #======================
 
+# Check missing data for each month  
+Phosphate_NA <- Phosphate %>%
+  mutate(Year = year(Date),
+         Month = factor(month(Date), levels = 1:12, labels = month.abb)) %>%
+  group_by(Year, Month) %>%
+  summarize(Phosphate = mean(Phosphate, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = Month, values_from = Phosphate) %>%
+  arrange(Year)
+
 # Average values of nitrate per months each year 
-Phosphate_monthly <- bluh %>%
+Phosphate_monthly <- Phosphate %>%
   mutate(Year = year(Date), Month = month(Date)) %>%
   group_by(Year, Month) %>%
-  summarize(bluh = mean(Phosphate, na.rm = TRUE), .groups = "drop") %>%
+  summarize(Phosphate = mean(Phosphate, na.rm = TRUE), .groups = "drop") %>%
   arrange(Year, Month)
+
+# Add missing data (May and June of 1965)
+Phosphate_monthly <- Phosphate_monthly %>% 
+  add_row(Year = 1965, Month = 5, Phosphate = 0.655, .after = 40) %>% 
+  add_row(Year = 1965, Month = 6, Phosphate = 0.228, .after = 41) 
 
 # turn dataset into vector 
 Phosphate_monthly_v <- ts(
-  Phosphate_monthly$bluh,
+  Phosphate_monthly$Phosphate,
   start = c(min(Phosphate_monthly$Year), min(Phosphate_monthly$Month)),
   frequency = 12
 )
 
 # check that shit out 
-head(Phosphate_monthly_v, 24)
+head(Phosphate_monthly_v, 72)
 
 # STL decomposition (Seasonal and Trend decomposition using Loess)
 stl(Phosphate_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOE ==#
@@ -759,12 +788,26 @@ print(param_summary)
 # SEASONALITY
 #======================
 
+# Check missing data for each month  
+Nitrite_NA <- Nitrite %>%
+  mutate(Year = year(Date),
+         Month = factor(month(Date), levels = 1:12, labels = month.abb)) %>%
+  group_by(Year, Month) %>%
+  summarize(Nitrite = mean(Nitrite, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = Month, values_from = Nitrite) %>%
+  arrange(Year)
+
 # Average values of nitrate per months each year 
 Nitrite_monthly <- Nitrite %>%
   mutate(Year = year(Date), Month = month(Date)) %>%
   group_by(Year, Month) %>%
   summarize(Nitrite = mean(Nitrite, na.rm = TRUE), .groups = "drop") %>%
   arrange(Year, Month)
+
+# Add missing data (May and June of 1965)
+Nitrite_monthly <- Nitrite_monthly %>% 
+  add_row(Year = 1965, Month = 5, Nitrite = 1.23, .after = 40) %>% 
+  add_row(Year = 1965, Month = 6, Nitrite = 0.752, .after = 41) 
 
 # turn dataset into vector 
 Nitrite_monthly_v <- ts(
@@ -774,7 +817,7 @@ Nitrite_monthly_v <- ts(
 )
 
 # check that shit out 
-head(Nitrite_monthly_v, 24)
+head(Nitrite_monthly_v, 72)
 
 # STL decomposition (Seasonal and Trend decomposition using Loess)
 stl(Nitrite_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
@@ -898,12 +941,33 @@ print(param_summary)
 # SEASONALITY
 #======================
 
+# Check missing data for each month  
+DIN_NA <- DIN %>%
+  mutate(Year = year(Date),
+         Month = factor(month(Date), levels = 1:12, labels = month.abb)) %>%
+  group_by(Year, Month) %>%
+  summarize(DIN = mean(DIN, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = Month, values_from = DIN) %>%
+  arrange(Year)
+
 # Average values of DIN per months each year 
 DIN_monthly <- DIN %>%
   mutate(Year = year(Date), Month = month(Date)) %>%
   group_by(Year, Month) %>%
   summarize(DIN = mean(DIN, na.rm = TRUE), .groups = "drop") %>%
   arrange(Year, Month)
+
+# Add missing data (Jan,Feb,Mar of 1962; May,Jun of 1965, Jan of 1970, Oct,Nov,Dec of 1973)
+DIN_monthly <- DIN_monthly %>% 
+  add_row(Year = 1962, Month = 1, DIN = 15, .before = 1) %>% 
+  add_row(Year = 1962, Month = 2, DIN = 22.6, .after = 1) %>% 
+  add_row(Year = 1962, Month = 3, DIN = 28.2, .after = 2) %>% 
+  add_row(Year = 1965, Month = 5, DIN = 32.6, .after = 40) %>%
+  add_row(Year = 1965, Month = 6, DIN = 27.9, .after = 41) %>% 
+  add_row(Year = 1970, Month = 1, DIN = 17, .after = 96) %>% 
+  add_row(Year = 1973, Month = 10, DIN = 14.62, .after = 141) %>% 
+  add_row(Year = 1973, Month = 11, DIN = 15.22, .after = 142) %>% 
+  add_row(Year = 1973, Month = 12, DIN = 15.89, .after = 143) 
 
 # turn dataset into vector 
 DIN_monthly_v <- ts(
@@ -913,7 +977,7 @@ DIN_monthly_v <- ts(
 )
 
 # check that shit out 
-head(DIN_monthly_v, 24)
+head(DIN_monthly_v, 396)
 
 # STL decomposition (Seasonal and Trend decomposition using Loess)
 stl(DIN_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
@@ -1034,12 +1098,32 @@ print(param_summary)
 # SEASONALITY
 #======================
 
+# Check missing data for each month  
+Silicate_NA <- Silicate %>%
+  mutate(Year = year(Date),
+         Month = factor(month(Date), levels = 1:12, labels = month.abb)) %>%
+  group_by(Year, Month) %>%
+  summarize(Silicate = mean(Silicate, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = Month, values_from = Silicate) %>%
+  arrange(Year)
+
 # Average values of Silicate per months each year 
 Silicate_monthly <- Silicate %>%
   mutate(Year = year(Date), Month = month(Date)) %>%
   group_by(Year, Month) %>%
   summarize(Silicate = mean(Silicate, na.rm = TRUE), .groups = "drop") %>%
   arrange(Year, Month)
+
+# Add missing data (Jan,Feb,Mar of 1962; May,Jun of 1965, Jan of 1970, Oct,Nov,Dec of 1973)
+Silicate_monthly <- Silicate_monthly %>% 
+  add_row(Year = 1966, Month = 1, Silicate = 6.2, .before = 1) %>% 
+  add_row(Year = 1969, Month = 6, Silicate = 2.21, .after = 41) %>% 
+  add_row(Year = 1969, Month = 7, Silicate = 1.26, .after = 42) %>% 
+  add_row(Year = 1969, Month = 8, Silicate = 2, .after = 43) %>% 
+  add_row(Year = 1975, Month = 3, Silicate = 9.55, .after = 110) %>% 
+  add_row(Year = 1976, Month = 1, Silicate = 16.25, .after = 120) %>% 
+  add_row(Year = 1976, Month = 2, Silicate = 8.22, .after = 121) %>% 
+  add_row(Year = 1976, Month = 3, Silicate = 9.63, .after = 122) 
 
 # turn dataset into vector 
 Silicate_monthly_v <- ts(
@@ -1049,7 +1133,7 @@ Silicate_monthly_v <- ts(
 )
 
 # check that shit out 
-head(Silicate_monthly_v, 24)
+head(Silicate_monthly_v, 396)
 
 # STL decomposition (Seasonal and Trend decomposition using Loess)
 stl(Silicate_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
@@ -1132,12 +1216,26 @@ AIC(amNOm)
 # SEASONALITY
 #======================
 
+# Check missing data for each month  
+Ammonium_NA <- Ammonium %>%
+  mutate(Year = year(Date),
+         Month = factor(month(Date), levels = 1:12, labels = month.abb)) %>%
+  group_by(Year, Month) %>%
+  summarize(Ammonium = mean(Ammonium, na.rm = TRUE), .groups = "drop") %>%
+  pivot_wider(names_from = Month, values_from = Ammonium) %>%
+  arrange(Year)
+
 # Average values of Ammonium per months each year 
 Ammonium_monthly <- Ammonium %>%
   mutate(Year = year(Date), Month = month(Date)) %>%
   group_by(Year, Month) %>%
   summarize(Ammonium = mean(Ammonium, na.rm = TRUE), .groups = "drop") %>%
   arrange(Year, Month)
+
+# Add missing data (May and June of 1965)
+Ammonium_monthly <- Ammonium_monthly %>% 
+  add_row(Year = 1965, Month = 5, Ammonium = 10.2, .after = 40) %>% 
+  add_row(Year = 1965, Month = 6, Ammonium = 10.3, .after = 41) 
 
 # turn dataset into vector 
 Ammonium_monthly_v <- ts(
@@ -1147,7 +1245,7 @@ Ammonium_monthly_v <- ts(
 )
 
 # check that shit out 
-head(Ammonium_monthly_v, 24)
+head(Ammonium_monthly_v, 396)
 
 # STL decomposition (Seasonal and Trend decomposition using Loess)
 stl(Ammonium_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
