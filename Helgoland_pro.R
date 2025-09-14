@@ -527,11 +527,22 @@ Nitrate_monthly_v <- ts(
 )
 
 # check that shit out 
-head(nitrate_ts, 24)
+head(Nitrate_monthly_v, 24)
 
-
-stl(nitrate_ts, s.window = 9) %>%
+# STL decomposition (Seasonal and Trend decomposition using Loess)
+stl(Nitrate_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOE ==#
   autoplot()
+?stl
+
+# split data into training and testing set 
+NM <- series_to_mvgam(Nitrate_monthly_v, freq = frequency(Nitrate_monthly_v))
+dplyr::glimpse(NM$data_train)
+
+# plot them 
+plot_mvgam_series(data = NM$data_train,
+                  newdata = NM$data_test)
+
+
 
 
 ######################################################
@@ -596,6 +607,42 @@ phNOm <- gamlss(Phosphate ~ Date, family = NO(), data = na.omit(df),
 AIC(phTF2m)
 AIC(phSN1m)
 AIC(phNOm)
+
+
+#======================
+# SEASONALITY
+#======================
+
+# Average values of nitrate per months each year 
+Phosphate_monthly <- bluh %>%
+  mutate(Year = year(Date), Month = month(Date)) %>%
+  group_by(Year, Month) %>%
+  summarize(bluh = mean(Phosphate, na.rm = TRUE), .groups = "drop") %>%
+  arrange(Year, Month)
+
+# turn dataset into vector 
+Phosphate_monthly_v <- ts(
+  Phosphate_monthly$bluh,
+  start = c(min(Phosphate_monthly$Year), min(Phosphate_monthly$Month)),
+  frequency = 12
+)
+
+# check that shit out 
+head(Phosphate_monthly_v, 24)
+
+# STL decomposition (Seasonal and Trend decomposition using Loess)
+stl(Phosphate_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOE ==#
+  autoplot()
+?stl
+
+# split data into training and testing set 
+PM <- series_to_mvgam(Phosphate_monthly_v, freq = frequency(Phosphate_monthly_v))
+dplyr::glimpse(PM$data_train)
+
+# plot them 
+plot_mvgam_series(data = PM$data_train,
+                  newdata = PM$data_test)
+
 
 
 
@@ -707,6 +754,42 @@ param_summary <- data.frame(
 print(param_summary)
 
 
+
+#======================
+# SEASONALITY
+#======================
+
+# Average values of nitrate per months each year 
+Nitrite_monthly <- Nitrite %>%
+  mutate(Year = year(Date), Month = month(Date)) %>%
+  group_by(Year, Month) %>%
+  summarize(Nitrite = mean(Nitrite, na.rm = TRUE), .groups = "drop") %>%
+  arrange(Year, Month)
+
+# turn dataset into vector 
+Nitrite_monthly_v <- ts(
+  Nitrite_monthly$Nitrite,
+  start = c(min(Nitrite_monthly$Year), min(Nitrite_monthly$Month)),
+  frequency = 12
+)
+
+# check that shit out 
+head(Nitrite_monthly_v, 24)
+
+# STL decomposition (Seasonal and Trend decomposition using Loess)
+stl(Nitrite_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
+  autoplot()
+?stl
+
+# split data into training and testing set 
+NaM <- series_to_mvgam(Nitrite_monthly_v, freq = frequency(Nitrite_monthly_v))
+dplyr::glimpse(NaM$data_train)
+
+# plot them 
+plot_mvgam_series(data = NaM$data_train,
+                  newdata = NaM$data_test)
+
+
 ################################################
 ### DIN and fit models of different families ###
 ################################################
@@ -810,6 +893,41 @@ param_summary <- data.frame(
 print(param_summary)
 
 
+
+#======================
+# SEASONALITY
+#======================
+
+# Average values of DIN per months each year 
+DIN_monthly <- DIN %>%
+  mutate(Year = year(Date), Month = month(Date)) %>%
+  group_by(Year, Month) %>%
+  summarize(DIN = mean(DIN, na.rm = TRUE), .groups = "drop") %>%
+  arrange(Year, Month)
+
+# turn dataset into vector 
+DIN_monthly_v <- ts(
+  DIN_monthly$DIN,
+  start = c(min(DIN_monthly$Year), min(DIN_monthly$Month)),
+  frequency = 12
+)
+
+# check that shit out 
+head(DIN_monthly_v, 24)
+
+# STL decomposition (Seasonal and Trend decomposition using Loess)
+stl(DIN_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
+  autoplot()
+
+# split data into training and testing set 
+DINM <- series_to_mvgam(DIN_monthly_v, freq = frequency(DIN_monthly_v))
+dplyr::glimpse(DINM$data_train)
+
+# plot them 
+plot_mvgam_series(data = DINM$data_train,
+                  newdata = DINM$data_test)
+
+
 #####################################################
 ### Silicate and fit models of different families ###
 #####################################################
@@ -911,6 +1029,42 @@ param_summary <- data.frame(
 print(param_summary)
 
 
+
+#======================
+# SEASONALITY
+#======================
+
+# Average values of Silicate per months each year 
+Silicate_monthly <- Silicate %>%
+  mutate(Year = year(Date), Month = month(Date)) %>%
+  group_by(Year, Month) %>%
+  summarize(Silicate = mean(Silicate, na.rm = TRUE), .groups = "drop") %>%
+  arrange(Year, Month)
+
+# turn dataset into vector 
+Silicate_monthly_v <- ts(
+  Silicate_monthly$Silicate,
+  start = c(min(Silicate_monthly$Year), min(Silicate_monthly$Month)),
+  frequency = 12
+)
+
+# check that shit out 
+head(Silicate_monthly_v, 24)
+
+# STL decomposition (Seasonal and Trend decomposition using Loess)
+stl(Silicate_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
+  autoplot()
+
+# split data into training and testing set 
+SM <- series_to_mvgam(Silicate_monthly_v, freq = frequency(Silicate_monthly_v))
+dplyr::glimpse(SM$data_train)
+
+# plot them 
+plot_mvgam_series(data = SM$data_train,
+                  newdata = SM$data_test)
+
+
+
 #####################################################
 ### Ammonium and fit models of different families ###
 #####################################################
@@ -972,4 +1126,39 @@ AIC(amSSTm)
 AIC(amTF2m)
 AIC(amSN1m)
 AIC(amNOm)
+
+
+#======================
+# SEASONALITY
+#======================
+
+# Average values of Ammonium per months each year 
+Ammonium_monthly <- Ammonium %>%
+  mutate(Year = year(Date), Month = month(Date)) %>%
+  group_by(Year, Month) %>%
+  summarize(Ammonium = mean(Ammonium, na.rm = TRUE), .groups = "drop") %>%
+  arrange(Year, Month)
+
+# turn dataset into vector 
+Ammonium_monthly_v <- ts(
+  Ammonium_monthly$Ammonium,
+  start = c(min(Ammonium_monthly$Year), min(Ammonium_monthly$Month)),
+  frequency = 12
+)
+
+# check that shit out 
+head(Ammonium_monthly_v, 24)
+
+# STL decomposition (Seasonal and Trend decomposition using Loess)
+stl(Ammonium_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
+  autoplot()
+
+# split data into training and testing set 
+AM <- series_to_mvgam(Ammonium_monthly_v, freq = frequency(Ammonium_monthly_v))
+dplyr::glimpse(AM$data_train)
+
+# plot them 
+plot_mvgam_series(data = AM$data_train,
+                  newdata = AM$data_test)
+
 
