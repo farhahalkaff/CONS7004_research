@@ -514,25 +514,25 @@ niSSTm_1 <- gamlss(Nitrate ~ Date, family = SSTtr(), data = Nitrate,
  
 # Average values of nitrate per months each year 
 Nitrate_monthly <- Nitrate %>%
-  mutate(Year = year(Date),
-         Month = factor(month(Date), levels = 1:12, labels = month.abb)) %>%
+  mutate(Year = year(Date), Month = month(Date)) %>%
   group_by(Year, Month) %>%
   summarize(Nitrate = mean(Nitrate, na.rm = TRUE), .groups = "drop") %>%
-  pivot_wider(names_from = Month, values_from = Nitrate) %>%
-  arrange(Year)
+  arrange(Year, Month)
+
+# turn dataset into vector 
+Nitrate_monthly_v <- ts(
+  Nitrate_monthly$Nitrate,
+  start = c(min(Nitrate_monthly$Year), min(Nitrate_monthly$Month)),
+  frequency = 12
+)
 
 # check that shit out 
-head(Nitrate_monthly, 24)
+head(nitrate_ts, 24)
 
-stl(Nitrate_monthly, s.window = 9) %>%
+
+stl(nitrate_ts, s.window = 9) %>%
   autoplot()
 
-# Fill up missing NAs for Jan 1970 
-Nitrate_monthly[9,2] <- ((Nitrate_monthly[8,13] + Nitrate_monthly[9,3])/2)
-# Fill up missing NAs for May 1965 
-Nitrate_monthly[4,6] <- 25.82
-# Fill up missing NAs for June 1965 
-Nitrate_monthly[4,7] <- 19.265
 
 ######################################################
 ### Phosphate and fit models of different families ###
