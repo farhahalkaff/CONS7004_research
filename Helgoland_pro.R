@@ -436,21 +436,40 @@ pdf_SST_at_date <- function(niSSTm_nu, Nitrate, date_str, x = NULL, n = 200,
        params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
 }
 
-res <- pdf_SST_at_date(niSSTm_nu, Nitrate, "1992-01-10",
+res <- pdf_SST_at_date(niSSTm_nu, Nitrate, "1988-09-19",
                        time_var = "t_scaled", date_var = "Date")
 
 plot(res$x, res$density, type = "l")
 res$params
 
 
-
-x <- seq(0, 150, length.out = 200)
-pdf <- dSST(x, mu = (0.76*1.03e+01)+1.42e-03, sigma = exp((0.76*2.16e+00) + 8.35e-05), 
-            nu = exp((0.76*1.67e+00) + 4.19e-05), tau = exp(0.76*2.091) + 2)
+# manually
+x <- seq(min(niSSTm_nu$y, na.rm = TRUE),
+         max(niSSTm_nu$y, na.rm = TRUE),
+         length.out = 200)
+pdf <- dSST(x, mu = (0.765*6.8130)+18.1847, sigma = exp((0.765*1.93355) + 1.06559), 
+            nu = exp((0.765*1.679) + 0.299), tau = exp(0.765*2.2234) + 2)
 plot(x, pdf, type = "l")
 
-exp((0.76*2.16e+00) + 8.35e-05)
-0.76*exp(2.16e+00) + exp(8.35e-05)
+# mu 
+0.765*6.8130+18.1847
+
+# sigma exp after
+exp((0.765*1.93355) + 1.06559)
+# sigma exp before 
+0.765*exp(1.93355) + exp(1.06559)
+
+# nu exp after 
+exp((0.765*1.679) + 0.299)
+# nu exp before 
+0.765*exp(1.679) + exp(0.299)
+
+# tau exp after 
+exp(0.765*2.2234) + 2
+# tau exp before 
+(exp(2.2234) + 2)*0.765
+
+
 
 #############################################
 ############################################# SHASHo
