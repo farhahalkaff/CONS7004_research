@@ -207,6 +207,7 @@ stl(Nitrate$Nitrate, s.window = 9) %>%
 
 head(Nitrate, 24)
 
+
 ### CHECK DISTRIBUTION ###
 
 # histogram
@@ -325,7 +326,7 @@ print(param_summary)
 # 0 < V < 1 --> negatively skewed 
 # Decreasing T increases the heaviness of the tail
 # When V = 1, = TF2 distribution 
-# As V reached infinity, it tends to be half t distribution TF
+# As V reaches infinity, it tends to be half t distribution TF
 # As T reaches infinity, it tends to Skew normal type 2, SN2
 # If both V and T reaches infinity, it tends to a half normal distribution
 
@@ -338,7 +339,7 @@ niSSTm_1b <- gamlss(log(Nitrate) ~ Date, family = SST(), data = Nitrate,
                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_1b)
 with(Nitrate, plot(Nitrate ~ Date))
-curve(exp(cbind(1,x)%*%coef(niSSTm_1b)), add =T, col = "red", lwd=2)
+curve((cbind(1,x)%*%coef(niSSTm_1b)), add =T, col = "red", lwd=2)
 
 
 niSSTm_sigb <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, family = SST(), data = Nitrate, 
@@ -358,31 +359,19 @@ niSSTm_taub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, ta
 summary(niSSTm_taub)
 
 
-##########=========================================================
-# niSSTm_1b <- gamlss(log(Nitrate) ~ Date, family = SST(), data = na.omit(df), 
-#                     method = mixed(5, 200),
-#                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_1b)
-# with(Nitrate, plot(Nitrate ~ Date))
-# curve(exp(cbind(1,x)%*%coef(niSSTm_1b)), add =T, col = "red", lwd=2)
-# 
-# 
-# niSSTm_sigb <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, family = SST(), data = na.omit(df), 
-#                       method = mixed(5, 200),
-#                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_sigb)
-# 
-# niSSTm_nub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = na.omit(df), 
-#                      method = mixed(5, 200),
-#                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_nub)
-# 
-# niSSTm_taub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), 
-#                       data = na.omit(df), 
-#                       method = mixed(5, 200),
-#                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_taub)
-############==========================================================
+# logging takes away heavy tails #
+# pdf changing over time 
+# ecology 
+# mean follow season vs not 
+# mean centering
+
+# full intercept model for all nutrients 
+# fit a line (monotonic for now - linear) -- also non-monotonic to see what the data is doing 
+# intercept - linear - quadratic - spline
+# stick with one fam distribution
+
+# smaller the bar the more important it is
+# consequences of assumptions 
 
 param_summary <- data.frame(
   param = c("mu","mu(time)" , "SD","SD(time)","nu", "nu(time)", "tau", "tau(time)", "AIC"), 
@@ -397,7 +386,71 @@ param_summary <- data.frame(
 )
 print(param_summary)
 
+#############
 
+# scale by df 
+Nitrate <- Nitrate %>%
+  mutate(
+    # keep Date as is
+    Date = as.Date(Date),              
+    t_num = as.numeric(Date),          
+    t_scaled = (t_num - min(t_num, na.rm = TRUE)) /
+      (max(t_num, na.rm = TRUE) - min(t_num, na.rm = TRUE))
+  )
+
+Nitrate$t_index <- seq(0, nrow(Nitrate) - 1)
+
+# new model with t_scaled
+niSSTm_nu <- gamlss(Nitrate ~ t_scaled, sigma.fo = ~ t_scaled, nu.fo = ~ t_scaled, family = SST(), data = Nitrate, 
+                    method = mixed(5, 200),
+                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(niSSTm_nu)
+
+# function for pdf
+pdf_SST_at_date <- function(niSSTm_nu, Nitrate, date_str, x = NULL, n = 200,
+                            time_var = "t_scaled", date_var = "Date") {
+  # 1. Find the row in df matching the date of interest
+  t_val <- Nitrate[[time_var]][as.Date(Nitrate[[date_var]]) == as.Date(date_str)]
+  if (length(t_val) == 0) stop("Date not found in data frame.")
+  
+  # 2. Build newdata with the correct covariate
+  newdat <- data.frame(setNames(list(t_val), time_var))
+  
+  # 3. Predict distribution parameters on natural scale
+  mu    <- predict(niSSTm_nu, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(niSSTm_nu, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(niSSTm_nu, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(niSSTm_nu, "tau",   newdata = newdat, type = "response")
+  
+  # 4. Create x grid if none supplied
+  if (is.null(x)) {
+    x <- seq(min(niSSTm_nu$y, na.rm = TRUE),
+             max(niSSTm_nu$y, na.rm = TRUE),
+             length.out = n)
+  }
+  
+  # 5. Evaluate PDF
+  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
+  
+  list(x = x, density = dens,
+       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
+}
+
+res <- pdf_SST_at_date(niSSTm_nu, Nitrate, "1992-01-10",
+                       time_var = "t_scaled", date_var = "Date")
+
+plot(res$x, res$density, type = "l")
+res$params
+
+
+
+x <- seq(0, 150, length.out = 200)
+pdf <- dSST(x, mu = (0.76*1.03e+01)+1.42e-03, sigma = exp((0.76*2.16e+00) + 8.35e-05), 
+            nu = exp((0.76*1.67e+00) + 4.19e-05), tau = exp(0.76*2.091) + 2)
+plot(x, pdf, type = "l")
+
+exp((0.76*2.16e+00) + 8.35e-05)
+0.76*exp(2.16e+00) + exp(8.35e-05)
 
 #############################################
 ############################################# SHASHo
@@ -514,6 +567,7 @@ print(param_summary)
 
 
 
+
 #############################################
 ############################################# SST left-truncated
 
@@ -523,7 +577,6 @@ gen.trun(0,"SST",type="left")
 niSSTm_1tr <- gamlss(Nitrate ~ Date, family = SSTtr(), data = Nitrate, 
                    method = mixed(5, 200),
                    control = gamlss.control(n.cyc = 900, c.crit = 0.01, trace = FALSE))
-
 
 
 
@@ -565,7 +618,7 @@ Nitrate_monthly_v <- ts(
 head(Nitrate_monthly_v, 72)
 
 # STL decomposition (Seasonal and Trend decomposition using Loess)
-stl(Nitrate_monthly_v, s.window = 7) %>%  #== LOOK INTO S.WINDOW ==#
+stl(Nitrate_monthly_v, s.window = 12) %>%  #== LOOK INTO S.WINDOW ==#
   autoplot()
 ?stl
 
