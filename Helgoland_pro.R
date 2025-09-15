@@ -191,11 +191,14 @@ ggplot(df_long, aes(month, z, color = variable, group = variable)) +
 Nitrate <- df %>% filter(!is.na(Nitrate)) %>% 
   select(Date, Nitrate, year)
 
-# plot that sucka
+# plot that sucka (intercept model)
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
-  geom_line(color = "black", na.rm = TRUE) +
+  geom_line(color = "grey", na.rm = TRUE) +
+  geom_hline(yintercept = 16.718, linetype = "dashed", color = "black") + # mean
   labs(x = "Time", y = "Nitrate (µmol/l)") +
   theme_minimal()
+
+
 
 # plot a for a specific year 
 ggplot(dplyr::filter(Nitrate, year(Date) == 1994),
@@ -228,22 +231,29 @@ ggplot(Nitrate, aes(y = Nitrate)) +
 
 ### DIFFERENT FAMILY MODELS ###
 
-niSSTm <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate, 
+# intercept model 
+niSSTm <- gamlss(Nitrate ~ 1, family = SST(), data = Nitrate,
+                 mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                 method = mixed(10,200),
+                 control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm)
+
+
+niTF2m <- gamlss(Nitrate ~ 1, family = TF2(), data = Nitrate, 
              method = mixed(5, 200),
              control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-niTF2m <- gamlss(Nitrate ~ Date, family = TF2(), data = Nitrate, 
+
+niSN1m <- gamlss(Nitrate ~ 1, family = SN1(), data = na.omit(df), 
              method = mixed(5, 200),
              control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-niSN1m <- gamlss(Nitrate ~ Date, family = SN1(), data = na.omit(df), 
+niNOm <- gamlss(Nitrate ~ 1, family = NO(), data = Nitrate, 
              method = mixed(5, 200),
              control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-niNOm <- gamlss(Nitrate ~ Date, family = NO(), data = na.omit(df), 
-             method = mixed(5, 200),
-             control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
+summary(Nitrate$Nitrate)
+sum(is.nan(Nitrate$Nitrate))
 
 summary(niSSTm)
 summary(niTF2m)
@@ -388,17 +398,26 @@ print(param_summary)
 
 #############
 
-# scale by df 
+# scale by df and center the mean
+Nitrate$t_index <- seq(0, nrow(Nitrate) - 1)
+
 Nitrate <- Nitrate %>%
   mutate(
     # keep Date as is
     Date = as.Date(Date),              
     t_num = as.numeric(Date),          
     t_scaled = (t_num - min(t_num, na.rm = TRUE)) /
-      (max(t_num, na.rm = TRUE) - min(t_num, na.rm = TRUE))
+      (max(t_num, na.rm = TRUE) - min(t_num, na.rm = TRUE)),
+    t_centered = t_index - mean(t_index)
   )
 
-Nitrate$t_index <- seq(0, nrow(Nitrate) - 1)
+max(Nitrate$t_centered)
+min(Nitrate$t_centered)
+
+# center the mean
+Nitrate <- Nitrate %>%
+  mutate(t_centered = t_index - mean(t_index))
+
 
 # new model with t_scaled
 niSSTm_nu <- gamlss(Nitrate ~ t_scaled, sigma.fo = ~ t_scaled, nu.fo = ~ t_scaled, family = SST(), data = Nitrate, 
@@ -406,9 +425,16 @@ niSSTm_nu <- gamlss(Nitrate ~ t_scaled, sigma.fo = ~ t_scaled, nu.fo = ~ t_scale
                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_nu)
 
+# keep model unscaled but use t_index
+niSSTm_nu <- gamlss(Nitrate ~ t_index, sigma.fo = ~ t_index, nu.fo = ~ t_index, family = SST(), data = Nitrate, 
+                    method = mixed(5, 200),
+                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(niSSTm_nu)
+
+
 # function for pdf
 pdf_SST_at_date <- function(niSSTm_nu, Nitrate, date_str, x = NULL, n = 200,
-                            time_var = "t_scaled", date_var = "Date") {
+                            time_var = "t_index", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
   t_val <- Nitrate[[time_var]][as.Date(Nitrate[[date_var]]) == as.Date(date_str)]
   if (length(t_val) == 0) stop("Date not found in data frame.")
@@ -436,8 +462,8 @@ pdf_SST_at_date <- function(niSSTm_nu, Nitrate, date_str, x = NULL, n = 200,
        params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
 }
 
-res <- pdf_SST_at_date(niSSTm_nu, Nitrate, "1988-09-19",
-                       time_var = "t_scaled", date_var = "Date")
+res <- pdf_SST_at_date(niSSTm_nu, Nitrate, "1962-01-15",
+                       time_var = "t_index", date_var = "Date")
 
 plot(res$x, res$density, type = "l")
 res$params
@@ -447,17 +473,17 @@ res$params
 x <- seq(min(niSSTm_nu$y, na.rm = TRUE),
          max(niSSTm_nu$y, na.rm = TRUE),
          length.out = 200)
-pdf <- dSST(x, mu = (0.765*6.8130)+18.1847, sigma = exp((0.765*1.93355) + 1.06559), 
-            nu = exp((0.765*1.679) + 0.299), tau = exp(0.765*2.2234) + 2)
+pdf <- dSST(x, mu = (3022*1.59e+01)+2.80e-03, sigma = exp((3022*2.47e+00) + 1.64e-04), 
+            nu = exp((3022*1.83e+00) + 4.61e-05), tau = exp(3022*2.2234) + 2)
 plot(x, pdf, type = "l")
 
 # mu 
-0.765*6.8130+18.1847
+3022*1.59e+01+2.80e-03
 
 # sigma exp after
-exp((0.765*1.93355) + 1.06559)
+exp((4971*1.93e+00) + 1.64e-04)
 # sigma exp before 
-0.765*exp(1.93355) + exp(1.06559)
+4971*exp(1.93e+00) + exp(1.64e-04)
 
 # nu exp after 
 exp((0.765*1.679) + 0.299)
@@ -591,13 +617,17 @@ print(param_summary)
 ############################################# SST left-truncated
 
 library(gamlss.tr)
-gen.trun(0,"SST",type="left")
+gen.trun(0,"SHASHo",type="left")
 
 niSSTm_1tr <- gamlss(Nitrate ~ Date, family = SSTtr(), data = Nitrate, 
                    method = mixed(5, 200),
                    control = gamlss.control(n.cyc = 900, c.crit = 0.01, trace = FALSE))
 
 
+niSHASHom <- gamlss(Nitrate + 100 ~ 1, family = SHASHotr(), data = Nitrate,
+                 method = mixed(10,200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(niSHASHom)
 
 
 #======================
