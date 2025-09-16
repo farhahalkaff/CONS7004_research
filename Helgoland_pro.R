@@ -394,7 +394,7 @@ summary(niSSTm_nu)
 
 
 # function for pdf
-pdf_SST_at_date <- function(niSSTm, Nitrate, date_str, x = NULL, n = 200,
+pdf_SST_at_date <- function(niSSTm3, Nitrate, date_str, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
   t_val <- Nitrate[[time_var]][as.Date(Nitrate[[date_var]]) == as.Date(date_str)]
@@ -404,15 +404,15 @@ pdf_SST_at_date <- function(niSSTm, Nitrate, date_str, x = NULL, n = 200,
   newdat <- data.frame(setNames(list(t_val), time_var))
   
   # 3. Predict distribution parameters on natural scale
-  mu    <- predict(niSSTm, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(niSSTm, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(niSSTm, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(niSSTm, "tau",   newdata = newdat, type = "response")
+  mu    <- predict(niSSTm3, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(niSSTm3, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(niSSTm3, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(niSSTm3, "tau",   newdata = newdat, type = "response")
   
   # 4. Create x grid if none supplied
   if (is.null(x)) {
-    x <- seq(min(niSSTm$y, na.rm = TRUE),
-             max(niSSTm$y, na.rm = TRUE),
+    x <- seq(min(niSSTm3$y, na.rm = TRUE),
+             max(niSSTm3$y, na.rm = TRUE),
              length.out = n)
   }
   
@@ -424,18 +424,18 @@ pdf_SST_at_date <- function(niSSTm, Nitrate, date_str, x = NULL, n = 200,
 }
 
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(niSSTm, Nitrate, "1963-09-23",
+res1 <- pdf_SST_at_date(niSSTm3, Nitrate, "1963-09-23",
                        time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(niSSTm, Nitrate, "1980-09-23",
+res2 <- pdf_SST_at_date(niSSTm3, Nitrate, "1980-09-23",
                         time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(niSSTm, Nitrate, "1992-09-23",
+res3 <- pdf_SST_at_date(niSSTm3, Nitrate, "1992-09-23",
                         time_var = "Date", date_var = "Date")
 
 # plot all three dates 
 par(mfrow = c(1, 3))
-plot(res$x, res$density, type = "l")
-plot(res2$x, res$density, type = "l")
-plot(res3$x, res$density, type = "l")
+plot(res$x, res$density, type = "l", ylim=c(0,0.05))
+plot(res2$x, res2$density, type = "l", ylim=c(0,0.05))
+plot(res3$x, res3$density, type = "l", ylim=c(0,0.05))
 par(mfrow = c(1, 1)) # reset
 
 # parameters for the three dates
