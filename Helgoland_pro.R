@@ -743,8 +743,60 @@ summary(phJSUm3)
 #========================================================================================
 
 
+############################################ PDF
+
+# function for pdf
+pdf_SST_at_date <- function(phJSUm3, Phosphate, date_str, x = NULL, n = 200,
+                            time_var = "Date", date_var = "Date") {
+  # 1. Find the row in df matching the date of interest
+  t_val <- Phosphate[[time_var]][as.Date(Phosphate[[date_var]]) == as.Date(date_str)]
+  if (length(t_val) == 0) stop("Date not found in data frame.")
+  
+  # 2. Build newdata with the correct covariate
+  newdat <- data.frame(setNames(list(t_val), time_var))
+  
+  # 3. Predict distribution parameters on natural scale
+  mu    <- predict(phJSUm3, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(phJSUm3, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(phJSUm3, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(phJSUm3, "tau",   newdata = newdat, type = "response")
+  
+  # 4. Create x grid if none supplied
+  if (is.null(x)) {
+    x <- seq(min(phJSUm3$y, na.rm = TRUE),
+             max(phJSUm3$y, na.rm = TRUE),
+             length.out = n)
+  }
+  
+  # 5. Evaluate PDF
+  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
+  
+  list(x = x, density = dens,
+       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
+}
+
+# get the pdf and param for three dates
+res1 <- pdf_SST_at_date(phJSUm3, Phosphate, "1963-09-23",
+                        time_var = "Date", date_var = "Date")
+res2 <- pdf_SST_at_date(phJSUm3, Phosphate, "1980-09-23",
+                        time_var = "Date", date_var = "Date")
+res3 <- pdf_SST_at_date(phJSUm3, Phosphate, "1992-09-23",
+                        time_var = "Date", date_var = "Date")
+
+# plot all three dates 
+par(mfrow = c(1, 3))
+plot(res1$x, res1$density, type = "l", ylim=c(0,1.55)) # 1.5 for m1 and m2
+plot(res2$x, res2$density, type = "l", ylim=c(0,1.55)) # 1.55 for m3
+plot(res3$x, res3$density, type = "l", ylim=c(0,1.55))
+par(mfrow = c(1, 1)) # reset
+
+# parameters for the three dates
+res1$params
+res2$params
+res3$params
 
 
+#######################################################
 
 #======================
 # SEASONALITY
