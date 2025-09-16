@@ -1131,28 +1131,6 @@ res3$params
 #######################################################
 
 
-#### CHANGING PARAMTER AS FUNCTION OF TIME WITH SST MODEL ####
-
-DINSSTm_1 <- gamlss(log(DIN) ~ Date, family = SST(), data = DIN, 
-                    method = mixed(5, 200),
-                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
-
-DINSSTm_sig <- gamlss(log(DIN) ~ Date, sigma.fo = ~ Date, family = SST(), data = DIN, 
-                      method = mixed(5, 200),
-                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
-
-DINSSTm_nu <- gamlss(DIN ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = DIN, 
-                     method = mixed(5, 200),
-                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
-
-DINSSTm_tau <- gamlss(log(DIN) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), data = DIN, 
-                      method = mixed(5, 200),
-                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
-
 # summary
 param_summary <- data.frame(
   param = c("mu","mu(time)" , "SD","SD(time)","nu", "nu(time)", "tau", "tau(time)", "AIC"), 
@@ -1455,25 +1433,7 @@ ggplot(Ammonium, aes(y = Ammonium)) +
   coord_flip()
 
 
-### MODELS ###
-
-# intercept model 
-amSSTm1 <- gamlss(Ammonium ~ 1, family = SST(), data = Ammonium, 
-                 method = mixed(5, 200),
-                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(amSSTm1)
-
-# mean as a function of time 
-amSSTm2 <- gamlss(Ammonium ~ Date, family = SST(), data = Ammonium, 
-                 method = mixed(5, 200),
-                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
-# mean, sigma and nu as a function of time 
-amSSTm3 <- gamlss(Ammonium ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Ammonium, 
-                 method = mixed(5, 200),
-                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
-
+### Different family distribution MODELS ###
 
 amTF2m <- gamlss(Ammonium ~ Date, family = TF2(), data = Ammonium, 
                  method = mixed(5, 200),
@@ -1488,10 +1448,82 @@ amNOm <- gamlss(Ammonium ~ Date, family = NO(), data = Ammonium,
                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
-AIC(amSSTm)
-AIC(amTF2m)
-AIC(amSN1m)
-AIC(amNOm)
+
+#=========================================================================================
+# Intercept model 
+amSSTm1 <- gamlss(Ammonium ~ 1, family = SST(), data = Ammonium, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(amSSTm1)
+
+# mean as a function of time 
+amSSTm2 <- gamlss(Ammonium ~ Date, family = SST(), data = Ammonium, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(amSSTm2)
+
+# mean, sigma and nu as a function of time 
+amSSTm3 <- gamlss(Ammonium ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Ammonium, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(amSSTm3)
+#=========================================================================================
+
+
+############################################ PDF
+
+# function for pdf
+pdf_SST_at_date <- function(amSSTm3, Ammonium, date_str, x = NULL, n = 200,
+                            time_var = "Date", date_var = "Date") {
+  # 1. Find the row in df matching the date of interest
+  t_val <- Ammonium[[time_var]][as.Date(Ammonium[[date_var]]) == as.Date(date_str)]
+  if (length(t_val) == 0) stop("Date not found in data frame.")
+  
+  # 2. Build newdata with the correct covariate
+  newdat <- data.frame(setNames(list(t_val), time_var))
+  
+  # 3. Predict distribution parameters on natural scale
+  mu    <- predict(amSSTm3, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(amSSTm3, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(amSSTm3, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(amSSTm3, "tau",   newdata = newdat, type = "response")
+  
+  # 4. Create x grid if none supplied
+  if (is.null(x)) {
+    x <- seq(min(amSSTm3$y, na.rm = TRUE),
+             max(amSSTm3$y, na.rm = TRUE),
+             length.out = n)
+  }
+  
+  # 5. Evaluate PDF
+  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
+  
+  list(x = x, density = dens,
+       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
+}
+
+# get the pdf and param for three dates
+res1 <- pdf_SST_at_date(amSSTm3, Ammonium, "1963-09-23",
+                        time_var = "Date", date_var = "Date")
+res2 <- pdf_SST_at_date(amSSTm3, Ammonium, "1980-09-23",
+                        time_var = "Date", date_var = "Date")
+res3 <- pdf_SST_at_date(amSSTm3, Ammonium, "1992-09-23",
+                        time_var = "Date", date_var = "Date")
+
+# plot all three dates 
+par(mfrow = c(1, 3))
+plot(res1$x, res1$density, type = "l", ylim=c(0,0.25)) # 0.13 for m1 
+plot(res2$x, res2$density, type = "l", ylim=c(0,0.25)) # 0.17 for m2
+plot(res3$x, res3$density, type = "l", ylim=c(0,0.25)) # 0.25 for m3
+par(mfrow = c(1, 1)) # reset
+
+# parameters for the three dates
+res1$params
+res2$params
+res3$params
+
+
+#######################################################
 
 
 #======================
