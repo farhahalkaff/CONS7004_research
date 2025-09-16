@@ -1006,9 +1006,9 @@ DIN <- df %>% filter(!is.na(DIN)) %>%
 # plot that sucka
 ggplot(DIN, aes(x = Date, y = DIN)) +
   geom_line(color = "grey") +
-  geom_abline(intercept = DINSSTm$mu.coefficients[1], slope = DINSSTm$mu.coefficients[2], 
+  geom_abline(intercept = DINSSTm2$mu.coefficients[1], slope = DINSSTm2$mu.coefficients[2], 
               color = "steelblue", linewidth = 1) + # only mean as function of time 
-  geom_abline(intercept = DINSSTm_nu$mu.coefficients[1], slope = DINSSTm_nu$mu.coefficients[2], 
+  geom_abline(intercept = DINSSTm3$mu.coefficients[1], slope = DINSSTm3$mu.coefficients[2], 
               color = "goldenrod", linewidth = 1) + # mean, sigma and nu as function of time
   geom_hline(yintercept = 23.182, linetype = "dashed", color = "black") + # mean intercept
   labs(x = "Time", y = "DIN (µmol/l)") +
@@ -1038,18 +1038,8 @@ ggplot(DIN, aes(y = DIN)) +
   coord_flip()
 
 
-### MODELS ###
 
-# intercept model 
-DINSSTm1 <- gamlss(DIN ~ 1, family = SST(), data = DIN,
-                  method = mixed(10, 200),
-                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(DINSSTm1)
-
-
-DINSSTm <- gamlss(DIN ~ Date, family = SST(), data = DIN, 
-                  method = mixed(5, 200),
-                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+### Different family distribution MODELS ###
 
 DINTF2m <- gamlss(DIN ~ Date, family = TF2(), data = DIN, 
                   method = mixed(5, 200),
@@ -1064,10 +1054,81 @@ DINNOm <- gamlss(DIN ~ Date, family = NO(), data = DIN,
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
-AIC(DINSSTm)
-AIC(DINTF2m)
-AIC(DINSN1m)
-AIC(DINNOm)
+#====================================================================================
+# Intercept model 
+DINSSTm1 <- gamlss(DIN ~ 1, family = SST(), data = DIN,
+                  method = mixed(10, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(DINSSTm1)
+
+# Mean only changing through time
+DINSSTm2 <- gamlss(DIN ~ Date, family = SST(), data = DIN, 
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(DINSSTm2)
+
+# Mean, sigma and nu changing through time
+DINSSTm3 <- gamlss(DIN ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = DIN, 
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(DINSSTm3)
+#====================================================================================
+
+
+############################################ PDF
+
+# function for pdf
+pdf_SST_at_date <- function(DINSSTm3, DIN, date_str, x = NULL, n = 200,
+                            time_var = "Date", date_var = "Date") {
+  # 1. Find the row in df matching the date of interest
+  t_val <- DIN[[time_var]][as.Date(DIN[[date_var]]) == as.Date(date_str)]
+  if (length(t_val) == 0) stop("Date not found in data frame.")
+  
+  # 2. Build newdata with the correct covariate
+  newdat <- data.frame(setNames(list(t_val), time_var))
+  
+  # 3. Predict distribution parameters on natural scale
+  mu    <- predict(DINSSTm3, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(DINSSTm3, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(DINSSTm3, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(DINSSTm3, "tau",   newdata = newdat, type = "response")
+  
+  # 4. Create x grid if none supplied
+  if (is.null(x)) {
+    x <- seq(min(DINSSTm3$y, na.rm = TRUE),
+             max(DINSSTm3$y, na.rm = TRUE),
+             length.out = n)
+  }
+  
+  # 5. Evaluate PDF
+  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
+  
+  list(x = x, density = dens,
+       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
+}
+
+# get the pdf and param for three dates
+res1 <- pdf_SST_at_date(DINSSTm3, DIN, "1963-09-23",
+                        time_var = "Date", date_var = "Date")
+res2 <- pdf_SST_at_date(DINSSTm3, DIN, "1980-09-23",
+                        time_var = "Date", date_var = "Date")
+res3 <- pdf_SST_at_date(DINSSTm3, DIN, "1992-09-23",
+                        time_var = "Date", date_var = "Date")
+
+# plot all three dates 
+par(mfrow = c(1, 3))
+plot(res1$x, res1$density, type = "l", ylim=c(0,0.07)) 
+plot(res2$x, res2$density, type = "l", ylim=c(0,0.07)) # 0.04 for m1 and m2
+plot(res3$x, res3$density, type = "l", ylim=c(0,0.07)) # 0.07 for m3
+par(mfrow = c(1, 1)) # reset
+
+# parameters for the three dates
+res1$params
+res2$params
+res3$params
+
+
+#######################################################
 
 
 #### CHANGING PARAMTER AS FUNCTION OF TIME WITH SST MODEL ####
