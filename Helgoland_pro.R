@@ -433,13 +433,13 @@ res3 <- pdf_SST_at_date(niSSTm3, Nitrate, "1992-09-23",
 
 # plot all three dates 
 par(mfrow = c(1, 3))
-plot(res$x, res$density, type = "l", ylim=c(0,0.05))
-plot(res2$x, res2$density, type = "l", ylim=c(0,0.05))
-plot(res3$x, res3$density, type = "l", ylim=c(0,0.05))
+plot(res1$x, res1$density, type = "l", ylim=c(0,0.08))
+plot(res2$x, res2$density, type = "l", ylim=c(0,0.08))
+plot(res3$x, res3$density, type = "l", ylim=c(0,0.08))
 par(mfrow = c(1, 1)) # reset
 
 # parameters for the three dates
-res$params
+res1$params
 res2$params
 res3$params
 
@@ -775,9 +775,11 @@ Nitrite <- df %>% filter(!is.na(Nitrite)) %>%
 # plot that sucka
 ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
   geom_line(color = "grey") + 
-  geom_abline(intercept = niiSSTm$mu.coefficients[1], slope = niiSSTm$mu.coefficients[2], 
-              color = "steelblue", linewidth = 1) +
-  geom_hline(yintercept = 0.81659, linetype = "dashed", color = "black") + 
+  geom_abline(intercept = niiSSTm2$mu.coefficients[1], slope = niiSSTm2$mu.coefficients[2], 
+              color = "steelblue", linewidth = 1) + # mean only changing through time 
+  geom_abline(intercept = niiSSTm3$mu.coefficients[1], slope = niiSSTm3$mu.coefficients[2],
+              color = "goldenrod", linewidth = 1) + # mean, sigma and nu changing through time
+  geom_hline(yintercept = 0.81659, linetype = "dashed", color = "black") +  # intercept
   labs(x = "Time", y = "Nitrite (µmol/l)") +
   theme_minimal()
 
@@ -805,18 +807,29 @@ ggplot(Nitrite, aes(y = Nitrite)) +
   coord_flip()
 
 
-### MODELS ###
 
-# intercept model
+#=====================================================================================
+# Intercept model
 niiSSTm1 <- gamlss(Nitrite ~ 1, family = SST(), data = Nitrite, 
                   method = mixed(5, 200),
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(niiSSTm)
+summary(niiSSTm1)
 
-
-niiSSTm <- gamlss(Nitrite ~ Date, family = SST(), data = Nitrite, 
+# Only mean changing through time 
+niiSSTm2 <- gamlss(Nitrite ~ Date, family = SST(), data = Nitrite, 
                  method = mixed(5, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(niiSSTm2)
+
+# Mean, sigma and nu changing through time
+niiSSTm3 <- gamlss(Nitrite ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrite, 
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(niiSSTm3)
+#=====================================================================================
+
+
+### Other family distribution MODELS ###
 
 niiTF2m <- gamlss(Nitrite ~ Date, family = TF2(), data = Nitrite, 
                  method = mixed(5, 200),
@@ -831,10 +844,60 @@ niiNOm <- gamlss(Nitrite ~ Date, family = NO(), data = Nitrite,
                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
-AIC(niiSSTm)
-AIC(niiTF2m)
-AIC(niiSN1m)
-AIC(niiNOm)
+############################################ PDF
+
+# function for pdf
+pdf_SST_at_date <- function(niiSSTm3, Nitrite, date_str, x = NULL, n = 200,
+                            time_var = "Date", date_var = "Date") {
+  # 1. Find the row in df matching the date of interest
+  t_val <- Nitrite[[time_var]][as.Date(Nitrite[[date_var]]) == as.Date(date_str)]
+  if (length(t_val) == 0) stop("Date not found in data frame.")
+  
+  # 2. Build newdata with the correct covariate
+  newdat <- data.frame(setNames(list(t_val), time_var))
+  
+  # 3. Predict distribution parameters on natural scale
+  mu    <- predict(niiSSTm3, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(niiSSTm3, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(niiSSTm3, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(niiSSTm3, "tau",   newdata = newdat, type = "response")
+  
+  # 4. Create x grid if none supplied
+  if (is.null(x)) {
+    x <- seq(min(niiSSTm3$y, na.rm = TRUE),
+             max(niiSSTm3$y, na.rm = TRUE),
+             length.out = n)
+  }
+  
+  # 5. Evaluate PDF
+  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
+  
+  list(x = x, density = dens,
+       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
+}
+
+# get the pdf and param for three dates
+res1 <- pdf_SST_at_date(niiSSTm3, Nitrite, "1963-09-23",
+                        time_var = "Date", date_var = "Date")
+res2 <- pdf_SST_at_date(niiSSTm3, Nitrite, "1980-09-23",
+                        time_var = "Date", date_var = "Date")
+res3 <- pdf_SST_at_date(niiSSTm3, Nitrite, "1992-09-23",
+                        time_var = "Date", date_var = "Date")
+
+# plot all three dates 
+par(mfrow = c(1, 3))
+plot(res1$x, res1$density, type = "l", ylim=c(0,1.2))
+plot(res2$x, res2$density, type = "l", ylim=c(0,1.2))
+plot(res3$x, res3$density, type = "l", ylim=c(0,1.2))
+par(mfrow = c(1, 1)) # reset
+
+# parameters for the three dates
+res1$params
+res2$params
+res3$params
+
+
+#######################################################
 
 
 #### CHANGING PARAMTER AS FUNCTION OF TIME WITH SST MODEL ####
