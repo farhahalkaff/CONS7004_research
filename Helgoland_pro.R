@@ -692,7 +692,8 @@ Phosphate <- df %>% filter(!is.na(Phosphate)) %>%
 
 # plot that sucka
 ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
-  geom_line(color = "black") +
+  geom_line(color = "grey") +
+  geom_hline(yintercept = 0.3054, linetype = "dashed", color = "black") + 
   labs(x = "Time", y = "Phosphate (µmol/l)") +
   theme_minimal()
 
@@ -701,6 +702,8 @@ ggplot(dplyr::filter(Phosphate, year(Date) == 1970),
        aes(Date, Phosphate)) +
   geom_line(color = "black")
 
+# rescaled phosphate
+Phosphate$y_rescaled <- Phosphate$Phosphate * 100
 
 ### CHECK DISTRIBUTION ###
 
@@ -721,6 +724,14 @@ ggplot(Phosphate, aes(y = Phosphate)) +
 
 
 ### MODELS ###
+
+# Intercept model (different family tho ;( )
+phSEPm1 <- gamlss(Phosphate ~ 1, family = SEP3(), data = Phosphate,
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(phSEPm1)
+
+
 
 phSSTm <- gamlss(Phosphate ~ poly(Date,2), family = SST(), data = Phosphate, 
              method = mixed(5, 200),
@@ -806,7 +817,8 @@ Nitrite <- df %>% filter(!is.na(Nitrite)) %>%
 
 # plot that sucka
 ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
-  geom_line(color = "black") + 
+  geom_line(color = "grey") + 
+  geom_hline(yintercept = 0.81659, linetype = "dashed", color = "black") + 
   labs(x = "Time", y = "Nitrite (µmol/l)") +
   theme_minimal()
 
@@ -835,6 +847,13 @@ ggplot(Nitrite, aes(y = Nitrite)) +
 
 
 ### MODELS ###
+
+# intercept model
+niiSSTm1 <- gamlss(Nitrite ~ 1, family = SST(), data = Nitrite, 
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(niiSSTm1)
+
 
 niiSSTm <- gamlss(Nitrite ~ Date, family = SST(), data = Nitrite, 
                  method = mixed(5, 200),
@@ -964,7 +983,8 @@ DIN <- df %>% filter(!is.na(DIN)) %>%
 
 # plot that sucka
 ggplot(DIN, aes(x = Date, y = DIN)) +
-  geom_line(color = "black") +
+  geom_line(color = "grey") +
+  geom_hline(yintercept = 23.182, linetype = "dashed", color = "black") +
   labs(x = "Time", y = "DIN (µmol/l)") +
   theme_minimal()
 
@@ -993,6 +1013,13 @@ ggplot(DIN, aes(y = DIN)) +
 
 
 ### MODELS ###
+
+# intercept model 
+DINSSTm1 <- gamlss(DIN ~ 1, family = SST(), data = DIN,
+                  method = mixed(10, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(DINSSTm1)
+
 
 DINSSTm <- gamlss(DIN ~ Date, family = SST(), data = DIN, 
                   method = mixed(5, 200),
@@ -1123,7 +1150,8 @@ Silicate <- df %>% filter(!is.na(Silicate)) %>%
 
 # plot that sucka 
 ggplot(Silicate, aes(x = Date, y = Silicate)) +
-  geom_line(color = "black") +
+  geom_line(color = "grey") +
+  geom_hline(yintercept = 0.1925, linetype = "dashed", color = "black") +
   labs(x = "Time", y = "Silicate (µmol/l)") +
   theme_minimal()
 
@@ -1132,6 +1160,8 @@ ggplot(dplyr::filter(Silicate, year(Date) == 1972),
        aes(Date, Silicate)) +
   geom_line(color = "black")
 
+# rescale 
+Silicate$y_rescaled <- Silicate$Silicate + 100
 
 ### CHECK DISTRIBUTION ###
 
@@ -1152,6 +1182,23 @@ ggplot(Ammonium, aes(y = Ammonium)) +
 
 
 ### MODELS ###
+
+# intercept model (there are 0s in the data, that SST doesn't like)
+
+# siSSTm1 <- gamlss(y_rescaled ~ 1, family = SST(), data = Silicate, 
+#                  mu.start = mean(Silicate$y_rescaled), sigma.start = max(sd(Silicate$y_rescaled), 1),
+#                  method = mixed(10, 200),
+#                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(siSSTm1)
+
+# intercept model with SEP3
+siSEPm1 <- gamlss(Silicate ~ 1, family = SEP3(), data = Silicate, 
+                  mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                 method = mixed(20, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(siSEPm1)
+
+
 
 siSSTm <- gamlss(Silicate ~ Date, family = SST(), data = Silicate, 
                   method = mixed(5, 200),
@@ -1280,9 +1327,11 @@ Ammonium <- df %>% filter(!is.na(Ammonium)) %>%
 
 # plot that sucka
 ggplot(Ammonium, aes(x = Date, y = Ammonium)) +
-  geom_line(color = "black") +
+  geom_line(color = "grey") +
+  geom_hline(yintercept = 5.8704, linetype = "dashed", color = "black") +
   labs(x = "Time", y = "Ammonium (µmol/l)") +
   theme_minimal()
+
 
 # plot a for a specific year 
 ggplot(dplyr::filter(Ammonium, year(Date) == 1970),
@@ -1309,6 +1358,13 @@ ggplot(Ammonium, aes(y = Ammonium)) +
 
 
 ### MODELS ###
+
+# intercept model 
+amSSTm1 <- gamlss(Ammonium ~ 1, family = SST(), data = Ammonium, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(amSSTm1)
+
 
 amSSTm <- gamlss(Ammonium ~ Date, family = SST(), data = Ammonium, 
                  method = mixed(5, 200),
