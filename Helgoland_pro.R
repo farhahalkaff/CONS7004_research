@@ -636,7 +636,6 @@ plot_mvgam_series(data = NM$data_train,
 
 
 
-
 ######################################################
 ### Phosphate and fit models of different families ###
 ######################################################
@@ -648,8 +647,11 @@ Phosphate <- df %>% filter(!is.na(Phosphate)) %>%
 # plot that sucka
 ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
   geom_line(color = "grey") +
-  geom_smooth(method = "lm") +
-  geom_hline(yintercept = 0.82, linetype = "dashed", color = "black") + 
+ geom_abline(intercept = phJSUm2$mu.coefficients[1], slope = phJSUm2$mu.coefficients[2],
+              color = "steelblue", linewidth = 1) + #mean only
+  geom_abline(intercept = phJSUm3$mu.coefficients[1], slope = phJSUm3$mu.coefficients[2],
+              color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
+  geom_hline(yintercept = 0.75230, linetype = "dashed", color = "black") + 
   labs(x = "Time", y = "Phosphate (µmol/l)") +
   theme_minimal()
 
@@ -682,35 +684,66 @@ ggplot(Phosphate, aes(y = Phosphate)) +
 
 ### MODELS ###
 
-# Intercept model (different family tho ;( ) => mu is mode
-phSEPm1 <- gamlss(Phosphate ~ 1, family = SEP3(), data = Phosphate,
+phSSTm <- gamlss(Phosphate ~ poly(Date,2), family = SST(), data = Phosphate, 
                  method = mixed(5, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(phSEPm1)
-mfv(Phosphate$Phosphate)
+
+phTF2m <- gamlss(Phosphate ~ Date, family = TF2(), data = Phosphate, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+phSN1m <- gamlss(Phosphate ~ Date, family = SN1(), data = Phosphate, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+phNOm <- gamlss(Phosphate ~ Date, family = NO(), data = Phosphate, 
+                method = mixed(5, 200),
+                control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
-phSSTm <- gamlss(Phosphate ~ poly(Date,2), family = SST(), data = Phosphate, 
-             method = mixed(5, 200),
-             control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+#========================================================================================
+# # Intercept model (different family tho ;( ) => mu is mode
+# phSEPm1 <- gamlss(Phosphate ~ 1, family = SEP3(), data = Phosphate,
+#                  method = mixed(5, 200),
+#                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(phSEPm1)
+# mfv(Phosphate$Phosphate) # find the mode
+# 
+# # mean only
+# phSEPm2 <- gamlss(Phosphate ~ Date, family = SEP3(), data = Phosphate,
+#                   method = mixed(5, 200),
+#                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(phSEPm2)
+# 
+# # mean sigma and nu changing through time
+# phSEPm3 <- gamlss(Phosphate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SEP3(), data = Phosphate,
+#                   method = mixed(5, 200),
+#                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(phSEPm3)
 
-phTF2m <- gamlss(Phosphate ~ Date, family = TF2(), data = na.omit(df), 
-             method = mixed(5, 200),
-             control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+#=====
+# intercept model
+phJSUm1 <- gamlss(Phosphate ~ 1, family = JSU(), data = Phosphate,
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(phJSUm1)
 
-phSN1m <- gamlss(Phosphate ~ Date, family = SN1(), data = na.omit(df), 
-             method = mixed(5, 200),
-             control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# mean only
+phJSUm2 <- gamlss(Phosphate ~ Date, family = JSU(), data = Phosphate,
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(phJSUm2)
 
-phNOm <- gamlss(Phosphate ~ Date, family = NO(), data = na.omit(df), 
-             method = mixed(5, 200),
-             control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# mean sigma and nu changing through time
+phJSUm3 <- gamlss(Phosphate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = JSU(), data = Phosphate,
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(phJSUm3)
+
+#========================================================================================
 
 
 
-AIC(phTF2m)
-AIC(phSN1m)
-AIC(phNOm)
 
 
 #======================
