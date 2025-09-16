@@ -194,13 +194,16 @@ Nitrate <- df %>% filter(!is.na(Nitrate)) %>%
 # plot that sucka (intercept model)
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "grey", na.rm = TRUE) +
-  geom_hline(yintercept = 16.718, linetype = "dashed", color = "black") + # mean
+  geom_abline(intercept = niSSTm2$mu.coefficients[1], slope = niSSTm2$mu.coefficients[2], 
+              color = "steelblue", linewidth = 1) + # only mean as function of time 
+  geom_abline(intercept = niSSTm3$mu.coefficients[1], slope = niSSTm3$mu.coefficients[2], 
+              color = "goldenrod", linewidth = 1) + # mean, sigma and nu as function of time
+  geom_hline(yintercept = 16.718, linetype = "dashed", color = "black") + # intercept mean
   labs(x = "Time", y = "Nitrate (µmol/l)") +
   theme_minimal()
 
 
-
-# plot a for a specific year 
+# plot for a specific year 
 ggplot(dplyr::filter(Nitrate, year(Date) == 1994),
        aes(Date, Nitrate)) +
   geom_line(color = "black")
@@ -209,6 +212,7 @@ stl(Nitrate$Nitrate, s.window = 9) %>%
   autoplot()
 
 head(Nitrate, 24)
+
 
 
 ### CHECK DISTRIBUTION ###
@@ -228,15 +232,41 @@ ggplot(Nitrate, aes(y = Nitrate)) +
   theme_minimal(base_size = 14) +
   coord_flip()
 
+# PDF
+pdf <- dSST(x, mu = 16.718, sigma = exp(2.75160), 
+            nu = exp(2.2996), tau = exp(0.9038) + 2)
+x <- seq(min(niSSTm$y, na.rm = TRUE),
+         max(niSSTm$y, na.rm = TRUE),
+         length.out = 200)
+plot(x, pdf, type = "l")
+
+
+
 
 ### DIFFERENT FAMILY MODELS ###
 
-# intercept model 
+#============================================================================================
+# Intercept model 
 niSSTm <- gamlss(Nitrate ~ 1, family = SST(), data = Nitrate,
                  mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
                  method = mixed(10,200),
                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTm)
+
+# Only mean changing through time 
+niSSTm2 <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate,
+                 #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                 method = mixed(10,200),
+                 control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm2)
+
+# mean, sigma and nu changing through time 
+niSSTm3 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
+                  #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                  method = mixed(10,200),
+                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm3)
+#============================================================================================
 
 
 niTF2m <- gamlss(Nitrate ~ 1, family = TF2(), data = Nitrate, 
@@ -268,6 +298,8 @@ niSSTm_1 <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate,
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_1)
 with(Nitrate, plot(Nitrate ~ Date))
+
+
 curve(cbind(1,x)%*%coef(niSSTm_1), add =T, col = "red", lwd=2)
 
 
@@ -288,32 +320,6 @@ niSSTm_tau <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo =
 summary(niSSTm_tau)
 
 #omit <- na.omit(df)
-
-##########=====================================================
-# niSSTm_1 <- gamlss(Nitrate ~ Date, family = SST(), data = na.omit(df), 
-#                    method = mixed(5, 200),
-#                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_1)
-# with(Nitrate, plot(Nitrate ~ Date))
-# curve(cbind(1,x)%*%coef(niSSTm_1), add =T, col = "red", lwd=2)
-# 
-# 
-# niSSTm_sig <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = SST(), data = na.omit(df), 
-#                      method = mixed(5, 200),
-#                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_sig)
-# 
-# niSSTm_nu <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = na.omit(df), 
-#                     method = mixed(5, 200),
-#                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_nu)
-# 
-# niSSTm_tau <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), 
-#                      data = na.omit(df), 
-#                      method = mixed(5, 200),
-#                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_tau)
-##########======================================================
 
 
 # summary
@@ -467,6 +473,7 @@ res <- pdf_SST_at_date(niSSTm_nu, Nitrate, "1962-01-15",
 
 plot(res$x, res$density, type = "l")
 res$params
+
 
 
 # manually
@@ -693,6 +700,7 @@ Phosphate <- df %>% filter(!is.na(Phosphate)) %>%
 # plot that sucka
 ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
   geom_line(color = "grey") +
+  geom_smooth(method = "lm") +
   geom_hline(yintercept = 0.82, linetype = "dashed", color = "black") + 
   labs(x = "Time", y = "Phosphate (µmol/l)") +
   theme_minimal()
@@ -725,7 +733,7 @@ ggplot(Phosphate, aes(y = Phosphate)) +
 
 ### MODELS ###
 
-# Intercept model (different family tho ;( )
+# Intercept model (different family tho ;( ) => mu is mode
 phSEPm1 <- gamlss(Phosphate ~ 1, family = SEP3(), data = Phosphate,
                  method = mixed(5, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
@@ -818,6 +826,8 @@ Nitrite <- df %>% filter(!is.na(Nitrite)) %>%
 # plot that sucka
 ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
   geom_line(color = "grey") + 
+  geom_abline(intercept = niiSSTm$mu.coefficients[1], slope = niiSSTm$mu.coefficients[2], 
+              color = "steelblue", linewidth = 1) +
   geom_hline(yintercept = 0.81659, linetype = "dashed", color = "black") + 
   labs(x = "Time", y = "Nitrite (µmol/l)") +
   theme_minimal()
@@ -852,7 +862,7 @@ ggplot(Nitrite, aes(y = Nitrite)) +
 niiSSTm1 <- gamlss(Nitrite ~ 1, family = SST(), data = Nitrite, 
                   method = mixed(5, 200),
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(niiSSTm1)
+summary(niiSSTm)
 
 
 niiSSTm <- gamlss(Nitrite ~ Date, family = SST(), data = Nitrite, 
@@ -984,7 +994,11 @@ DIN <- df %>% filter(!is.na(DIN)) %>%
 # plot that sucka
 ggplot(DIN, aes(x = Date, y = DIN)) +
   geom_line(color = "grey") +
-  geom_hline(yintercept = 23.182, linetype = "dashed", color = "black") +
+  geom_abline(intercept = DINSSTm$mu.coefficients[1], slope = DINSSTm$mu.coefficients[2], 
+              color = "steelblue", linewidth = 1) + # only mean as function of time 
+  geom_abline(intercept = DINSSTm_nu$mu.coefficients[1], slope = DINSSTm_nu$mu.coefficients[2], 
+              color = "goldenrod", linewidth = 1) + # mean, sigma and nu as function of time
+  geom_hline(yintercept = 23.182, linetype = "dashed", color = "black") + # mean intercept
   labs(x = "Time", y = "DIN (µmol/l)") +
   theme_minimal()
 
@@ -1056,7 +1070,7 @@ DINSSTm_sig <- gamlss(log(DIN) ~ Date, sigma.fo = ~ Date, family = SST(), data =
                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
-DINSSTm_nu <- gamlss(log(DIN) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = DIN, 
+DINSSTm_nu <- gamlss(DIN ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = DIN, 
                      method = mixed(5, 200),
                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
@@ -1151,6 +1165,7 @@ Silicate <- df %>% filter(!is.na(Silicate)) %>%
 # plot that sucka 
 ggplot(Silicate, aes(x = Date, y = Silicate)) +
   geom_line(color = "grey") +
+  geom_smooth(method = NULL) +
   geom_hline(yintercept = 2, linetype = "dashed", color = "black") +
   labs(x = "Time", y = "Silicate (µmol/l)") +
   theme_minimal()
@@ -1191,13 +1206,19 @@ library(modeest)
 #                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 # summary(siSSTm1)
 
-# Intercept model with SEP3
+# Intercept model with SEP3 => mu is mode, not mean
 siSEPm1 <- gamlss(Silicate ~ 1, family = SEP3(), data = Silicate, 
                   mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
                  method = mixed(20, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(siSEPm1)
 mfv(Silicate$Silicate)
+
+
+siSASm <- gamlss(Silicate ~ 1, family = SHASHo(), data = Silicate, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(siSASm)
 
 
 siSSTm <- gamlss(Silicate ~ Date, family = SST(), data = Silicate, 
@@ -1328,6 +1349,10 @@ Ammonium <- df %>% filter(!is.na(Ammonium)) %>%
 # plot that sucka
 ggplot(Ammonium, aes(x = Date, y = Ammonium)) +
   geom_line(color = "grey") +
+  geom_abline(intercept = amSSTm2$mu.coefficients[1], slope = amSSTm2$mu.coefficients[2], 
+              color = "steelblue", linewidth = 1) + # only mean as function of time 
+  geom_abline(intercept = amSSTm3$mu.coefficients[1], slope = amSSTm3$mu.coefficients[2], 
+              color = "goldenrod", linewidth = 1) + # mean, sigma and nu as function of time
   geom_hline(yintercept = 5.8704, linetype = "dashed", color = "black") +
   labs(x = "Time", y = "Ammonium (µmol/l)") +
   theme_minimal()
@@ -1365,10 +1390,17 @@ amSSTm1 <- gamlss(Ammonium ~ 1, family = SST(), data = Ammonium,
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(amSSTm1)
 
-
-amSSTm <- gamlss(Ammonium ~ Date, family = SST(), data = Ammonium, 
+# mean as a function of time 
+amSSTm2 <- gamlss(Ammonium ~ Date, family = SST(), data = Ammonium, 
                  method = mixed(5, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+# mean, sigma and nu as a function of time 
+amSSTm3 <- gamlss(Ammonium ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Ammonium, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+
 
 amTF2m <- gamlss(Ammonium ~ Date, family = TF2(), data = Ammonium, 
                  method = mixed(5, 200),
