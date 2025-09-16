@@ -693,7 +693,7 @@ Phosphate <- df %>% filter(!is.na(Phosphate)) %>%
 # plot that sucka
 ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
   geom_line(color = "grey") +
-  geom_hline(yintercept = 0.3054, linetype = "dashed", color = "black") + 
+  geom_hline(yintercept = 0.82, linetype = "dashed", color = "black") + 
   labs(x = "Time", y = "Phosphate (µmol/l)") +
   theme_minimal()
 
@@ -730,7 +730,7 @@ phSEPm1 <- gamlss(Phosphate ~ 1, family = SEP3(), data = Phosphate,
                  method = mixed(5, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(phSEPm1)
-
+mfv(Phosphate$Phosphate)
 
 
 phSSTm <- gamlss(Phosphate ~ poly(Date,2), family = SST(), data = Phosphate, 
@@ -1151,7 +1151,7 @@ Silicate <- df %>% filter(!is.na(Silicate)) %>%
 # plot that sucka 
 ggplot(Silicate, aes(x = Date, y = Silicate)) +
   geom_line(color = "grey") +
-  geom_hline(yintercept = 0.1925, linetype = "dashed", color = "black") +
+  geom_hline(yintercept = 2, linetype = "dashed", color = "black") +
   labs(x = "Time", y = "Silicate (µmol/l)") +
   theme_minimal()
 
@@ -1182,7 +1182,7 @@ ggplot(Ammonium, aes(y = Ammonium)) +
 
 
 ### MODELS ###
-
+library(modeest)
 # intercept model (there are 0s in the data, that SST doesn't like)
 
 # siSSTm1 <- gamlss(y_rescaled ~ 1, family = SST(), data = Silicate, 
@@ -1191,13 +1191,13 @@ ggplot(Ammonium, aes(y = Ammonium)) +
 #                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 # summary(siSSTm1)
 
-# intercept model with SEP3
+# Intercept model with SEP3
 siSEPm1 <- gamlss(Silicate ~ 1, family = SEP3(), data = Silicate, 
                   mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
                  method = mixed(20, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(siSEPm1)
-
+mfv(Silicate$Silicate)
 
 
 siSSTm <- gamlss(Silicate ~ Date, family = SST(), data = Silicate, 
