@@ -242,9 +242,6 @@ plot(x, pdf, type = "l")
 
 
 
-
-### DIFFERENT FAMILY MODELS ###
-
 #============================================================================================
 # Intercept model 
 niSSTm <- gamlss(Nitrate ~ 1, family = SST(), data = Nitrate,
@@ -253,14 +250,14 @@ niSSTm <- gamlss(Nitrate ~ 1, family = SST(), data = Nitrate,
                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTm)
 
-# Only mean changing through time 
+# Only mean changing through time linearly 
 niSSTm2 <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate,
                  #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
                  method = mixed(10,200),
                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTm2)
 
-# mean, sigma and nu changing through time 
+# mean, sigma and nu changing through time linearly 
 niSSTm3 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
                   #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
                   method = mixed(10,200),
@@ -268,6 +265,9 @@ niSSTm3 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SS
 summary(niSSTm3)
 #============================================================================================
 
+
+
+### DIFFERENT FAMILY MODELS ###
 
 niTF2m <- gamlss(Nitrate ~ 1, family = TF2(), data = Nitrate, 
              method = mixed(5, 200),
@@ -282,13 +282,6 @@ niNOm <- gamlss(Nitrate ~ 1, family = NO(), data = Nitrate,
              method = mixed(5, 200),
              control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-summary(Nitrate$Nitrate)
-sum(is.nan(Nitrate$Nitrate))
-
-summary(niSSTm)
-summary(niTF2m)
-AIC(niTF2m)
-AIC(niTF2mtest)
 
 
 ### SST FAMILY MODELS WITH TIME-VARYING PARAMETERS ###
@@ -298,8 +291,6 @@ niSSTm_1 <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate,
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_1)
 with(Nitrate, plot(Nitrate ~ Date))
-
-
 curve(cbind(1,x)%*%coef(niSSTm_1), add =T, col = "red", lwd=2)
 
 
@@ -319,8 +310,6 @@ niSSTm_tau <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo =
                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_tau)
 
-#omit <- na.omit(df)
-
 
 # summary
 param_summary <- data.frame(
@@ -337,6 +326,8 @@ param_summary <- data.frame(
 print(param_summary)
 
 
+#############
+
 # V = 1 --> symmetrical 
 # V > 1 --> positively skewed 
 # 0 < V < 1 --> negatively skewed 
@@ -346,34 +337,7 @@ print(param_summary)
 # As T reaches infinity, it tends to Skew normal type 2, SN2
 # If both V and T reaches infinity, it tends to a half normal distribution
 
-
-#############################################
-############################################# LOG
-
-niSSTm_1b <- gamlss(log(Nitrate) ~ Date, family = SST(), data = Nitrate, 
-                   method = mixed(5, 200),
-                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(niSSTm_1b)
-with(Nitrate, plot(Nitrate ~ Date))
-curve((cbind(1,x)%*%coef(niSSTm_1b)), add =T, col = "red", lwd=2)
-
-
-niSSTm_sigb <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, family = SST(), data = Nitrate, 
-                     method = mixed(5, 200),
-                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(niSSTm_sigb)
-
-niSSTm_nub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate, 
-                    method = mixed(5, 200),
-                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(niSSTm_nub)
-
-niSSTm_taub <- gamlss(log(Nitrate) ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), 
-                     data = Nitrate, 
-                     method = mixed(5, 200),
-                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(niSSTm_taub)
-
+#############
 
 # logging takes away heavy tails #
 # pdf changing over time 
@@ -389,20 +353,10 @@ summary(niSSTm_taub)
 # smaller the bar the more important it is
 # consequences of assumptions 
 
-param_summary <- data.frame(
-  param = c("mu","mu(time)" , "SD","SD(time)","nu", "nu(time)", "tau", "tau(time)", "AIC"), 
-  niSSTm_1b = c(coefAll(niSSTm_1b)$mu[1],coefAll(niSSTm_1b)$mu[2] ,exp(coefAll(niSSTm_1b)$sigma),"NA", 
-               exp(coefAll(niSSTm_1b)$nu),"NA", (exp(coefAll(niSSTm_1b)$tau) + 2), "NA", AIC(niSSTm_1b)),
-  niSSTm_sigb = c(coefAll(niSSTm_sigb)$mu[1],coefAll(niSSTm_sigb)$mu[2] ,exp(coefAll(niSSTm_sigb)$sigma[1]),
-                 exp(coefAll(niSSTm_sigb)$sigma[2]), exp(coefAll(niSSTm_sigb)$nu),"NA", 
-                 (exp(coefAll(niSSTm_sigb)$tau) + 2), "NA", AIC(niSSTm_sigb)),
-  niSSTm_nub = c(coefAll(niSSTm_nub)$mu[1],coefAll(niSSTm_nub)$mu[2], exp(coefAll(niSSTm_nub)$sigma[1]),
-                exp(coefAll(niSSTm_nub)$sigma[2]), exp(coefAll(niSSTm_nub)$nu[1]),exp(coefAll(niSSTm_nub)$nu[2]), 
-                (exp(coefAll(niSSTm_nub)$tau) + 2), "NA", AIC(niSSTm_nub))
-)
-print(param_summary)
-
 #############
+
+
+################################################################### PDF 
 
 # scale by df and center the mean
 Nitrate$t_index <- seq(0, nrow(Nitrate) - 1)
@@ -438,9 +392,10 @@ niSSTm_nu <- gamlss(Nitrate ~ t_index, sigma.fo = ~ t_index, nu.fo = ~ t_index, 
 summary(niSSTm_nu)
 
 
+
 # function for pdf
-pdf_SST_at_date <- function(niSSTm_nu, Nitrate, date_str, x = NULL, n = 200,
-                            time_var = "t_index", date_var = "Date") {
+pdf_SST_at_date <- function(niSSTm, Nitrate, date_str, x = NULL, n = 200,
+                            time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
   t_val <- Nitrate[[time_var]][as.Date(Nitrate[[date_var]]) == as.Date(date_str)]
   if (length(t_val) == 0) stop("Date not found in data frame.")
@@ -449,15 +404,15 @@ pdf_SST_at_date <- function(niSSTm_nu, Nitrate, date_str, x = NULL, n = 200,
   newdat <- data.frame(setNames(list(t_val), time_var))
   
   # 3. Predict distribution parameters on natural scale
-  mu    <- predict(niSSTm_nu, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(niSSTm_nu, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(niSSTm_nu, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(niSSTm_nu, "tau",   newdata = newdat, type = "response")
+  mu    <- predict(niSSTm, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(niSSTm, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(niSSTm, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(niSSTm, "tau",   newdata = newdat, type = "response")
   
   # 4. Create x grid if none supplied
   if (is.null(x)) {
-    x <- seq(min(niSSTm_nu$y, na.rm = TRUE),
-             max(niSSTm_nu$y, na.rm = TRUE),
+    x <- seq(min(niSSTm$y, na.rm = TRUE),
+             max(niSSTm$y, na.rm = TRUE),
              length.out = n)
   }
   
@@ -468,12 +423,25 @@ pdf_SST_at_date <- function(niSSTm_nu, Nitrate, date_str, x = NULL, n = 200,
        params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
 }
 
-res <- pdf_SST_at_date(niSSTm_nu, Nitrate, "1962-01-15",
-                       time_var = "t_index", date_var = "Date")
+# get the pdf and param for three dates
+res1 <- pdf_SST_at_date(niSSTm, Nitrate, "1963-09-23",
+                       time_var = "Date", date_var = "Date")
+res2 <- pdf_SST_at_date(niSSTm, Nitrate, "1980-09-23",
+                        time_var = "Date", date_var = "Date")
+res3 <- pdf_SST_at_date(niSSTm, Nitrate, "1992-09-23",
+                        time_var = "Date", date_var = "Date")
 
+# plot all three dates 
+par(mfrow = c(1, 3))
 plot(res$x, res$density, type = "l")
-res$params
+plot(res2$x, res$density, type = "l")
+plot(res3$x, res$density, type = "l")
+par(mfrow = c(1, 1)) # reset
 
+# parameters for the three dates
+res$params
+res2$params
+res3$params
 
 
 # manually
@@ -502,6 +470,7 @@ exp(0.765*2.2234) + 2
 # tau exp before 
 (exp(2.2234) + 2)*0.765
 
+###################################################################
 
 
 #############################################
@@ -528,33 +497,6 @@ niSSTm_tauc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo 
                      method = mixed(5, 200),
                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSSTm_tau)
-
-
-#####================
-# niSSTm_1c <- gamlss(Nitrate ~ Date, family = BCT(), data = na.omit(df), 
-#                     method = mixed(5, 200),
-#                     control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_1c)
-# with(Nitrate, plot(Nitrate ~ Date))
-# curve(cbind(1,x)%*%coef(niSSTm_1), add =T, col = "red", lwd=2)
-# 
-# 
-# niSSTm_sigc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, family = BCT(), data = na.omit(df), 
-#                       method = mixed(5, 200),
-#                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_sig)
-# 
-# niSSTm_nuc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = BCT(), data = na.omit(df), 
-#                      method = mixed(5, 200),
-#                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_nu)
-# 
-# niSSTm_tauc <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = BCT(), 
-#                       data = na.omit(df), 
-#                       method = mixed(5, 200),
-#                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(niSSTm_tau)
-#######==================
 
 # summary
 param_summary <- data.frame(
@@ -619,7 +561,6 @@ print(param_summary)
 
 
 
-
 #############################################
 ############################################# SST left-truncated
 
@@ -636,6 +577,8 @@ niSHASHom <- gamlss(Nitrate + 100 ~ 1, family = SHASHotr(), data = Nitrate,
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niSHASHom)
 
+
+##################################################################################
 
 #======================
 # SEASONALITY
@@ -687,6 +630,11 @@ plot_mvgam_series(data = NM$data_train,
                   newdata = NM$data_test)
 
 
+##################################################################################
+
+
+
+
 
 
 ######################################################
@@ -712,6 +660,7 @@ ggplot(dplyr::filter(Phosphate, year(Date) == 1970),
 
 # rescaled phosphate
 Phosphate$y_rescaled <- Phosphate$Phosphate * 100
+
 
 ### CHECK DISTRIBUTION ###
 
