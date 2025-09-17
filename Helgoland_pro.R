@@ -828,6 +828,29 @@ res3$params
 
 #######################################################
 
+
+################################################## Moment bucket 
+# intercept model 
+moment_bucket(phJSUm1) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean only 
+moment_bucket(phJSUm2) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean, sigma and nu changing through time
+moment_bucket(niSSTm3) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+###################################################################
+
+
 #======================
 # SEASONALITY
 #======================
@@ -1013,6 +1036,27 @@ res3$params
 
 
 #######################################################
+
+################################################## Moment bucket 
+# intercept model 
+moment_bucket(niiSSTm1) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean only 
+moment_bucket(niiSSTm2) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean, sigma and nu changing through time
+moment_bucket(niiSSTm3) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+###################################################################
 
 
 #### CHANGING PARAMTER AS FUNCTION OF TIME WITH SST MODEL ####
@@ -1244,6 +1288,28 @@ res3$params
 
 
 #######################################################
+
+
+################################################## Moment bucket 
+# intercept model 
+moment_bucket(DINSSTm1) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean only 
+moment_bucket(DINSSTm2) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean, sigma and nu changing through time
+moment_bucket(DINSSTm3) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+###################################################################
 
 
 # summary
@@ -1521,6 +1587,29 @@ res3$params
 
 #######################################################
 
+
+################################################## Moment bucket 
+# intercept model 
+moment_bucket(siJSUm1) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean only 
+moment_bucket(siJSUm2) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean, sigma and nu changing through time
+moment_bucket(siJSUm3) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+###################################################################
+
+
 #======================
 # SEASONALITY
 #======================
@@ -1711,6 +1800,27 @@ res3$params
 
 
 #######################################################
+
+################################################## Moment bucket 
+# intercept model 
+moment_bucket(amSSTm1) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean only 
+moment_bucket(amSSTm2) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean, sigma and nu changing through time
+moment_bucket(amSSTm3) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+###################################################################
 
 
 #======================
