@@ -457,7 +457,7 @@ resm3c <- pdf_SST_at_date(niSSTm3, Nitrate, "1992-09-23",
 
 #### plot all three dates ###
 
-# separetly 
+# separately 
 par(mfrow = c(3, 3))
 # m1 (intercept model)
 plot(resm1$x, resm1$density, type = "l", ylim=c(0,0.08)) 
@@ -499,26 +499,24 @@ lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 2) # mean only
 lines(resm3c$x, resm3c$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("darkred", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+par(mfrow = c(1,1)) # reset
+
 
 ### parameters for the three dates ###
 
 # m1 (intercept model)
-resm1$params
-resm1b$params
-resm1c$params
+resm1$params #1963
+resm1b$params #1980
+resm1c$params #1992
 # m2 (mean only)
-resm2$params
-resm2b$params
-resm2c$params
+resm2$params #1963
+resm2b$params #1980
+resm2c$params #1992
 # m3 (mean sigma and nu)
-resm3$params
-resm3b$params
-resm3c$params
+resm3$params #1963
+resm3b$params #1980
+resm3c$params #1992
 
-
-ggplot(Nitrate, aes(x = resm1$x, y = resm1$density)) +
-  labs(x = "Value", y = "Density") +
-  theme_minimal()
 
 
 
@@ -749,10 +747,10 @@ ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
   geom_line(color = "grey") +
  geom_abline(intercept = phJSUm2$mu.coefficients[1], slope = phJSUm2$mu.coefficients[2],
               color = "steelblue", linewidth = 1) + #mean only
-  geom_abline(intercept = phJSUm3$mu.coefficients[1], slope = phJSUm3$mu.coefficients[2],
-              color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
+  #geom_abline(intercept = phJSUm3$mu.coefficients[1], slope = phJSUm3$mu.coefficients[2],
+              #color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
   geom_abline(intercept = phJSUm4$mu.coefficients[1], slope = phJSUm4$mu.coefficients[2],
-              color = "darkred", linewidth = 1) + # mean sigma nu and tau changing through time
+              color = "goldenrod", linewidth = 1) + # mean sigma nu and tau changing through time
   geom_hline(yintercept = 0.75230, linetype = "dashed", color = "black") + 
   labs(x = "Time", y = "Phosphate (µmol/l)") +
   theme_minimal()
@@ -823,7 +821,7 @@ phNOm <- gamlss(Phosphate ~ Date, family = NO(), data = Phosphate,
 #                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 # summary(phSEPm3)
 
-#=====
+#=======================================================================================
 # intercept model
 phJSUm1 <- gamlss(Phosphate ~ 1, family = JSU(), data = Phosphate,
                  method = mixed(5, 200),
@@ -854,7 +852,7 @@ summary(phJSUm4)
 ############################################ PDF
 
 # function for pdf
-pdf_SST_at_date <- function(phJSUm4, Phosphate, date_str, x = NULL, n = 200,
+pdf_SST_at_date <- function(model, Phosphate, date_str, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
   t_val <- Phosphate[[time_var]][as.Date(Phosphate[[date_var]]) == as.Date(date_str)]
@@ -864,15 +862,15 @@ pdf_SST_at_date <- function(phJSUm4, Phosphate, date_str, x = NULL, n = 200,
   newdat <- data.frame(setNames(list(t_val), time_var))
   
   # 3. Predict distribution parameters on natural scale
-  mu    <- predict(phJSUm4, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(phJSUm4, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(phJSUm4, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(phJSUm4, "tau",   newdata = newdat, type = "response")
+  mu    <- predict(model, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(model, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(model, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(model, "tau",   newdata = newdat, type = "response")
   
   # 4. Create x grid if none supplied
   if (is.null(x)) {
-    x <- seq(min(phJSUm4$y, na.rm = TRUE),
-             max(phJSUm4$y, na.rm = TRUE),
+    x <- seq(min(model$y, na.rm = TRUE),
+             max(model$y, na.rm = TRUE),
              length.out = n)
   }
   
@@ -883,13 +881,57 @@ pdf_SST_at_date <- function(phJSUm4, Phosphate, date_str, x = NULL, n = 200,
        params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
 }
 
+
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(phJSUm4, Phosphate, "1963-09-23",
-                        time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(phJSUm4, Phosphate, "1980-09-23",
-                        time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(phJSUm4, Phosphate, "1992-09-23",
-                        time_var = "Date", date_var = "Date")
+# m1 (intercept model)
+resm1 <- pdf_SST_at_date(phJSUm1, Phosphate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm1b <- pdf_SST_at_date(phJSUm1, Phosphate, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm1c <- pdf_SST_at_date(phJSUm1, Phosphate, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m2 (mean only)
+resm2 <- pdf_SST_at_date(phJSUm2, Phosphate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm2b <- pdf_SST_at_date(phJSUm2, Phosphate, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm2c <- pdf_SST_at_date(phJSUm2, Phosphate, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m3 (mean sigma nu and tau)
+resm3 <- pdf_SST_at_date(phJSUm4, Phosphate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm3b <- pdf_SST_at_date(phJSUm4, Phosphate, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm3c <- pdf_SST_at_date(phJSUm4, Phosphate, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+
+
+par(mfrow = c(3, 1)) 
+# plot the models together for date 1: 1963-09-23
+plot(resm1$x, resm1$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,2.3),
+     ylab = "Density", xlab = "Value",
+     main = "1963") # intercept model
+lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3$x, resm3$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 2: 1980-09-23
+plot(resm1b$x, resm1b$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,2.3),
+     ylab = "Density", xlab = "Value",
+     main = "1980") # intercept model
+lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3b$x, resm3b$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 3: 1992-09-23
+plot(resm1c$x, resm1c$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,2.3),
+     ylab = "Density", xlab = "Value",
+     main = "1992") # intercept model
+lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3c$x, resm3c$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+
 
 # plot all three dates 
 par(mfrow = c(1, 3))
@@ -898,11 +940,21 @@ plot(res2$x, res2$density, type = "l", ylim=c(0,2.3)) # 1.55 for m3
 plot(res3$x, res3$density, type = "l", ylim=c(0,2.3)) # 2.3 for m4
 par(mfrow = c(1, 1)) # reset
 
-# parameters for the three dates
-res1$params
-res2$params
-res3$params
 
+### parameters for the three dates ###
+
+# m1 (intercept model)
+resm1$params #1963
+resm1b$params #1980
+resm1c$params #1992
+# m2 (mean only)
+resm2$params #1963
+resm2b$params #1980
+resm2c$params #1992
+# m3 (mean sigma and nu)
+resm3$params #1963
+resm3b$params #1980
+resm3c$params #1992
 
 #######################################################
 
@@ -1075,25 +1127,25 @@ niiNOm <- gamlss(Nitrite ~ Date, family = NO(), data = Nitrite,
 ############################################ PDF
 
 # function for pdf
-pdf_SST_at_date <- function(niiSSTm4, Nitrite, date_str, x = NULL, n = 200,
+pdf_SST_at_date <- function(model, data, date_str, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
-  t_val <- Nitrite[[time_var]][as.Date(Nitrite[[date_var]]) == as.Date(date_str)]
+  t_val <- data[[time_var]][as.Date(data[[date_var]]) == as.Date(date_str)]
   if (length(t_val) == 0) stop("Date not found in data frame.")
   
   # 2. Build newdata with the correct covariate
   newdat <- data.frame(setNames(list(t_val), time_var))
   
   # 3. Predict distribution parameters on natural scale
-  mu    <- predict(niiSSTm4, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(niiSSTm4, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(niiSSTm4, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(niiSSTm4, "tau",   newdata = newdat, type = "response")
+  mu    <- predict(model, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(model, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(model, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(model, "tau",   newdata = newdat, type = "response")
   
   # 4. Create x grid if none supplied
   if (is.null(x)) {
-    x <- seq(min(niiSSTm4$y, na.rm = TRUE),
-             max(niiSSTm4$y, na.rm = TRUE),
+    x <- seq(min(model$y, na.rm = TRUE),
+             max(model$y, na.rm = TRUE),
              length.out = n)
   }
   
@@ -1105,24 +1157,79 @@ pdf_SST_at_date <- function(niiSSTm4, Nitrite, date_str, x = NULL, n = 200,
 }
 
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(niiSSTm4, Nitrite, "1963-09-23",
-                        time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(niiSSTm4, Nitrite, "1980-09-23",
-                        time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(niiSSTm4, Nitrite, "1992-09-23",
-                        time_var = "Date", date_var = "Date")
+# m1 (intercept model)
+resm1 <- pdf_SST_at_date(niiSSTm1, Nitrite, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm1b <- pdf_SST_at_date(niiSSTm1, Nitrite, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm1c <- pdf_SST_at_date(niiSSTm1, Nitrite, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m2 (mean only)
+resm2 <- pdf_SST_at_date(niiSSTm2, Nitrite, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm2b <- pdf_SST_at_date(niiSSTm2, Nitrite, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm2c <- pdf_SST_at_date(niiSSTm2, Nitrite, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m3 (mean sigma nu and tau)
+resm3 <- pdf_SST_at_date(niiSSTm4, Nitrite, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm3b <- pdf_SST_at_date(niiSSTm4, Nitrite, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm3c <- pdf_SST_at_date(niiSSTm4, Nitrite, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
 
-# plot all three dates 
-par(mfrow = c(1, 3))
-plot(res1$x, res1$density, type = "l", ylim=c(0,1.2))
-plot(res2$x, res2$density, type = "l", ylim=c(0,1.2)) # 1.2 for all
-plot(res3$x, res3$density, type = "l", ylim=c(0,1.2))
-par(mfrow = c(1, 1)) # reset
 
-# parameters for the three dates
-res1$params
-res2$params
-res3$params
+par(mfrow = c(3, 1)) 
+# plot the models together for date 1: 1963-09-23
+plot(resm1$x, resm1$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,1.2),
+     ylab = "Density", xlab = "Value",
+     main = "1963") # intercept model
+lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3$x, resm3$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 2: 1980-09-23
+plot(resm1b$x, resm1b$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,1.2),
+     ylab = "Density", xlab = "Value",
+     main = "1980") # intercept model
+lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3b$x, resm3b$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 3: 1992-09-23
+plot(resm1c$x, resm1c$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,1.2),
+     ylab = "Density", xlab = "Value",
+     main = "1992") # intercept model
+lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3c$x, resm3c$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+
+
+### parameters for the three dates ###
+# ylim: 1.2 for all
+
+# m1 (intercept model)
+resm1$params #1963
+resm1b$params #1980
+resm1c$params #1992
+# m2 (mean only)
+resm2$params #1963
+resm2b$params #1980
+resm2c$params #1992
+# m3 (mean sigma and nu)
+resm3$params #1963
+resm3b$params #1980
+resm3c$params #1992
+
+
+# # plot all three dates 
+# par(mfrow = c(1, 3))
+# plot(res1$x, res1$density, type = "l", ylim=c(0,1.2))
+# plot(res2$x, res2$density, type = "l", ylim=c(0,1.2)) # 1.2 for all
+# plot(res3$x, res3$density, type = "l", ylim=c(0,1.2))
+# par(mfrow = c(1, 1)) # reset
 
 
 #######################################################
@@ -1332,55 +1439,81 @@ summary(DINSSTm4)
 
 ############################################ PDF
 
-# function for pdf
-pdf_SST_at_date <- function(DINSSTm4, DIN, date_str, x = NULL, n = 200,
-                            time_var = "Date", date_var = "Date") {
-  # 1. Find the row in df matching the date of interest
-  t_val <- DIN[[time_var]][as.Date(DIN[[date_var]]) == as.Date(date_str)]
-  if (length(t_val) == 0) stop("Date not found in data frame.")
-  
-  # 2. Build newdata with the correct covariate
-  newdat <- data.frame(setNames(list(t_val), time_var))
-  
-  # 3. Predict distribution parameters on natural scale
-  mu    <- predict(DINSSTm4, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(DINSSTm4, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(DINSSTm4, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(DINSSTm4, "tau",   newdata = newdat, type = "response")
-  
-  # 4. Create x grid if none supplied
-  if (is.null(x)) {
-    x <- seq(min(DINSSTm4$y, na.rm = TRUE),
-             max(DINSSTm4$y, na.rm = TRUE),
-             length.out = n)
-  }
-  
-  # 5. Evaluate PDF
-  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
-  
-  list(x = x, density = dens,
-       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
-}
-
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(DINSSTm4, DIN, "1963-09-23",
-                        time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(DINSSTm4, DIN, "1980-09-23",
-                        time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(DINSSTm4, DIN, "1992-09-23",
-                        time_var = "Date", date_var = "Date")
+# m1 (intercept model)
+resm1 <- pdf_SST_at_date(DINSSTm1, DIN, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm1b <- pdf_SST_at_date(DINSSTm1, DIN, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm1c <- pdf_SST_at_date(DINSSTm1, DIN, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m2 (mean only)
+resm2 <- pdf_SST_at_date(DINSSTm2, DIN, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm2b <- pdf_SST_at_date(DINSSTm2, DIN, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm2c <- pdf_SST_at_date(DINSSTm2, DIN, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m3 (mean sigma nu and tau)
+resm3 <- pdf_SST_at_date(DINSSTm4, DIN, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm3b <- pdf_SST_at_date(DINSSTm4, DIN, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm3c <- pdf_SST_at_date(DINSSTm4, DIN, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
 
-# plot all three dates 
-par(mfrow = c(1, 3))
-plot(res1$x, res1$density, type = "l", ylim=c(0,0.07)) 
-plot(res2$x, res2$density, type = "l", ylim=c(0,0.07)) # 0.04 for m1 and m2
-plot(res3$x, res3$density, type = "l", ylim=c(0,0.07)) # 0.07 for m3 and m4
-par(mfrow = c(1, 1)) # reset
 
-# parameters for the three dates
-res1$params
-res2$params
-res3$params
+par(mfrow = c(3, 1)) 
+# plot the models together for date 1: 1963-09-23
+plot(resm1$x, resm1$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.075),
+     ylab = "Density", xlab = "Value",
+     main = "1963") # intercept model
+lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3$x, resm3$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 2: 1980-09-23
+plot(resm1b$x, resm1b$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.075),
+     ylab = "Density", xlab = "Value",
+     main = "1980") # intercept model
+lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3b$x, resm3b$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 3: 1992-09-23
+plot(resm1c$x, resm1c$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.075),
+     ylab = "Density", xlab = "Value",
+     main = "1992") # intercept model
+lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3c$x, resm3c$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+par(mfrow = c(1, 1)) #reset
+
+### parameters for the three dates ###
+# ylim: 0.07 for all
+
+# m1 (intercept model)
+resm1$params #1963
+resm1b$params #1980
+resm1c$params #1992
+# m2 (mean only)
+resm2$params #1963
+resm2b$params #1980
+resm2c$params #1992
+# m3 (mean sigma and nu)
+resm3$params #1963
+resm3b$params #1980
+resm3c$params #1992
+
+# # plot all three dates 
+# par(mfrow = c(1, 3))
+# plot(res1$x, res1$density, type = "l", ylim=c(0,0.07)) 
+# plot(res2$x, res2$density, type = "l", ylim=c(0,0.07)) # 0.04 for m1 and m2
+# plot(res3$x, res3$density, type = "l", ylim=c(0,0.07)) # 0.07 for m3 and m4
+# par(mfrow = c(1, 1)) # reset
+
+
 
 
 #######################################################
@@ -1630,55 +1763,80 @@ summary(siJSUm3)
 
 ############################################ PDF
 
-# function for pdf
-pdf_SST_at_date <- function(siJSUm1, Silicate, date_str, x = NULL, n = 200,
-                            time_var = "Date", date_var = "Date") {
-  # 1. Find the row in df matching the date of interest
-  t_val <- Silicate[[time_var]][as.Date(Silicate[[date_var]]) == as.Date(date_str)]
-  if (length(t_val) == 0) stop("Date not found in data frame.")
-  
-  # 2. Build newdata with the correct covariate
-  newdat <- data.frame(setNames(list(t_val), time_var))
-  
-  # 3. Predict distribution parameters on natural scale
-  mu    <- predict(siJSUm1, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(siJSUm1, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(siJSUm1, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(siJSUm1, "tau",   newdata = newdat, type = "response")
-  
-  # 4. Create x grid if none supplied
-  if (is.null(x)) {
-    x <- seq(min(siJSUm1$y, na.rm = TRUE),
-             max(siJSUm1$y, na.rm = TRUE),
-             length.out = n)
-  }
-  
-  # 5. Evaluate PDF
-  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
-  
-  list(x = x, density = dens,
-       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
-}
-
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(siJSUm1, Silicate, "1966-09-23",
-                        time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(siJSUm1, Silicate, "1980-09-23",
-                        time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(siJSUm1, Silicate, "1992-09-23",
-                        time_var = "Date", date_var = "Date")
+# m1 (intercept model)
+resm1 <- pdf_SST_at_date(siJSUm1, Silicate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm1b <- pdf_SST_at_date(siJSUm1, Silicate, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm1c <- pdf_SST_at_date(siJSUm1, Silicate, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m2 (mean only)
+resm2 <- pdf_SST_at_date(siJSUm2, Silicate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm2b <- pdf_SST_at_date(siJSUm2, Silicate, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm2c <- pdf_SST_at_date(siJSUm2, Silicate, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m3 (mean sigma nu and tau)
+resm3 <- pdf_SST_at_date(siJSUm3, Silicate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm3b <- pdf_SST_at_date(siJSUm3, Silicate, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm3c <- pdf_SST_at_date(siJSUm3, Silicate, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
 
-# plot all three dates 
-par(mfrow = c(1, 3))
-plot(res1$x, res1$density, type = "l", ylim=c(0,0.25)) # 0.13 for m1 
-plot(res2$x, res2$density, type = "l", ylim=c(0,0.25)) # 0.17 for m2
-plot(res3$x, res3$density, type = "l", ylim=c(0,0.25)) # 0.25 for m3
-par(mfrow = c(1, 1)) # reset
 
-# parameters for the three dates
-res1$params
-res2$params
-res3$params
+par(mfrow = c(3, 1)) 
+# plot the models together for date 1: 1963-09-23
+plot(resm1$x, resm1$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.075),
+     ylab = "Density", xlab = "Value",
+     main = "1963") # intercept model
+lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3$x, resm3$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 2: 1980-09-23
+plot(resm1b$x, resm1b$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.075),
+     ylab = "Density", xlab = "Value",
+     main = "1980") # intercept model
+lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3b$x, resm3b$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 3: 1992-09-23
+plot(resm1c$x, resm1c$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.075),
+     ylab = "Density", xlab = "Value",
+     main = "1992") # intercept model
+lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3c$x, resm3c$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+par(mfrow = c(1, 1)) #reset
+
+### parameters for the three dates ###
+# ylim: 0.07 for all
+
+# m1 (intercept model)
+resm1$params #1963
+resm1b$params #1980
+resm1c$params #1992
+# m2 (mean only)
+resm2$params #1963
+resm2b$params #1980
+resm2c$params #1992
+# m3 (mean sigma and nu)
+resm3$params #1963
+resm3b$params #1980
+resm3c$params #1992
+
+
+# # plot all three dates 
+# par(mfrow = c(1, 3))
+# plot(res1$x, res1$density, type = "l", ylim=c(0,0.25)) # 0.13 for m1 
+# plot(res2$x, res2$density, type = "l", ylim=c(0,0.25)) # 0.17 for m2
+# plot(res3$x, res3$density, type = "l", ylim=c(0,0.25)) # 0.25 for m3
+# par(mfrow = c(1, 1)) # reset
 
 
 #######################################################
@@ -1850,55 +2008,80 @@ summary(amSSTm4)
 
 ############################################ PDF
 
-# function for pdf
-pdf_SST_at_date <- function(amSSTm4, Ammonium, date_str, x = NULL, n = 200,
-                            time_var = "Date", date_var = "Date") {
-  # 1. Find the row in df matching the date of interest
-  t_val <- Ammonium[[time_var]][as.Date(Ammonium[[date_var]]) == as.Date(date_str)]
-  if (length(t_val) == 0) stop("Date not found in data frame.")
-  
-  # 2. Build newdata with the correct covariate
-  newdat <- data.frame(setNames(list(t_val), time_var))
-  
-  # 3. Predict distribution parameters on natural scale
-  mu    <- predict(amSSTm4, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(amSSTm4, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(amSSTm4, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(amSSTm4, "tau",   newdata = newdat, type = "response")
-  
-  # 4. Create x grid if none supplied
-  if (is.null(x)) {
-    x <- seq(min(amSSTm4$y, na.rm = TRUE),
-             max(amSSTm4$y, na.rm = TRUE),
-             length.out = n)
-  }
-  
-  # 5. Evaluate PDF
-  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
-  
-  list(x = x, density = dens,
-       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
-}
-
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(amSSTm4, Ammonium, "1963-09-23",
-                        time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(amSSTm4, Ammonium, "1980-09-23",
-                        time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(amSSTm4, Ammonium, "1992-09-23",
-                        time_var = "Date", date_var = "Date")
+# m1 (intercept model)
+resm1 <- pdf_SST_at_date(amSSTm1, Ammonium, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm1b <- pdf_SST_at_date(amSSTm1, Ammonium, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm1c <- pdf_SST_at_date(amSSTm1, Ammonium, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m2 (mean only)
+resm2 <- pdf_SST_at_date(amSSTm2, Ammonium, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm2b <- pdf_SST_at_date(amSSTm2, Ammonium, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm2c <- pdf_SST_at_date(amSSTm2, Ammonium, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
+# m3 (mean sigma nu and tau)
+resm3 <- pdf_SST_at_date(amSSTm4, Ammonium, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm3b <- pdf_SST_at_date(amSSTm4, Ammonium, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm3c <- pdf_SST_at_date(amSSTm4, Ammonium, "1992-09-23",
+                          time_var = "Date", date_var = "Date")
 
-# plot all three dates 
-par(mfrow = c(1, 3))
-plot(res1$x, res1$density, type = "l", ylim=c(0,0.25)) # 0.13 for m1 
-plot(res2$x, res2$density, type = "l", ylim=c(0,0.25)) # 0.17 for m2
-plot(res3$x, res3$density, type = "l", ylim=c(0,0.25)) # 0.25 for m3
-par(mfrow = c(1, 1)) # reset
 
-# parameters for the three dates
-res1$params
-res2$params
-res3$params
+par(mfrow = c(3, 1)) 
+# plot the models together for date 1: 1963-09-23
+plot(resm1$x, resm1$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.25),
+     ylab = "Density", xlab = "Value",
+     main = "1963") # intercept model
+lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3$x, resm3$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 2: 1980-09-23
+plot(resm1b$x, resm1b$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.25),
+     ylab = "Density", xlab = "Value",
+     main = "1980") # intercept model
+lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3b$x, resm3b$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 3: 1992-09-23
+plot(resm1c$x, resm1c$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.25),
+     ylab = "Density", xlab = "Value",
+     main = "1992") # intercept model
+lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3c$x, resm3c$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+par(mfrow = c(1, 1)) #reset
+
+### parameters for the three dates ###
+# ylim: 0.25 for all
+
+# m1 (intercept model)
+resm1$params #1963
+resm1b$params #1980
+resm1c$params #1992
+# m2 (mean only)
+resm2$params #1963
+resm2b$params #1980
+resm2c$params #1992
+# m3 (mean sigma and nu)
+resm3$params #1963
+resm3b$params #1980
+resm3c$params #1992
+
+
+# # plot all three dates 
+# par(mfrow = c(1, 3))
+# plot(res1$x, res1$density, type = "l", ylim=c(0,0.25)) # 0.13 for m1 
+# plot(res2$x, res2$density, type = "l", ylim=c(0,0.25)) # 0.17 for m2
+# plot(res3$x, res3$density, type = "l", ylim=c(0,0.25)) # 0.25 for m3
+# par(mfrow = c(1, 1)) # reset
 
 
 #######################################################
