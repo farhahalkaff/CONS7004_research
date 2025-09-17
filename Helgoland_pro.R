@@ -402,10 +402,10 @@ summary(niSSTm_nu)
 
 
 # function for pdf
-pdf_SST_at_date <- function(model, Nitrate, date_str, x = NULL, n = 200,
+pdf_SST_at_date <- function(model, data, date_str, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
-  t_val <- Nitrate[[time_var]][as.Date(Nitrate[[date_var]]) == as.Date(date_str)]
+  t_val <- data[[time_var]][as.Date(data[[date_var]]) == as.Date(date_str)]
   if (length(t_val) == 0) stop("Date not found in data frame.")
   
   # 2. Build newdata with the correct covariate
@@ -476,29 +476,29 @@ par(mfrow = c(1, 1)) # reset
 
 par(mfrow = c(3, 1)) 
 # plot the models together for date 1: 1963-09-23
-plot(resm1$x, resm1$density, col = "darkred", type = "l", lwd = 2, ylim=c(0,0.08),
+plot(resm1$x, resm1$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.08),
      ylab = "Density", xlab = "Value",
      main = "1963") # intercept model
 lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
 lines(resm3$x, resm3$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
-       col = c("darkred", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
 # plot the models together for date 2: 1980-09-23
-plot(resm1b$x, resm1b$density, col = "darkred", type = "l", lwd = 2, ylim=c(0,0.08),
+plot(resm1b$x, resm1b$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.08),
      ylab = "Density", xlab = "Value",
      main = "1980") # intercept model
 lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
 lines(resm3b$x, resm3b$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
-       col = c("darkred", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
 # plot the models together for date 3: 1992-09-23
-plot(resm1c$x, resm1c$density, col = "darkred", type = "l", lwd = 2, ylim=c(0,0.08),
+plot(resm1c$x, resm1c$density, col = "goldenrod", type = "l", lwd = 2, ylim=c(0,0.08),
      ylab = "Density", xlab = "Value",
      main = "1992") # intercept model
 lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
 lines(resm3c$x, resm3c$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
-       col = c("darkred", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+       col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
 par(mfrow = c(1,1)) # reset
 
 
@@ -851,37 +851,6 @@ summary(phJSUm4)
 
 ############################################ PDF
 
-# function for pdf
-pdf_SST_at_date <- function(model, Phosphate, date_str, x = NULL, n = 200,
-                            time_var = "Date", date_var = "Date") {
-  # 1. Find the row in df matching the date of interest
-  t_val <- Phosphate[[time_var]][as.Date(Phosphate[[date_var]]) == as.Date(date_str)]
-  if (length(t_val) == 0) stop("Date not found in data frame.")
-  
-  # 2. Build newdata with the correct covariate
-  newdat <- data.frame(setNames(list(t_val), time_var))
-  
-  # 3. Predict distribution parameters on natural scale
-  mu    <- predict(model, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(model, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(model, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(model, "tau",   newdata = newdat, type = "response")
-  
-  # 4. Create x grid if none supplied
-  if (is.null(x)) {
-    x <- seq(min(model$y, na.rm = TRUE),
-             max(model$y, na.rm = TRUE),
-             length.out = n)
-  }
-  
-  # 5. Evaluate PDF
-  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
-  
-  list(x = x, density = dens,
-       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
-}
-
-
 # get the pdf and param for three dates
 # m1 (intercept model)
 resm1 <- pdf_SST_at_date(phJSUm1, Phosphate, "1963-09-23",
@@ -931,14 +900,15 @@ lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 2) # mean only
 lines(resm3c$x, resm3c$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("goldenrod", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
-
-
-# plot all three dates 
-par(mfrow = c(1, 3))
-plot(res1$x, res1$density, type = "l", ylim=c(0,2.3)) # 1.5 for m1 and m2
-plot(res2$x, res2$density, type = "l", ylim=c(0,2.3)) # 1.55 for m3
-plot(res3$x, res3$density, type = "l", ylim=c(0,2.3)) # 2.3 for m4
 par(mfrow = c(1, 1)) # reset
+
+
+# # plot all three dates 
+# par(mfrow = c(1, 3))
+# plot(res1$x, res1$density, type = "l", ylim=c(0,2.3)) # 1.5 for m1 and m2
+# plot(res2$x, res2$density, type = "l", ylim=c(0,2.3)) # 1.55 for m3
+# plot(res3$x, res3$density, type = "l", ylim=c(0,2.3)) # 2.3 for m4
+# par(mfrow = c(1, 1)) # reset
 
 
 ### parameters for the three dates ###
@@ -1125,36 +1095,6 @@ niiNOm <- gamlss(Nitrite ~ Date, family = NO(), data = Nitrite,
 
 
 ############################################ PDF
-
-# function for pdf
-pdf_SST_at_date <- function(model, data, date_str, x = NULL, n = 200,
-                            time_var = "Date", date_var = "Date") {
-  # 1. Find the row in df matching the date of interest
-  t_val <- data[[time_var]][as.Date(data[[date_var]]) == as.Date(date_str)]
-  if (length(t_val) == 0) stop("Date not found in data frame.")
-  
-  # 2. Build newdata with the correct covariate
-  newdat <- data.frame(setNames(list(t_val), time_var))
-  
-  # 3. Predict distribution parameters on natural scale
-  mu    <- predict(model, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(model, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(model, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(model, "tau",   newdata = newdat, type = "response")
-  
-  # 4. Create x grid if none supplied
-  if (is.null(x)) {
-    x <- seq(min(model$y, na.rm = TRUE),
-             max(model$y, na.rm = TRUE),
-             length.out = n)
-  }
-  
-  # 5. Evaluate PDF
-  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
-  
-  list(x = x, density = dens,
-       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
-}
 
 # get the pdf and param for three dates
 # m1 (intercept model)
