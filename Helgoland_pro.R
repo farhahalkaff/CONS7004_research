@@ -19,7 +19,7 @@ library(ggplot2)
 library(patchwork)
 library(lubridate)
 library(tidyr)
-
+library(modeest)
 library(mvgam)           # Fit, interrogate and forecast DGAMs
 library(forecast)        # Construct fourier terms for time series
 library(gratia)          # Graceful plotting of smooth terms
@@ -1301,8 +1301,11 @@ Silicate <- df %>% filter(!is.na(Silicate)) %>%
 # plot that sucka 
 ggplot(Silicate, aes(x = Date, y = Silicate)) +
   geom_line(color = "grey") +
-  geom_smooth(method = NULL) +
-  geom_hline(yintercept = 2, linetype = "dashed", color = "black") +
+  geom_abline(intercept = siJSUm2$mu.coefficients[1], slope = siJSUm2$mu.coefficients[2],
+              color = "steelblue", linewidth = 1) + # mean only
+  geom_abline(intercept = siJSUm3$mu.coefficients[1], slope = siJSUm3$mu.coefficients[2],
+              color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
+  geom_hline(yintercept = 7.378, linetype = "dashed", color = "black") +
   labs(x = "Time", y = "Silicate (µmol/l)") +
   theme_minimal()
 
@@ -1332,24 +1335,7 @@ ggplot(Ammonium, aes(y = Ammonium)) +
   coord_flip()
 
 
-### MODELS ###
-library(modeest)
-# intercept model (there are 0s in the data, that SST doesn't like)
-
-# siSSTm1 <- gamlss(y_rescaled ~ 1, family = SST(), data = Silicate, 
-#                  mu.start = mean(Silicate$y_rescaled), sigma.start = max(sd(Silicate$y_rescaled), 1),
-#                  method = mixed(10, 200),
-#                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-# summary(siSSTm1)
-
-# Intercept model with SEP3 => mu is mode, not mean
-siSEPm1 <- gamlss(Silicate ~ 1, family = SEP3(), data = Silicate, 
-                  mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
-                 method = mixed(20, 200),
-                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-summary(siSEPm1)
-mfv(Silicate$Silicate)
-
+### Different family distribution MODELS ###
 
 siSASm <- gamlss(Silicate ~ 1, family = SHASHo(), data = Silicate, 
                  method = mixed(5, 200),
@@ -1358,27 +1344,20 @@ summary(siSASm)
 
 
 siSSTm <- gamlss(Silicate ~ Date, family = SST(), data = Silicate, 
-                  method = mixed(5, 200),
-                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
-siTF2m <- gamlss(Silicate ~ Date, family = TF2(), data = Silicate, 
-                  method = mixed(5, 200),
-                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
-siSN1m <- gamlss(Silicate ~ Date, family = SN1(), data = Silicate, 
-                  method = mixed(5, 200),
-                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-
-siNOm <- gamlss(Silicate ~ Date, family = NO(), data = Silicate, 
                  method = mixed(5, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
+siTF2m <- gamlss(Silicate ~ Date, family = TF2(), data = Silicate, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-summary(siSSTm)
-AIC(siSSTm)
-AIC(siTF2m)
-AIC(siSN1m)
-AIC(siNOm)
+siSN1m <- gamlss(Silicate ~ Date, family = SN1(), data = Silicate, 
+                 method = mixed(5, 200),
+                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+siNOm <- gamlss(Silicate ~ Date, family = NO(), data = Silicate, 
+                method = mixed(5, 200),
+                control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
 #### CHANGING PARAMTER AS FUNCTION OF TIME WITH SST MODEL ####
@@ -1416,6 +1395,46 @@ param_summary <- data.frame(
                  (exp(coefAll(siSSTm_nu)$tau) + 2), "NA", AIC(siSSTm_nu))
 )
 print(param_summary)
+
+
+
+# intercept model (there are 0s in the data, that SST doesn't like)
+
+# siSSTm1 <- gamlss(y_rescaled ~ 1, family = SST(), data = Silicate, 
+#                  mu.start = mean(Silicate$y_rescaled), sigma.start = max(sd(Silicate$y_rescaled), 1),
+#                  method = mixed(10, 200),
+#                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(siSSTm1)
+
+
+
+#==========================================================================================
+# Intercept model with SEP3 => mu is mode, not mean
+# siSEPm1 <- gamlss(Silicate ~ 1, family = SEP3(), data = Silicate, 
+#                   mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+#                  method = mixed(20, 200),
+#                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# summary(siSEPm1)
+# mfv(Silicate$Silicate)
+
+# Intercept model
+siJSUm1 <- gamlss(Silicate ~ 1, family = JSU(), data = Silicate, 
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(siJSUm1)
+
+# Mean only 
+siJSUm2 <- gamlss(Silicate ~ Date, family = JSU(), data = Silicate, 
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(siJSUm2)
+
+# Mean sigma and nu changing through time
+siJSUm3 <- gamlss(Silicate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = JSU(), data = Silicate, 
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(siJSUm3)
+#==========================================================================================
 
 
 
