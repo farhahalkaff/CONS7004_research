@@ -1315,7 +1315,7 @@ ggplot(dplyr::filter(Silicate, year(Date) == 1972),
   geom_line(color = "black")
 
 # rescale 
-Silicate$y_rescaled <- Silicate$Silicate + 100
+Silicate$y_rescaled <- Silicate$Silicate + 10
 
 ### CHECK DISTRIBUTION ###
 
@@ -1425,7 +1425,7 @@ summary(siJSUm1)
 
 # Mean only 
 siJSUm2 <- gamlss(Silicate ~ Date, family = JSU(), data = Silicate, 
-                  method = mixed(5, 200),
+                  method = mixed(10, 200),
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(siJSUm2)
 
@@ -1436,7 +1436,60 @@ siJSUm3 <- gamlss(Silicate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = J
 summary(siJSUm3)
 #==========================================================================================
 
+############################################ PDF
 
+# function for pdf
+pdf_SST_at_date <- function(siJSUm1, Silicate, date_str, x = NULL, n = 200,
+                            time_var = "Date", date_var = "Date") {
+  # 1. Find the row in df matching the date of interest
+  t_val <- Silicate[[time_var]][as.Date(Silicate[[date_var]]) == as.Date(date_str)]
+  if (length(t_val) == 0) stop("Date not found in data frame.")
+  
+  # 2. Build newdata with the correct covariate
+  newdat <- data.frame(setNames(list(t_val), time_var))
+  
+  # 3. Predict distribution parameters on natural scale
+  mu    <- predict(siJSUm1, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(siJSUm1, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(siJSUm1, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(siJSUm1, "tau",   newdata = newdat, type = "response")
+  
+  # 4. Create x grid if none supplied
+  if (is.null(x)) {
+    x <- seq(min(siJSUm1$y, na.rm = TRUE),
+             max(siJSUm1$y, na.rm = TRUE),
+             length.out = n)
+  }
+  
+  # 5. Evaluate PDF
+  dens <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
+  
+  list(x = x, density = dens,
+       params = c(mu = mu, sigma = sigma, nu = nu, tau = tau))
+}
+
+# get the pdf and param for three dates
+res1 <- pdf_SST_at_date(siJSUm1, Silicate, "1966-09-23",
+                        time_var = "Date", date_var = "Date")
+res2 <- pdf_SST_at_date(siJSUm1, Silicate, "1980-09-23",
+                        time_var = "Date", date_var = "Date")
+res3 <- pdf_SST_at_date(siJSUm1, Silicate, "1992-09-23",
+                        time_var = "Date", date_var = "Date")
+
+# plot all three dates 
+par(mfrow = c(1, 3))
+plot(res1$x, res1$density, type = "l", ylim=c(0,0.25)) # 0.13 for m1 
+plot(res2$x, res2$density, type = "l", ylim=c(0,0.25)) # 0.17 for m2
+plot(res3$x, res3$density, type = "l", ylim=c(0,0.25)) # 0.25 for m3
+par(mfrow = c(1, 1)) # reset
+
+# parameters for the three dates
+res1$params
+res2$params
+res3$params
+
+
+#######################################################
 
 #======================
 # SEASONALITY
