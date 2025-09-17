@@ -242,29 +242,6 @@ plot(x, pdf, type = "l")
 
 
 
-#============================================================================================
-# Intercept model 
-niSSTm <- gamlss(Nitrate ~ 1, family = SST(), data = Nitrate,
-                 mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
-                 method = mixed(10,200),
-                 control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
-summary(niSSTm)
-
-# Only mean changing through time linearly 
-niSSTm2 <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate,
-                 #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
-                 method = mixed(10,200),
-                 control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
-summary(niSSTm2)
-
-# mean, sigma and nu changing through time linearly 
-niSSTm3 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
-                  #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
-                  method = mixed(10,200),
-                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
-summary(niSSTm3)
-#============================================================================================
-
 
 
 ### DIFFERENT FAMILY MODELS ###
@@ -356,6 +333,37 @@ print(param_summary)
 #############
 
 
+#============================================================================================
+# Intercept model 
+niSSTm <- gamlss(Nitrate ~ 1, family = SST(), data = Nitrate,
+                 mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                 method = mixed(10,200),
+                 control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm)
+
+# Only mean changing through time linearly 
+niSSTm2 <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate,
+                  #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                  method = mixed(10,200),
+                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm2)
+
+# mean, sigma and nu changing through time linearly 
+niSSTm3 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
+                  #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                  method = mixed(10,200),
+                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm3)
+
+# mean, sigma and nu and tau changing through time linearly 
+# niSSTm4 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), data = Nitrate,
+#                   mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+#                   method = mixed(10,200),
+#                   control = gamlss.control(n.cyc = 50, c.crit = 0.01, trace = TRUE))
+# summary(niSSTm4)
+#============================================================================================
+
+
 ################################################################### PDF 
 
 # scale by df and center the mean
@@ -435,7 +443,7 @@ res3 <- pdf_SST_at_date(niSSTm3, Nitrate, "1992-09-23",
 par(mfrow = c(1, 3))
 plot(res1$x, res1$density, type = "l", ylim=c(0,0.08))
 plot(res2$x, res2$density, type = "l", ylim=c(0,0.08))
-plot(res3$x, res3$density, type = "l", ylim=c(0,0.08))
+plot(res3$x, res3$density, type = "l", ylim=c(0,0.08)) # 0.08 for m3
 par(mfrow = c(1, 1)) # reset
 
 # parameters for the three dates
@@ -469,6 +477,28 @@ exp((0.765*1.679) + 0.299)
 exp(0.765*2.2234) + 2
 # tau exp before 
 (exp(2.2234) + 2)*0.765
+
+###################################################################
+
+
+################################################## Moment bucket 
+# intercept model 
+moment_bucket(niSSTm) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean only 
+moment_bucket(niSSTm2) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean, sigma and nu changing through time
+moment_bucket(niSSTm3) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
 
 ###################################################################
 
