@@ -441,8 +441,8 @@ res3 <- pdf_SST_at_date(niSSTm3, Nitrate, "1992-09-23",
 
 # plot all three dates 
 par(mfrow = c(1, 3))
-plot(res1$x, res1$density, type = "l", ylim=c(0,0.08))
-plot(res2$x, res2$density, type = "l", ylim=c(0,0.08))
+plot(res1$x, res1$density, type = "l", ylim=c(0,0.08)) 
+plot(res2$x, res2$density, type = "l", ylim=c(0,0.08)) # 0.05 for m1 and m2
 plot(res3$x, res3$density, type = "l", ylim=c(0,0.08)) # 0.08 for m3
 par(mfrow = c(1, 1)) # reset
 
@@ -681,6 +681,8 @@ ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
               color = "steelblue", linewidth = 1) + #mean only
   geom_abline(intercept = phJSUm3$mu.coefficients[1], slope = phJSUm3$mu.coefficients[2],
               color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
+  geom_abline(intercept = phJSUm4$mu.coefficients[1], slope = phJSUm4$mu.coefficients[2],
+              color = "darkred", linewidth = 1) + # mean sigma nu and tau changing through time
   geom_hline(yintercept = 0.75230, linetype = "dashed", color = "black") + 
   labs(x = "Time", y = "Phosphate (µmol/l)") +
   theme_minimal()
@@ -770,13 +772,19 @@ phJSUm3 <- gamlss(Phosphate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = 
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(phJSUm3)
 
+# mean sigma nu and tau changing through time
+phJSUm4 <- gamlss(Phosphate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = JSU(), data = Phosphate,
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(phJSUm4)
+
 #========================================================================================
 
 
 ############################################ PDF
 
 # function for pdf
-pdf_SST_at_date <- function(phJSUm3, Phosphate, date_str, x = NULL, n = 200,
+pdf_SST_at_date <- function(phJSUm4, Phosphate, date_str, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
   t_val <- Phosphate[[time_var]][as.Date(Phosphate[[date_var]]) == as.Date(date_str)]
@@ -786,15 +794,15 @@ pdf_SST_at_date <- function(phJSUm3, Phosphate, date_str, x = NULL, n = 200,
   newdat <- data.frame(setNames(list(t_val), time_var))
   
   # 3. Predict distribution parameters on natural scale
-  mu    <- predict(phJSUm3, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(phJSUm3, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(phJSUm3, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(phJSUm3, "tau",   newdata = newdat, type = "response")
+  mu    <- predict(phJSUm4, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(phJSUm4, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(phJSUm4, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(phJSUm4, "tau",   newdata = newdat, type = "response")
   
   # 4. Create x grid if none supplied
   if (is.null(x)) {
-    x <- seq(min(phJSUm3$y, na.rm = TRUE),
-             max(phJSUm3$y, na.rm = TRUE),
+    x <- seq(min(phJSUm4$y, na.rm = TRUE),
+             max(phJSUm4$y, na.rm = TRUE),
              length.out = n)
   }
   
@@ -806,18 +814,18 @@ pdf_SST_at_date <- function(phJSUm3, Phosphate, date_str, x = NULL, n = 200,
 }
 
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(phJSUm3, Phosphate, "1963-09-23",
+res1 <- pdf_SST_at_date(phJSUm4, Phosphate, "1963-09-23",
                         time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(phJSUm3, Phosphate, "1980-09-23",
+res2 <- pdf_SST_at_date(phJSUm4, Phosphate, "1980-09-23",
                         time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(phJSUm3, Phosphate, "1992-09-23",
+res3 <- pdf_SST_at_date(phJSUm4, Phosphate, "1992-09-23",
                         time_var = "Date", date_var = "Date")
 
 # plot all three dates 
 par(mfrow = c(1, 3))
-plot(res1$x, res1$density, type = "l", ylim=c(0,1.55)) # 1.5 for m1 and m2
-plot(res2$x, res2$density, type = "l", ylim=c(0,1.55)) # 1.55 for m3
-plot(res3$x, res3$density, type = "l", ylim=c(0,1.55))
+plot(res1$x, res1$density, type = "l", ylim=c(0,2.3)) # 1.5 for m1 and m2
+plot(res2$x, res2$density, type = "l", ylim=c(0,2.3)) # 1.55 for m3
+plot(res3$x, res3$density, type = "l", ylim=c(0,2.3)) # 2.3 for m4
 par(mfrow = c(1, 1)) # reset
 
 # parameters for the three dates
