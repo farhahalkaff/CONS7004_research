@@ -851,7 +851,13 @@ moment_bucket(phJSUm2) +
   theme(legend.position = "none")
 
 # mean, sigma and nu changing through time
-moment_bucket(niSSTm3) + 
+moment_bucket(phJSUm3) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+# mean, sigma and nu changing through time
+moment_bucket(phJSUm4) + 
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
@@ -972,6 +978,12 @@ niiSSTm3 <- gamlss(Nitrite ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = S
                   method = mixed(5, 200),
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niiSSTm3)
+
+# Mean, sigma nu and tau changing through time
+niiSSTm4 <- gamlss(Nitrite ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), data = Nitrite, 
+                   method = mixed(5, 200),
+                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(niiSSTm4)
 #=====================================================================================
 
 
@@ -993,7 +1005,7 @@ niiNOm <- gamlss(Nitrite ~ Date, family = NO(), data = Nitrite,
 ############################################ PDF
 
 # function for pdf
-pdf_SST_at_date <- function(niiSSTm3, Nitrite, date_str, x = NULL, n = 200,
+pdf_SST_at_date <- function(niiSSTm4, Nitrite, date_str, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
   t_val <- Nitrite[[time_var]][as.Date(Nitrite[[date_var]]) == as.Date(date_str)]
@@ -1003,15 +1015,15 @@ pdf_SST_at_date <- function(niiSSTm3, Nitrite, date_str, x = NULL, n = 200,
   newdat <- data.frame(setNames(list(t_val), time_var))
   
   # 3. Predict distribution parameters on natural scale
-  mu    <- predict(niiSSTm3, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(niiSSTm3, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(niiSSTm3, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(niiSSTm3, "tau",   newdata = newdat, type = "response")
+  mu    <- predict(niiSSTm4, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(niiSSTm4, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(niiSSTm4, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(niiSSTm4, "tau",   newdata = newdat, type = "response")
   
   # 4. Create x grid if none supplied
   if (is.null(x)) {
-    x <- seq(min(niiSSTm3$y, na.rm = TRUE),
-             max(niiSSTm3$y, na.rm = TRUE),
+    x <- seq(min(niiSSTm4$y, na.rm = TRUE),
+             max(niiSSTm4$y, na.rm = TRUE),
              length.out = n)
   }
   
@@ -1023,17 +1035,17 @@ pdf_SST_at_date <- function(niiSSTm3, Nitrite, date_str, x = NULL, n = 200,
 }
 
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(niiSSTm3, Nitrite, "1963-09-23",
+res1 <- pdf_SST_at_date(niiSSTm4, Nitrite, "1963-09-23",
                         time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(niiSSTm3, Nitrite, "1980-09-23",
+res2 <- pdf_SST_at_date(niiSSTm4, Nitrite, "1980-09-23",
                         time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(niiSSTm3, Nitrite, "1992-09-23",
+res3 <- pdf_SST_at_date(niiSSTm4, Nitrite, "1992-09-23",
                         time_var = "Date", date_var = "Date")
 
 # plot all three dates 
 par(mfrow = c(1, 3))
 plot(res1$x, res1$density, type = "l", ylim=c(0,1.2))
-plot(res2$x, res2$density, type = "l", ylim=c(0,1.2))
+plot(res2$x, res2$density, type = "l", ylim=c(0,1.2)) # 1.2 for all
 plot(res3$x, res3$density, type = "l", ylim=c(0,1.2))
 par(mfrow = c(1, 1)) # reset
 
@@ -1239,13 +1251,19 @@ DINSSTm3 <- gamlss(DIN ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST()
                   method = mixed(5, 200),
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(DINSSTm3)
+
+# Mean, sigma nu and tau changing through time
+DINSSTm4 <- gamlss(DIN ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), data = DIN, 
+                   method = mixed(5, 200),
+                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(DINSSTm4)
 #====================================================================================
 
 
 ############################################ PDF
 
 # function for pdf
-pdf_SST_at_date <- function(DINSSTm3, DIN, date_str, x = NULL, n = 200,
+pdf_SST_at_date <- function(DINSSTm4, DIN, date_str, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
   t_val <- DIN[[time_var]][as.Date(DIN[[date_var]]) == as.Date(date_str)]
@@ -1255,15 +1273,15 @@ pdf_SST_at_date <- function(DINSSTm3, DIN, date_str, x = NULL, n = 200,
   newdat <- data.frame(setNames(list(t_val), time_var))
   
   # 3. Predict distribution parameters on natural scale
-  mu    <- predict(DINSSTm3, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(DINSSTm3, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(DINSSTm3, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(DINSSTm3, "tau",   newdata = newdat, type = "response")
+  mu    <- predict(DINSSTm4, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(DINSSTm4, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(DINSSTm4, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(DINSSTm4, "tau",   newdata = newdat, type = "response")
   
   # 4. Create x grid if none supplied
   if (is.null(x)) {
-    x <- seq(min(DINSSTm3$y, na.rm = TRUE),
-             max(DINSSTm3$y, na.rm = TRUE),
+    x <- seq(min(DINSSTm4$y, na.rm = TRUE),
+             max(DINSSTm4$y, na.rm = TRUE),
              length.out = n)
   }
   
@@ -1275,18 +1293,18 @@ pdf_SST_at_date <- function(DINSSTm3, DIN, date_str, x = NULL, n = 200,
 }
 
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(DINSSTm3, DIN, "1963-09-23",
+res1 <- pdf_SST_at_date(DINSSTm4, DIN, "1963-09-23",
                         time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(DINSSTm3, DIN, "1980-09-23",
+res2 <- pdf_SST_at_date(DINSSTm4, DIN, "1980-09-23",
                         time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(DINSSTm3, DIN, "1992-09-23",
+res3 <- pdf_SST_at_date(DINSSTm4, DIN, "1992-09-23",
                         time_var = "Date", date_var = "Date")
 
 # plot all three dates 
 par(mfrow = c(1, 3))
 plot(res1$x, res1$density, type = "l", ylim=c(0,0.07)) 
 plot(res2$x, res2$density, type = "l", ylim=c(0,0.07)) # 0.04 for m1 and m2
-plot(res3$x, res3$density, type = "l", ylim=c(0,0.07)) # 0.07 for m3
+plot(res3$x, res3$density, type = "l", ylim=c(0,0.07)) # 0.07 for m3 and m4
 par(mfrow = c(1, 1)) # reset
 
 # parameters for the three dates
@@ -1751,13 +1769,19 @@ amSSTm3 <- gamlss(Ammonium ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = S
                  method = mixed(5, 200),
                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(amSSTm3)
+
+# mean, sigma nu and tau as a function of time 
+amSSTm4 <- gamlss(Ammonium ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = SST(), data = Ammonium, 
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(amSSTm4)
 #=========================================================================================
 
 
 ############################################ PDF
 
 # function for pdf
-pdf_SST_at_date <- function(amSSTm3, Ammonium, date_str, x = NULL, n = 200,
+pdf_SST_at_date <- function(amSSTm4, Ammonium, date_str, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
   t_val <- Ammonium[[time_var]][as.Date(Ammonium[[date_var]]) == as.Date(date_str)]
@@ -1767,15 +1791,15 @@ pdf_SST_at_date <- function(amSSTm3, Ammonium, date_str, x = NULL, n = 200,
   newdat <- data.frame(setNames(list(t_val), time_var))
   
   # 3. Predict distribution parameters on natural scale
-  mu    <- predict(amSSTm3, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(amSSTm3, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(amSSTm3, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(amSSTm3, "tau",   newdata = newdat, type = "response")
+  mu    <- predict(amSSTm4, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(amSSTm4, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(amSSTm4, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(amSSTm4, "tau",   newdata = newdat, type = "response")
   
   # 4. Create x grid if none supplied
   if (is.null(x)) {
-    x <- seq(min(amSSTm3$y, na.rm = TRUE),
-             max(amSSTm3$y, na.rm = TRUE),
+    x <- seq(min(amSSTm4$y, na.rm = TRUE),
+             max(amSSTm4$y, na.rm = TRUE),
              length.out = n)
   }
   
@@ -1787,11 +1811,11 @@ pdf_SST_at_date <- function(amSSTm3, Ammonium, date_str, x = NULL, n = 200,
 }
 
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(amSSTm3, Ammonium, "1963-09-23",
+res1 <- pdf_SST_at_date(amSSTm4, Ammonium, "1963-09-23",
                         time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(amSSTm3, Ammonium, "1980-09-23",
+res2 <- pdf_SST_at_date(amSSTm4, Ammonium, "1980-09-23",
                         time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(amSSTm3, Ammonium, "1992-09-23",
+res3 <- pdf_SST_at_date(amSSTm4, Ammonium, "1992-09-23",
                         time_var = "Date", date_var = "Date")
 
 # plot all three dates 
