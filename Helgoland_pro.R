@@ -203,6 +203,7 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   theme_minimal()
 
 
+
 # plot for a specific year 
 ggplot(dplyr::filter(Nitrate, year(Date) == 1994),
        aes(Date, Nitrate)) +
@@ -402,7 +403,7 @@ summary(niSSTm_nu)
 
 
 # function for pdf
-pdf_SST_at_date <- function(niSSTm3, Nitrate, date_str, x = NULL, n = 200,
+pdf_SST_at_date <- function(model, Nitrate, date_str, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Find the row in df matching the date of interest
   t_val <- Nitrate[[time_var]][as.Date(Nitrate[[date_var]]) == as.Date(date_str)]
@@ -412,15 +413,15 @@ pdf_SST_at_date <- function(niSSTm3, Nitrate, date_str, x = NULL, n = 200,
   newdat <- data.frame(setNames(list(t_val), time_var))
   
   # 3. Predict distribution parameters on natural scale
-  mu    <- predict(niSSTm3, "mu",    newdata = newdat, type = "response")
-  sigma <- predict(niSSTm3, "sigma", newdata = newdat, type = "response")
-  nu    <- predict(niSSTm3, "nu",    newdata = newdat, type = "response")
-  tau   <- predict(niSSTm3, "tau",   newdata = newdat, type = "response")
+  mu    <- predict(model, "mu",    newdata = newdat, type = "response")
+  sigma <- predict(model, "sigma", newdata = newdat, type = "response")
+  nu    <- predict(model, "nu",    newdata = newdat, type = "response")
+  tau   <- predict(model, "tau",   newdata = newdat, type = "response")
   
   # 4. Create x grid if none supplied
   if (is.null(x)) {
-    x <- seq(min(niSSTm3$y, na.rm = TRUE),
-             max(niSSTm3$y, na.rm = TRUE),
+    x <- seq(min(model$y, na.rm = TRUE),
+             max(model$y, na.rm = TRUE),
              length.out = n)
   }
   
@@ -432,24 +433,61 @@ pdf_SST_at_date <- function(niSSTm3, Nitrate, date_str, x = NULL, n = 200,
 }
 
 # get the pdf and param for three dates
-res1 <- pdf_SST_at_date(niSSTm3, Nitrate, "1963-09-23",
+# m1 (intercept model)
+resm1 <- pdf_SST_at_date(niSSTm, Nitrate, "1963-09-23",
                        time_var = "Date", date_var = "Date")
-res2 <- pdf_SST_at_date(niSSTm3, Nitrate, "1980-09-23",
+resm1b <- pdf_SST_at_date(niSSTm, Nitrate, "1980-09-23",
                         time_var = "Date", date_var = "Date")
-res3 <- pdf_SST_at_date(niSSTm3, Nitrate, "1992-09-23",
+resm1c <- pdf_SST_at_date(niSSTm, Nitrate, "1992-09-23",
                         time_var = "Date", date_var = "Date")
+# m2 (mean only)
+resm2 <- pdf_SST_at_date(niSSTm2, Nitrate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm2b <- pdf_SST_at_date(niSSTm2, Nitrate, "1980-09-23",
+                         time_var = "Date", date_var = "Date")
+resm2c <- pdf_SST_at_date(niSSTm2, Nitrate, "1992-09-23",
+                         time_var = "Date", date_var = "Date")
+# m3 (mean sigma and nu)
+resm3 <- pdf_SST_at_date(niSSTm3, Nitrate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm3b <- pdf_SST_at_date(niSSTm3, Nitrate, "1980-09-23",
+                         time_var = "Date", date_var = "Date")
+resm3c <- pdf_SST_at_date(niSSTm3, Nitrate, "1992-09-23",
+                         time_var = "Date", date_var = "Date")
 
-# plot all three dates 
-par(mfrow = c(1, 3))
-plot(res1$x, res1$density, type = "l", ylim=c(0,0.08)) 
-plot(res2$x, res2$density, type = "l", ylim=c(0,0.08)) # 0.05 for m1 and m2
-plot(res3$x, res3$density, type = "l", ylim=c(0,0.08)) # 0.08 for m3
+
+#### plot all three dates ###
+
+par(mfrow = c(3, 3))
+# m1 (intercept model)
+plot(resm1$x, resm1$density, type = "l", ylim=c(0,0.08)) 
+plot(resm1b$x, resm1b$density, type = "l", ylim=c(0,0.08)) # 0.05 for m1 
+plot(resm1c$x, resm1c$density, type = "l", ylim=c(0,0.08)) 
+# m2 (mean only)
+plot(resm2$x, resm1$density, type = "l", ylim=c(0,0.08)) 
+plot(resm2b$x, resm2b$density, type = "l", ylim=c(0,0.08)) # 0.05 for m2
+plot(resm2c$x, resm2c$density, type = "l", ylim=c(0,0.08)) 
+# m3 (mean sigma and nu)
+plot(resm3$x, resm3$density, type = "l", ylim=c(0,0.08)) 
+plot(resm3b$x, resm3b$density, type = "l", ylim=c(0,0.08)) 
+plot(resm3c$x, resm3c$density, type = "l", ylim=c(0,0.08)) # 0.08 for m3
 par(mfrow = c(1, 1)) # reset
 
-# parameters for the three dates
-res1$params
-res2$params
-res3$params
+### parameters for the three dates ###
+
+# m1 (intercept model)
+resm1$params
+resm1b$params
+resm1c$params
+# m2 (mean only)
+resm2$params
+resm2b$params
+resm2c$params
+# m3 (mean sigma and nu)
+resm3$params
+resm3b$params
+resm3c$params
+
 
 
 # manually
