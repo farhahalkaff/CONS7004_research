@@ -203,7 +203,6 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   theme_minimal()
 
 
-
 # plot for a specific year 
 ggplot(dplyr::filter(Nitrate, year(Date) == 1994),
        aes(Date, Nitrate)) +
@@ -458,13 +457,14 @@ resm3c <- pdf_SST_at_date(niSSTm3, Nitrate, "1992-09-23",
 
 #### plot all three dates ###
 
+# separetly 
 par(mfrow = c(3, 3))
 # m1 (intercept model)
 plot(resm1$x, resm1$density, type = "l", ylim=c(0,0.08)) 
 plot(resm1b$x, resm1b$density, type = "l", ylim=c(0,0.08)) # 0.05 for m1 
 plot(resm1c$x, resm1c$density, type = "l", ylim=c(0,0.08)) 
 # m2 (mean only)
-plot(resm2$x, resm1$density, type = "l", ylim=c(0,0.08)) 
+plot(resm2$x, resm2$density, type = "l", ylim=c(0,0.08)) 
 plot(resm2b$x, resm2b$density, type = "l", ylim=c(0,0.08)) # 0.05 for m2
 plot(resm2c$x, resm2c$density, type = "l", ylim=c(0,0.08)) 
 # m3 (mean sigma and nu)
@@ -472,6 +472,33 @@ plot(resm3$x, resm3$density, type = "l", ylim=c(0,0.08))
 plot(resm3b$x, resm3b$density, type = "l", ylim=c(0,0.08)) 
 plot(resm3c$x, resm3c$density, type = "l", ylim=c(0,0.08)) # 0.08 for m3
 par(mfrow = c(1, 1)) # reset
+#dev.off()
+
+par(mfrow = c(3, 1)) 
+# plot the models together for date 1: 1963-09-23
+plot(resm1$x, resm1$density, col = "darkred", type = "l", lwd = 2, ylim=c(0,0.08),
+     ylab = "Density", xlab = "Value",
+     main = "1963") # intercept model
+lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3$x, resm3$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
+       col = c("darkred", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 2: 1980-09-23
+plot(resm1b$x, resm1b$density, col = "darkred", type = "l", lwd = 2, ylim=c(0,0.08),
+     ylab = "Density", xlab = "Value",
+     main = "1980") # intercept model
+lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3b$x, resm3b$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
+       col = c("darkred", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
+# plot the models together for date 3: 1992-09-23
+plot(resm1c$x, resm1c$density, col = "darkred", type = "l", lwd = 2, ylim=c(0,0.08),
+     ylab = "Density", xlab = "Value",
+     main = "1992") # intercept model
+lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 2) # mean only model
+lines(resm3c$x, resm3c$density, col = "grey",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
+       col = c("darkred", "steelblue", "grey"), cex = 0.7, lty = c(1,2,1))
 
 ### parameters for the three dates ###
 
@@ -487,6 +514,11 @@ resm2c$params
 resm3$params
 resm3b$params
 resm3c$params
+
+
+ggplot(Nitrate, aes(x = resm1$x, y = resm1$density)) +
+  labs(x = "Value", y = "Density") +
+  theme_minimal()
 
 
 
