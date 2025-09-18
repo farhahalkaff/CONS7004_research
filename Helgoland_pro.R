@@ -380,9 +380,11 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
               #color = "darkolivegreen", linewidth = 1) + # mean, sigma and nu as function of time
   #geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "salmon") +
   geom_hline(yintercept = 16.718, linetype = "dashed", color = "black") + # intercept mean
-  geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
-  geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
-  geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed", color = "darkred") +
+  geom_vline(xintercept = as.Date("1963-01-05"), linetype = "dashed", color = "darkred") + 
+  geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "burlywood") + 
+  geom_vline(xintercept = as.Date("1963-12-23"), linetype = "dashed", color = "darkred") + 
+  geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "burlywood") + 
+  geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed", color = "burlywood") +
   labs(x = "Time", y = "Nitrate (µmol/l)") +
   theme_minimal()
 
@@ -577,8 +579,156 @@ resm4$params #1963
 resm4b$params #1980
 resm4c$params #1994
 
+################################################################### Specific year PDF
+
+Nitrate_1963 <- Nitrate %>%
+  filter(year(Date) == 1963)
+
+Nitrate_1980 <- Nitrate %>%
+  filter(year(Date) == 1980)
+
+Nitrate_1994 <- Nitrate %>%
+  filter(year(Date) == 1994)
 
 
+ggplot(Nitrate_1994, aes(y = Nitrate)) +
+  geom_density(linewidth = 0.8) +
+  labs(
+    x = "Density",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14) +
+  coord_flip()
+
+
+
+
+## subset nitrate based on years 
+Nitrate_1963 <- subset(Nitrate, year == 1963)
+Nitrate_1980 <- subset(Nitrate, year == 1980)
+Nitrate_1994 <- subset(Nitrate, year == 1994)
+
+# new data for the years 
+newdat1 <- data.frame(Date = Nitrate_1963$Date)
+newdat2 <- data.frame(Date = Nitrate_1980$Date)
+newdat3 <- data.frame(Date = Nitrate_1994$Date)
+
+
+# fit models into 1963
+mu    <- predict(niSSTm, "mu",    newdata = newdat1, type = "response")
+sigma <- predict(niSSTm, "sigma", newdata = newdat1, type = "response")
+nu    <- predict(niSSTm, "nu",    newdata = newdat1, type = "response")
+tau   <- predict(niSSTm, "tau",   newdata = newdat1, type = "response")
+# fit models into 1980
+mu    <- predict(niSSTm, "mu",    newdata = newdat2, type = "response")
+sigma <- predict(niSSTm, "sigma", newdata = newdat2, type = "response")
+nu    <- predict(niSSTm, "nu",    newdata = newdat2, type = "response")
+tau   <- predict(niSSTm, "tau",   newdata = newdat2, type = "response")
+# fit models into 1994
+mu    <- predict(niSSTm, "mu",    newdata = newdat3, type = "response")
+sigma <- predict(niSSTm, "sigma", newdata = newdat3, type = "response")
+nu    <- predict(niSSTm, "nu",    newdata = newdat3, type = "response")
+tau   <- predict(niSSTm, "tau",   newdata = newdat3, type = "response")
+
+
+# x-grid over observed response range (change models)
+x <- seq(min(niSSTm$y, na.rm = TRUE), max(niSSTm$y, na.rm = TRUE), length.out = 200)
+
+
+# average params within the year to get one representative PDF
+ni1963pdf <- dSST(x, mu = mean(mu), sigma = mean(sigma), nu = mean(nu), tau = mean(tau))
+
+plot(x, pdf_ni1963, type = "l")
+
+
+
+pdf_SST_at_year <- function(model, data, year, x = NULL, n = 200,
+                            time_var = "Date", date_var = "Date") {
+  # 1. Filter dates for the specified year
+  all_dates <- unique(data[[date_var]][format(as.Date(data[[date_var]]), "%Y") == as.character(year)])
+  if (length(all_dates) == 0) stop("Year not found in data frame.")
+  
+  # 2. Create common x grid
+  if (is.null(x)) {
+    x <- seq(min(model$y, na.rm = TRUE),
+             max(model$y, na.rm = TRUE),
+             length.out = n)
+  }
+  
+  # 3. For each date, calculate params and PDF
+  results <- lapply(all_dates, function(date_str) {
+    t_val <- data[[time_var]][as.Date(data[[date_var]]) == as.Date(date_str)]
+    if (length(t_val) == 0) return(NULL)
+    newdat <- data.frame(setNames(list(t_val), time_var))
+    mu    <- predict(model, "mu",    newdata = newdat, type = "response")
+    sigma <- predict(model, "sigma", newdata = newdat, type = "response")
+    nu    <- predict(model, "nu",    newdata = newdat, type = "response")
+    tau   <- predict(model, "tau",   newdata = newdat, type = "response")
+    dens  <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
+    list(params = c(mu = mu, sigma = sigma, nu = nu, tau = tau), density = dens)
+  })
+  
+  # Remove NULLs if any
+  results <- Filter(Negate(is.null), results)
+  
+  # 4. Average parameters and density
+  params_mat <- do.call(rbind, lapply(results, function(res) res$params))
+  avg_params <- colMeans(params_mat, na.rm = TRUE)
+  
+  dens_mat <- do.call(rbind, lapply(results, function(res) res$density))
+  avg_density <- colMeans(dens_mat, na.rm = TRUE)
+  
+  list(
+    x = x,
+    avg_density = avg_density,
+    avg_params = avg_params,
+    all_params = params_mat
+  )
+}
+
+# intercept model
+ni1963_1 <- pdf_SST_at_year(niSSTm, Nitrate, "1963", time_var = "Date", date_var = "Date")
+ni1980_1 <- pdf_SST_at_year(niSSTm, Nitrate, "1980", time_var = "Date", date_var = "Date")
+ni1994_1 <- pdf_SST_at_year(niSSTm, Nitrate, "1994", time_var = "Date", date_var = "Date")
+# mean only model
+ni1963_2 <- pdf_SST_at_year(niSSTm2, Nitrate, "1963", time_var = "Date", date_var = "Date")
+ni1980_2 <- pdf_SST_at_year(niSSTm2, Nitrate, "1980", time_var = "Date", date_var = "Date")
+ni1994_2 <- pdf_SST_at_year(niSSTm2, Nitrate, "1994", time_var = "Date", date_var = "Date")
+# mean only model
+ni1963_3 <- pdf_SST_at_year(niSSTm3, Nitrate, "1963", time_var = "Date", date_var = "Date")
+ni1980_3 <- pdf_SST_at_year(niSSTm3, Nitrate, "1980", time_var = "Date", date_var = "Date")
+ni1994_3 <- pdf_SST_at_year(niSSTm3, Nitrate, "1994", time_var = "Date", date_var = "Date")
+
+
+par(mfrow = c(1, 3)) 
+# plot the models together for year 1993
+plot(ni1963_1$x, ni1963_1$avg_density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,0.08),
+     ylab = "Density", xlab = "Value",
+     main = "1963") # intercept model
+lines(ni1963_2$x, ni1963_2$avg_density, col = "steelblue", lwd = 2, lty = 1) # mean only model
+lines(ni1963_3$x, ni1963_3$avg_density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
+       col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
+# plot the models together for year 1980
+plot(ni1980_1$x, ni1980_1$avg_density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,0.08),
+     ylab = "Density", xlab = "Value",
+     main = "1980") # intercept model
+lines(ni1980_2$x, ni1980_2$avg_density, col = "steelblue", lwd = 2, lty = 1) # mean only model
+lines(ni1980_3$x, ni1980_3$avg_density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
+       col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
+# plot the models together for year 1994
+plot(ni1994_1$x, ni1994_1$avg_density, col = "black", type = "l", lwd = 2, lty =2, ylim=c(0,0.08),
+     ylab = "Density", xlab = "Value",
+     main = "1994") # intercept model
+lines(ni1994_2$x, ni1994_2$avg_density, col = "steelblue", lwd = 2, lty = 1) # mean only model
+lines(ni1994_3$x, ni1994_3$avg_density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
+       col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
+par(mfrow = c(1,1)) # reset
+
+
+###################################################################
 
 # manually
 x <- seq(min(niSSTm_nu$y, na.rm = TRUE),
@@ -915,6 +1065,12 @@ phJSUpolym1 <- gamlss(Phosphate ~ poly(Date,2), sigma.fo = ~ poly(Date,2), nu.fo
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(phJSUpolym1)
 
+
+# only mean poly
+phJSUpolym2 <- gamlss(Phosphate ~ poly(Date,2), sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, family = JSU(), data = Phosphate,
+                      method = mixed(5, 200),
+                      control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(phJSUpolym2)
 #========================================================================================
 
 # plot that sucka
@@ -959,11 +1115,11 @@ resm3b <- pdf_SST_at_date(phJSUm4, Phosphate, "1980-09-23",
 resm3c <- pdf_SST_at_date(phJSUm4, Phosphate, "1994-04-13",
                           time_var = "Date", date_var = "Date")
 # poly (mean sigma nu and tau)
-resm4 <- pdf_SST_at_date(phJSUpolym1, Phosphate, "1963-09-23",
+resm4 <- pdf_SST_at_date(phJSUpolym2, Phosphate, "1963-09-23",
                          time_var = "Date", date_var = "Date")
-resm4b <- pdf_SST_at_date(phJSUpolym1, Phosphate, "1980-09-23",
+resm4b <- pdf_SST_at_date(phJSUpolym2, Phosphate, "1980-09-23",
                           time_var = "Date", date_var = "Date")
-resm4c <- pdf_SST_at_date(phJSUpolym1, Phosphate, "1994-04-13",
+resm4c <- pdf_SST_at_date(phJSUpolym2, Phosphate, "1994-04-13",
                           time_var = "Date", date_var = "Date")
 
 
@@ -1049,7 +1205,7 @@ moment_bucket(phJSUm3) +
   theme(legend.position = "none")
 
 # mean, sigma and nu changing through time
-moment_bucket(phJSUm4) + 
+moment_bucket(phJSUpolym1) + 
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
@@ -1194,6 +1350,7 @@ ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
               color = "steelblue", linewidth = 1) + # mean only changing through time 
   geom_abline(intercept = niiSSTm4$mu.coefficients[1], slope = niiSSTm4$mu.coefficients[2],
               color = "goldenrod", linewidth = 1) + # mean, sigma and nu changing through time
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "darkolivegreen") +
   geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
   geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
   geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed", color = "darkred") +
