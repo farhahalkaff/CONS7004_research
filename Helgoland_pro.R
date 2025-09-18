@@ -191,7 +191,11 @@ ggplot(df_long, aes(month, z, color = variable, group = variable)) +
 Nitrate <- df %>% filter(!is.na(Nitrate)) %>% 
   select(Date, Nitrate, year)
 
-
+# plot that sucka (intercept model)
+ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
+  geom_line(color = "azure4", na.rm = TRUE) +
+  labs(x = "Time", y = "Nitrate (µmol/l)") +
+  theme_minimal()
 
 # plot for a specific year 
 ggplot(dplyr::filter(Nitrate, year(Date) == 1994),
@@ -212,15 +216,14 @@ hist(Nitrate$Nitrate)
 
 # density plot 
 ggplot(Nitrate, aes(y = Nitrate)) +
-  geom_density(
-    linewidth = 0.8
-  ) +
+  geom_density(linewidth = 0.8) +
   labs(
     x = "Density",
     y = "Value"
   ) +
   theme_minimal(base_size = 14) +
   coord_flip()
+
 
 # PDF
 pdf <- dSST(x, mu = 16.718, sigma = exp(2.75160), 
@@ -345,9 +348,18 @@ niSSTm3 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SS
                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTm3)
 
-
-niNOm1 <- gamlss (Nitrate ~ Date, family = NO(), data = Nitrate, trace = FALSE)
+# normal distribution
+niNOm1 <- gamlss(Nitrate ~ Date, family = NO(), data = Nitrate, trace = FALSE)
 summary(niNOm1)
+
+
+niSSTpoly1 <- gamlss(Nitrate ~ poly(Date, 2), sigma.fo = ~ poly(Date, 2), nu.fo = ~ poly(Date, 2), family = SST(), data = Nitrate,
+                  #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                  method = mixed(10,200),
+                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTpoly1)
+
+
 
 # mean, sigma and nu and tau changing through time linearly 
 # niSSTm4 <- gamlss(Nitrate ~ t_scaled, sigma.fo = ~ t_scaled, nu.fo = ~ t_scaled, tau.fo = ~ t_scaled, family = SST(), data = Nitrate,
@@ -364,8 +376,9 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
               color = "steelblue", linewidth = 1) + # only mean as function of time 
   geom_abline(intercept = niSSTm3$mu.coefficients[1], slope = niSSTm3$mu.coefficients[2], 
               color = "goldenrod", linewidth = 1) + # mean, sigma and nu as function of time
-  geom_abline(intercept = niNOm1$mu.coefficients[1], slope = niNOm1$mu.coefficients[2], 
-              color = "darkolivegreen", linewidth = 1) + # mean, sigma and nu as function of time
+  #geom_abline(intercept = niNOm1$mu.coefficients[1], slope = niNOm1$mu.coefficients[2], 
+              #color = "darkolivegreen", linewidth = 1) + # mean, sigma and nu as function of time
+  #geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "salmon") +
   geom_hline(yintercept = 16.718, linetype = "dashed", color = "black") + # intercept mean
   geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
   geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
@@ -500,6 +513,13 @@ resm4b <- pdf_NO_at_date(niNOm1, Nitrate, "1980-09-23",
                           time_var = "Date", date_var = "Date")
 resm4c <- pdf_NO_at_date(niNOm1, Nitrate, "1994-04-13",
                           time_var = "Date", date_var = "Date")
+# poly (mean)
+resm5 <- pdf_SST_at_date(niSSTpoly1, Nitrate, "1963-09-23",
+                        time_var = "Date", date_var = "Date")
+resm5b <- pdf_SST_at_date(niSSTpoly1, Nitrate, "1980-09-23",
+                         time_var = "Date", date_var = "Date")
+resm5c <- pdf_SST_at_date(niSSTpoly1, Nitrate, "1994-04-13",
+                         time_var = "Date", date_var = "Date")
 
 
 # plot all three dates 
@@ -511,7 +531,8 @@ plot(resm1$x, resm1$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c
      main = "1963-09-23") # intercept model
 lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3$x, resm3$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-lines(resm4$x, resm4$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+#lines(resm4$x, resm4$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+#lines(resm5$x, resm5$density, col = "salmon",lwd = 2, lty = 1) # poly 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
 # plot the models together for date 2: 1980-09-23
@@ -520,7 +541,8 @@ plot(resm1b$x, resm1b$density, col = "black", type = "l", lwd = 2, lty = 2, ylim
      main = "1980-09-03") # intercept model
 lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3b$x, resm3b$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-lines(resm4b$x, resm4b$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+#lines(resm4b$x, resm4b$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+#lines(resm5b$x, resm5b$density, col = "salmon",lwd = 2, lty = 1) # poly 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
 # plot the models together for date 3: 1994-04-13
@@ -529,7 +551,8 @@ plot(resm1c$x, resm1c$density, col = "black", type = "l", lwd = 2, lty =2, ylim=
      main = "1994-04-13") # intercept model
 lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3c$x, resm3c$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-lines(resm4c$x, resm4c$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+#lines(resm4c$x, resm4c$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+#lines(resm5c$x, resm5c$density, col = "salmon",lwd = 2, lty = 1) # poly 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
 par(mfrow = c(1,1)) # reset
@@ -553,6 +576,7 @@ resm3c$params #1994
 resm4$params #1963
 resm4b$params #1980
 resm4c$params #1994
+
 
 
 
@@ -778,6 +802,12 @@ plot_mvgam_series(data = NM$data_train,
 Phosphate <- df %>% filter(!is.na(Phosphate)) %>% 
   select(Date, Phosphate, year)
 
+
+ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
+  geom_line(color = "azure4") +
+  labs(x = "Time", y = "Phosphate (µmol/l)") +
+  theme_minimal()
+
 # plot a for a specific year 
 ggplot(dplyr::filter(Phosphate, year(Date) == 1970),
        aes(Date, Phosphate)) +
@@ -803,6 +833,16 @@ ggplot(Phosphate, aes(y = Phosphate)) +
   ) +
   theme_minimal(base_size = 14) +
   coord_flip()
+
+
+density_estimate <- density(Phosphate$Phosphate)
+
+# Plot the estimated density
+plot(density_estimate, main = "Estimated Probability Density Function",
+     xlab = "Value", ylab = "Density")
+
+
+
 
 
 ### MODELS ###
@@ -869,6 +909,12 @@ phJSUm4 <- gamlss(Phosphate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = 
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(phJSUm4)
 
+# mean sigma nu and tau changing through time with poly
+phJSUpolym1 <- gamlss(Phosphate ~ poly(Date,2), sigma.fo = ~ poly(Date,2), nu.fo = ~ poly(Date,2), tau.fo = ~ poly(Date,2), family = JSU(), data = Phosphate,
+                  method = mixed(5, 200),
+                  control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+summary(phJSUpolym1)
+
 #========================================================================================
 
 # plot that sucka
@@ -880,6 +926,7 @@ ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
   #color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
   geom_abline(intercept = phJSUm4$mu.coefficients[1], slope = phJSUm4$mu.coefficients[2],
               color = "goldenrod", linewidth = 1) + # mean sigma nu and tau changing through time
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "darkolivegreen") + 
   geom_hline(yintercept = 0.75230, linetype = "dashed", color = "black") + 
   geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
   geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
@@ -911,33 +958,44 @@ resm3b <- pdf_SST_at_date(phJSUm4, Phosphate, "1980-09-23",
                           time_var = "Date", date_var = "Date")
 resm3c <- pdf_SST_at_date(phJSUm4, Phosphate, "1994-04-13",
                           time_var = "Date", date_var = "Date")
+# poly (mean sigma nu and tau)
+resm4 <- pdf_SST_at_date(phJSUpolym1, Phosphate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm4b <- pdf_SST_at_date(phJSUpolym1, Phosphate, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm4c <- pdf_SST_at_date(phJSUpolym1, Phosphate, "1994-04-13",
+                          time_var = "Date", date_var = "Date")
+
 
 
 par(mfrow = c(1, 3)) 
 # plot the models together for date 1: 1963-09-23
-plot(resm1$x, resm1$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,2.3),
+plot(resm1$x, resm1$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,2.5),
      ylab = "Density", xlab = "Value",
      main = "1963") # intercept model
 lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3$x, resm3$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
-       col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
+lines(resm4$x, resm4$density, col = "darkolivegreen",lwd = 2, lty = 1) # poly
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model", "poly"),
+       col = c("black", "steelblue", "goldenrod", "darkolivegreen"), cex = 0.5, lty = c(2,1,1,1), bty = "n")
 # plot the models together for date 2: 1980-09-23
 plot(resm1b$x, resm1b$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,2.3),
      ylab = "Density", xlab = "Value",
      main = "1980") # intercept model
 lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3b$x, resm3b$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
-       col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
+lines(resm4b$x, resm4b$density, col = "darkolivegreen",lwd = 2, lty = 1) # poly
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model", "poly"),
+       col = c("black", "steelblue", "goldenrod", "darkolivegreen"), cex = 0.5, lty = c(2,1,1,1), bty = "n")
 # plot the models together for date 3: 1994-04-13
 plot(resm1c$x, resm1c$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,2.3),
      ylab = "Density", xlab = "Value",
      main = "1994") # intercept model
 lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3c$x, resm3c$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
-       col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
+lines(resm4c$x, resm4c$density, col = "darkolivegreen",lwd = 2, lty = 1) # poly
+legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model", "poly"),
+       col = c("black", "steelblue", "goldenrod", "darkolivegreen"), cex = 0.5, lty = c(2,1,1,1), bty = "n")
 par(mfrow = c(1, 1)) # reset
 
 
@@ -963,6 +1021,10 @@ resm2c$params #1994
 resm3$params #1963
 resm3b$params #1980
 resm3c$params #1994
+# poly (mean sigma and nu)
+resm4$params #1963
+resm4b$params #1980
+resm4c$params #1994
 
 #######################################################
 
@@ -1053,6 +1115,12 @@ plot_mvgam_series(data = PM$data_train,
 # Create own df to remove NAs
 Nitrite <- df %>% filter(!is.na(Nitrite)) %>% 
   select(Date, Nitrite, year)
+
+ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
+  geom_line(color = "darkgrey") + 
+  labs(x = "Time", y = "Nitrite (µmol/l)") +
+  theme_minimal()
+
 
 # plot a for a specific year 
 ggplot(dplyr::filter(Nitrite, year(Date) == 1970),
@@ -1330,6 +1398,8 @@ plot_mvgam_series(data = NaM$data_train,
                   newdata = NaM$data_test)
 
 
+
+
 ################################################
 ### DIN and fit models of different families ###
 ################################################
@@ -1337,6 +1407,12 @@ plot_mvgam_series(data = NaM$data_train,
 # create it's own df to remove NAs
 DIN <- df %>% filter(!is.na(DIN)) %>% 
   select(Date, DIN, year)
+
+# plot that sucka
+ggplot(DIN, aes(x = Date, y = DIN)) +
+  geom_line(color = "darkgrey") +
+  labs(x = "Time", y = "DIN (µmol/l)") +
+  theme_minimal()
 
 # plot a for a specific year 
 ggplot(dplyr::filter(DIN, year(Date) == 1970),
@@ -1629,7 +1705,7 @@ Silicate$y_rescaled <- Silicate$Silicate + 10
 hist(Silicate$Silicate)
 
 # look at the density plot 
-ggplot(Ammonium, aes(y = Ammonium)) +
+ggplot(Silicate, aes(y = Silicate)) +
   geom_density(
     linewidth = 0.8
   ) +
@@ -1908,6 +1984,11 @@ plot_mvgam_series(data = SM$data_train,
 Ammonium <- df %>% filter(!is.na(Ammonium)) %>% 
   select(Date, Ammonium, year)
 
+# plot that sucka
+ggplot(Ammonium, aes(x = Date, y = Ammonium)) +
+  geom_line(color = "darkgrey") +
+  labs(x = "Time", y = "Ammonium (µmol/l)") +
+  theme_minimal()
 
 # plot a for a specific year 
 ggplot(dplyr::filter(Ammonium, year(Date) == 1970),
