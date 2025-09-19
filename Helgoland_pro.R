@@ -10,21 +10,24 @@ files <- files[!grepl("Helgoland_1998.csv", files)]
 # Replace read.csv with the appropriate function for your file type (e.g., read.delim, read_excel from 'readxl' package)
 list_of_dataframes <- lapply(files, read.csv)
 
-df <- files %>%
-  lapply(read.csv) %>%
-  bind_rows()
-
 library(dplyr)
 library(ggplot2)
 library(patchwork)
 library(lubridate)
 library(tidyr)
 library(modeest)
+library(e1071)
 library(mvgam)           # Fit, interrogate and forecast DGAMs
 library(forecast)        # Construct fourier terms for time series
 library(gratia)          # Graceful plotting of smooth terms
 library(marginaleffects) # Interrogating regression models
 library(janitor)         # Creating clean, tidy variable names
+
+
+df <- files %>%
+  lapply(read.csv) %>%
+  bind_rows()
+
 
 # add year as a column
 df$year <- year(ymd_hm(df$Date))
@@ -56,8 +59,7 @@ ggplot(yearly_avg, aes(x = year, y = avg_temp)) +
 # =========================
 
 # see how nitrite differ over the years 
-library(dplyr)
-library(e1071)  # for skewness and kurtosis
+
 ## variance
 yearly_stats <- df %>%
   group_by(year) %>%
@@ -217,6 +219,7 @@ hist(Nitrate$Nitrate)
 # density plot 
 ggplot(Nitrate, aes(y = Nitrate)) +
   geom_density(linewidth = 0.8) +
+  geom_hline(yintercept = mean(Nitrate$Nitrate), linetype = "dashed", color = "azure4") +
   labs(
     x = "Density",
     y = "Value"
@@ -533,7 +536,7 @@ plot(resm1$x, resm1$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c
      main = "1963-09-23") # intercept model
 lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3$x, resm3$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-#lines(resm4$x, resm4$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+lines(resm4$x, resm4$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
 #lines(resm5$x, resm5$density, col = "salmon",lwd = 2, lty = 1) # poly 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
@@ -543,7 +546,7 @@ plot(resm1b$x, resm1b$density, col = "black", type = "l", lwd = 2, lty = 2, ylim
      main = "1980-09-03") # intercept model
 lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3b$x, resm3b$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-#lines(resm4b$x, resm4b$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+lines(resm4b$x, resm4b$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
 #lines(resm5b$x, resm5b$density, col = "salmon",lwd = 2, lty = 1) # poly 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
@@ -553,7 +556,7 @@ plot(resm1c$x, resm1c$density, col = "black", type = "l", lwd = 2, lty =2, ylim=
      main = "1994-04-13") # intercept model
 lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3c$x, resm3c$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-#lines(resm4c$x, resm4c$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+lines(resm4c$x, resm4c$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
 #lines(resm5c$x, resm5c$density, col = "salmon",lwd = 2, lty = 1) # poly 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
@@ -599,46 +602,6 @@ ggplot(Nitrate_1994, aes(y = Nitrate)) +
   ) +
   theme_minimal(base_size = 14) +
   coord_flip()
-
-
-
-
-## subset nitrate based on years 
-Nitrate_1963 <- subset(Nitrate, year == 1963)
-Nitrate_1980 <- subset(Nitrate, year == 1980)
-Nitrate_1994 <- subset(Nitrate, year == 1994)
-
-# new data for the years 
-newdat1 <- data.frame(Date = Nitrate_1963$Date)
-newdat2 <- data.frame(Date = Nitrate_1980$Date)
-newdat3 <- data.frame(Date = Nitrate_1994$Date)
-
-
-# fit models into 1963
-mu    <- predict(niSSTm, "mu",    newdata = newdat1, type = "response")
-sigma <- predict(niSSTm, "sigma", newdata = newdat1, type = "response")
-nu    <- predict(niSSTm, "nu",    newdata = newdat1, type = "response")
-tau   <- predict(niSSTm, "tau",   newdata = newdat1, type = "response")
-# fit models into 1980
-mu    <- predict(niSSTm, "mu",    newdata = newdat2, type = "response")
-sigma <- predict(niSSTm, "sigma", newdata = newdat2, type = "response")
-nu    <- predict(niSSTm, "nu",    newdata = newdat2, type = "response")
-tau   <- predict(niSSTm, "tau",   newdata = newdat2, type = "response")
-# fit models into 1994
-mu    <- predict(niSSTm, "mu",    newdata = newdat3, type = "response")
-sigma <- predict(niSSTm, "sigma", newdata = newdat3, type = "response")
-nu    <- predict(niSSTm, "nu",    newdata = newdat3, type = "response")
-tau   <- predict(niSSTm, "tau",   newdata = newdat3, type = "response")
-
-
-# x-grid over observed response range (change models)
-x <- seq(min(niSSTm$y, na.rm = TRUE), max(niSSTm$y, na.rm = TRUE), length.out = 200)
-
-
-# average params within the year to get one representative PDF
-ni1963pdf <- dSST(x, mu = mean(mu), sigma = mean(sigma), nu = mean(nu), tau = mean(tau))
-
-plot(x, pdf_ni1963, type = "l")
 
 
 
@@ -694,7 +657,7 @@ ni1994_1 <- pdf_SST_at_year(niSSTm, Nitrate, "1994", time_var = "Date", date_var
 ni1963_2 <- pdf_SST_at_year(niSSTm2, Nitrate, "1963", time_var = "Date", date_var = "Date")
 ni1980_2 <- pdf_SST_at_year(niSSTm2, Nitrate, "1980", time_var = "Date", date_var = "Date")
 ni1994_2 <- pdf_SST_at_year(niSSTm2, Nitrate, "1994", time_var = "Date", date_var = "Date")
-# mean only model
+# all param changing model (not tau)
 ni1963_3 <- pdf_SST_at_year(niSSTm3, Nitrate, "1963", time_var = "Date", date_var = "Date")
 ni1980_3 <- pdf_SST_at_year(niSSTm3, Nitrate, "1980", time_var = "Date", date_var = "Date")
 ni1994_3 <- pdf_SST_at_year(niSSTm3, Nitrate, "1994", time_var = "Date", date_var = "Date")
@@ -726,6 +689,7 @@ lines(ni1994_3$x, ni1994_3$avg_density, col = "goldenrod",lwd = 2, lty = 1) # me
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
 par(mfrow = c(1,1)) # reset
+
 
 
 ###################################################################
@@ -974,9 +938,8 @@ hist(Phosphate$Phosphate)
 
 # density plot 
 ggplot(Phosphate, aes(y = Phosphate)) +
-  geom_density(
-    linewidth = 0.8
-  ) +
+  geom_density(linewidth = 0.8) +
+  geom_hline(yintercept = mean(Phosphate$Phosphate), linetype = "dashed", color = "azure4") +
   labs(
     x = "Density",
     y = "Value"
@@ -1291,9 +1254,8 @@ hist(Nitrite$Nitrite)
 
 # density plot 
 ggplot(Nitrite, aes(y = Nitrite)) +
-  geom_density(
-    linewidth = 0.8
-  ) +
+  geom_density(linewidth = 0.8) +
+  geom_hline(yintercept = mean(Nitrite$Nitrite), linetype = "dashed", color = "azure4") +
   labs(
     x = "Density",
     y = "Value"
@@ -1584,9 +1546,8 @@ hist(DIN$DIN)
 
 # density plot 
 ggplot(DIN, aes(y = DIN)) +
-  geom_density(
-    linewidth = 0.8
-  ) +
+  geom_density(linewidth = 0.8) +
+  geom_hline(yintercept = mean(DIN$DIN), linetype = "dashed", color = "azure4") +
   labs(
     x = "Density",
     y = "Value"
@@ -1863,9 +1824,8 @@ hist(Silicate$Silicate)
 
 # look at the density plot 
 ggplot(Silicate, aes(y = Silicate)) +
-  geom_density(
-    linewidth = 0.8
-  ) +
+  geom_density(linewidth = 0.8) +
+  geom_hline(yintercept = mean(Silicate$Silicate), linetype = "dashed", color = "azure4") +
   labs(
     x = "Density",
     y = "Value"
@@ -2160,9 +2120,8 @@ hist(Ammonium$Ammonium)
 
 # look at the density plot 
 ggplot(Ammonium, aes(y = Ammonium)) +
-  geom_density(
-    linewidth = 0.8
-  ) +
+  geom_density(linewidth = 0.8) +
+  geom_hline(yintercept = mean(Ammonium$Ammonium), linetype = "dashed", color = "azure4") +
   labs(
     x = "Density",
     y = "Value"
