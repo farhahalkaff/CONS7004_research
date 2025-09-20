@@ -15,6 +15,7 @@ library(ggplot2)
 library(patchwork)
 library(lubridate)
 library(tidyr)
+library(gamlss)
 library(modeest)
 library(e1071)
 library(mvgam)           # Fit, interrogate and forecast DGAMs
@@ -34,6 +35,9 @@ df$year <- year(ymd_hm(df$Date))
 df <- df %>%
   mutate(Date = as.Date(ymd_hm(Date)))
 
+# add month as a column 
+df <- df %>% 
+  mutate(month = factor(format(Date, "%m")))
 
 
 # =========================
@@ -191,7 +195,7 @@ ggplot(df_long, aes(month, z, color = variable, group = variable)) +
 
 # create own df to remove NAs 
 Nitrate <- df %>% filter(!is.na(Nitrate)) %>% 
-  select(Date, Nitrate, year)
+  select(Date, Nitrate, year, month)
 
 # plot that sucka (intercept model)
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
@@ -226,6 +230,9 @@ ggplot(Nitrate, aes(y = Nitrate)) +
   ) +
   theme_minimal(base_size = 14) +
   coord_flip()
+
+
+
 
 
 # PDF
@@ -370,11 +377,29 @@ summary(niSSTpoly1)
 #                   method = mixed(10,200),
 #                   control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
 # summary(niSSTm4)
+
+
+## ADDING SEASONAILITY ##
+
+# mean only
+niSSTm2_sea <- gamlss(Nitrate ~ year + month, family = SST(), data = Nitrate,
+                     #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm2_sea)
+
+# mu sig and nu changing
+niSSTm3_sea <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, family = SST(), data = Nitrate,
+                      #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                      method = mixed(10,200),
+                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm3_sea)
 #============================================================================================
 
 # plot that sucka (intercept model)
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "grey", na.rm = TRUE) +
+  geom_line(aes(y = mu_hat), color = "cadetblue", linewidth = 1) +
   geom_abline(intercept = niSSTm2$mu.coefficients[1], slope = niSSTm2$mu.coefficients[2], 
               color = "steelblue", linewidth = 1) + # only mean as function of time 
   geom_abline(intercept = niSSTm3$mu.coefficients[1], slope = niSSTm3$mu.coefficients[2], 
@@ -383,12 +408,17 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
               #color = "darkolivegreen", linewidth = 1) + # mean, sigma and nu as function of time
   #geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "salmon") +
   geom_hline(yintercept = 16.718, linetype = "dashed", color = "black") + # intercept mean
-  geom_vline(xintercept = as.Date("1963-01-05"), linetype = "dashed", color = "darkred") + 
-  geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "burlywood") + 
-  geom_vline(xintercept = as.Date("1963-12-23"), linetype = "dashed", color = "darkred") + 
-  geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "burlywood") + 
-  geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed", color = "burlywood") +
+  geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
+  geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
+  geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed", color = "darkred") +
   labs(x = "Time", y = "Nitrate (µmol/l)") +
+  theme_minimal()
+
+# plot that sucka, with seasonaility 
+Nitrate$mu_hat <- fitted(niSSTm3_sea, what = "mu")
+ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
+  geom_line(color = "azure4", na.rm = TRUE) +
+  geom_line(aes(y = mu_hat), color = "darkred", linewidth = 1) +
   theme_minimal()
 
 
@@ -525,6 +555,13 @@ resm5b <- pdf_SST_at_date(niSSTpoly1, Nitrate, "1980-09-23",
                          time_var = "Date", date_var = "Date")
 resm5c <- pdf_SST_at_date(niSSTpoly1, Nitrate, "1994-04-13",
                          time_var = "Date", date_var = "Date")
+# season
+resm6 <- pdf_SST_at_date(niSSTm2_sea, Nitrate, "1963-09-23",
+                         time_var = "Date", date_var = "Date")
+resm6b <- pdf_SST_at_date(niSSTm2_sea, Nitrate, "1980-09-23",
+                          time_var = "Date", date_var = "Date")
+resm6c <- pdf_SST_at_date(niSSTm2_sea, Nitrate, "1994-04-13",
+                          time_var = "Date", date_var = "Date")
 
 
 # plot all three dates 
@@ -582,6 +619,9 @@ resm4$params #1963
 resm4b$params #1980
 resm4c$params #1994
 
+
+
+
 ################################################################### Specific year PDF
 
 Nitrate_1963 <- Nitrate %>%
@@ -600,11 +640,17 @@ ggplot(Nitrate_1994, aes(y = Nitrate)) +
     x = "Density",
     y = "Value"
   ) +
+  geom_hline(yintercept = mean(Nitrate_1994$Nitrate), linetype = "dashed", color = "azure4") +
   theme_minimal(base_size = 14) +
   coord_flip()
 
+# what is geom_density doing 
+m <- ggplot(Nitrate_1963, aes(x = Nitrate))
+m <- m + geom_density()
+p <- ggplot_build(m)
+head(p$data[[1]], 3)
 
-
+# pdf per year function
 pdf_SST_at_year <- function(model, data, year, x = NULL, n = 200,
                             time_var = "Date", date_var = "Date") {
   # 1. Filter dates for the specified year
@@ -649,6 +695,7 @@ pdf_SST_at_year <- function(model, data, year, x = NULL, n = 200,
   )
 }
 
+
 # intercept model
 ni1963_1 <- pdf_SST_at_year(niSSTm, Nitrate, "1963", time_var = "Date", date_var = "Date")
 ni1980_1 <- pdf_SST_at_year(niSSTm, Nitrate, "1980", time_var = "Date", date_var = "Date")
@@ -691,6 +738,18 @@ legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(
 par(mfrow = c(1,1)) # reset
 
 
+
+# check heavy tails
+mu0 <- 16.717847; sig0 <- 15.667711; nu0 <- 9.970027; tau0 <- 4.468998
+mu1 <- 15.530967; sig1 <- 15.344068; nu1 <- 7.176139; tau1 <- 4.346268
+mu2 <- 7.058096; sig2 <- 7.168460; nu2 <- 4.863863; tau2 <- 10.096813
+
+k <- 3
+pZ <- c(Intercept = 1 - pSST(mu0 + sig0*k, mu0, sig0, nu0, tau0),
+        Meanonly = 1 - pSST(mu1 + sig1*k, mu1, sig1, nu1, tau1),
+        TimeVarying = 1 - pSST(mu2 + sig2*k, mu2, sig2, nu2, tau2))
+pZ
+## timeVarying has higher probability, means extreme values are more often than other models
 
 ###################################################################
 
@@ -2231,7 +2290,7 @@ lines(resm3b$x, resm3b$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma
 legend("topright", legend = c("Intercept model", "mean(time) only model", "all param(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.7, lty = c(2,1,1), bty = "n")
 # plot the models together for date 3: 1994-04-13
-plot(resm1c$x, resm1c$density, col = "black", type = "l", lwd = 2, lty = 2,  ylim=c(0,0.3),
+plot(resm1c$x, resm1c$density, col = "black", type = "l", lwd = 2, lty = 2,  ylim=c(0,0.1), xlim =c(5,15),
      ylab = "Density", xlab = "Value",
      main = "1994-04-13") # intercept model
 lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
@@ -2246,15 +2305,15 @@ par(mfrow = c(1, 1)) #reset
 # m1 (intercept model)
 resm1$params #1963
 resm1b$params #1980
-resm1c$params #1992
+resm1c$params #1994
 # m2 (mean only)
 resm2$params #1963
 resm2b$params #1980
-resm2c$params #1992
+resm2c$params #1994
 # m3 (mean sigma nu and tau)
 resm3$params #1963
 resm3b$params #1980
-resm3c$params #1992
+resm3c$params #1994
 
 
 # # plot all three dates 
