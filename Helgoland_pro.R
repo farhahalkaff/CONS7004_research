@@ -394,6 +394,7 @@ niSSTm3_sea <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo =
                       method = mixed(10,200),
                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTm3_sea)
+
 #============================================================================================
 
 # plot that sucka (intercept model)
@@ -420,7 +421,6 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "azure4", na.rm = TRUE) +
   geom_line(aes(y = mu_hat), color = "darkred", linewidth = 1) +
   theme_minimal()
-
 
 ################################################################### PDF 
 
@@ -618,7 +618,6 @@ resm3c$params #1994
 resm4$params #1963
 resm4b$params #1980
 resm4c$params #1994
-
 
 
 
@@ -973,7 +972,7 @@ plot_mvgam_series(data = NM$data_train,
 
 # create own df to remove NAs
 Phosphate <- df %>% filter(!is.na(Phosphate)) %>% 
-  select(Date, Phosphate, year)
+  select(Date, Phosphate, year, month)
 
 
 ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
@@ -1093,6 +1092,15 @@ phJSUpolym2 <- gamlss(Phosphate ~ poly(Date,2), sigma.fo = ~ Date, nu.fo = ~ Dat
                       method = mixed(5, 200),
                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(phJSUpolym2)
+
+
+# mu sig and nu changing with seasonality
+phJSUm4_sea <- gamlss(Phosphate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                      family = SST(), data = Phosphate,
+                      #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                      method = mixed(10,200),
+                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(phJSUm4_sea)
 #========================================================================================
 
 # plot that sucka
@@ -1292,7 +1300,7 @@ plot_mvgam_series(data = PM$data_train,
 
 # Create own df to remove NAs
 Nitrite <- df %>% filter(!is.na(Nitrite)) %>% 
-  select(Date, Nitrite, year)
+  select(Date, Nitrite, year, month)
 
 ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
   geom_line(color = "darkgrey") + 
@@ -1362,6 +1370,14 @@ niiSSTm4 <- gamlss(Nitrite ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~
                    method = mixed(5, 200),
                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(niiSSTm4)
+
+# mu sig and nu changing with seasonality
+niiSSTm4_sea <- gamlss(Nitrite ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                      family = SST(), data = Nitrite,
+                      #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                      method = mixed(10,200),
+                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niiSSTm4_sea)
 #=====================================================================================
 
 # plot that sucka
@@ -1378,6 +1394,7 @@ ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
   geom_hline(yintercept = 0.81659, linetype = "dashed", color = "black") +  # intercept
   labs(x = "Time", y = "Nitrite (µmol/l)") +
   theme_minimal()
+
 
 ############################################ PDF
 
@@ -1584,7 +1601,7 @@ plot_mvgam_series(data = NaM$data_train,
 
 # create it's own df to remove NAs
 DIN <- df %>% filter(!is.na(DIN)) %>% 
-  select(Date, DIN, year)
+  select(Date, DIN, year, month)
 
 # plot that sucka
 ggplot(DIN, aes(x = Date, y = DIN)) +
@@ -1655,6 +1672,14 @@ DINSSTm4 <- gamlss(DIN ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Dat
                    method = mixed(5, 200),
                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(DINSSTm4)
+
+# mu sig and nu changing with seasonality
+DINSSTm4_sea <- gamlss(DIN ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                       family = SST(), data = DIN,
+                       #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                       method = mixed(10,200),
+                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(DINSSTm4_sea)
 #====================================================================================
 
 # plot that sucka
@@ -1855,18 +1880,7 @@ plot_mvgam_series(data = DINM$data_train,
 
 # create own df to remove NAs 
 Silicate <- df %>% filter(!is.na(Silicate)) %>% 
-  select(Date, Silicate, year)
-
-# plot that sucka 
-ggplot(Silicate, aes(x = Date, y = Silicate)) +
-  geom_line(color = "grey") +
-  geom_abline(intercept = siJSUm2$mu.coefficients[1], slope = siJSUm2$mu.coefficients[2],
-              color = "steelblue", linewidth = 1) + # mean only
-  geom_abline(intercept = siJSUm3$mu.coefficients[1], slope = siJSUm3$mu.coefficients[2],
-              color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
-  geom_hline(yintercept = 7.378, linetype = "dashed", color = "black") +
-  labs(x = "Time", y = "Silicate (µmol/l)") +
-  theme_minimal()
+  select(Date, Silicate, year, month)
 
 # plot a for a specific year 
 ggplot(dplyr::filter(Silicate, year(Date) == 1972),
@@ -1992,7 +2006,34 @@ siJSUm3 <- gamlss(Silicate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = J
                   method = mixed(5, 200),
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(siJSUm3)
+
+# mu sig and nu changing with seasonality
+siJSUm3_sea <- gamlss(Silicate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, 
+                       family = JSU(), data = Silicate,
+                       #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                       method = mixed(10,200),
+                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(siJSUm3_sea)
 #==========================================================================================
+
+# plot that sucka 
+ggplot(Silicate, aes(x = Date, y = Silicate)) +
+  geom_line(color = "grey") +
+  geom_line(aes(y = mu_hat), color = "darkred", linewidth = 1) +
+  geom_abline(intercept = siJSUm2$mu.coefficients[1], slope = siJSUm2$mu.coefficients[2],
+              color = "steelblue", linewidth = 1) + # mean only
+  geom_abline(intercept = siJSUm3$mu.coefficients[1], slope = siJSUm3$mu.coefficients[2],
+              color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
+  geom_hline(yintercept = 7.378, linetype = "dashed", color = "black") +
+  labs(x = "Time", y = "Silicate (µmol/l)") +
+  theme_minimal()
+
+# plot that sucka, with seasonaility 
+Silicate$mu_hat <- fitted(siJSUm3_sea, what = "mu")
+ggplot(Silicate, aes(x = Date, y = Silicate)) +
+  geom_line(color = "azure4", na.rm = TRUE) +
+  geom_line(aes(y = mu_hat), color = "darkred", linewidth = 1) +
+  theme_minimal()
 
 ############################################ PDF
 
@@ -2158,7 +2199,7 @@ plot_mvgam_series(data = SM$data_train,
 
 # create own df to remove NAs 
 Ammonium <- df %>% filter(!is.na(Ammonium)) %>% 
-  select(Date, Ammonium, year)
+  select(Date, Ammonium, year, month)
 
 # plot that sucka
 ggplot(Ammonium, aes(x = Date, y = Ammonium)) +
@@ -2229,6 +2270,14 @@ amSSTm4 <- gamlss(Ammonium ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~
                   method = mixed(5, 200),
                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 summary(amSSTm4)
+
+# mu sig and nu changing with seasonality
+amSSTm4_sea <- gamlss(Ammonium ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month,
+                      family = SST(), data = Ammonium,
+                      #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                      method = mixed(10,200),
+                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(amSSTm4_sea)
 #=========================================================================================
 
 # plot that sucka
