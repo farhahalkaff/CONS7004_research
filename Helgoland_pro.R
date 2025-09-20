@@ -397,6 +397,9 @@ summary(niSSTm3_sea)
 
 #============================================================================================
 
+# predict mu based on seasonaility model
+Nitrate$mu_hat <- fitted(niSSTm3_sea, what = "mu")
+
 # plot that sucka (intercept model)
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "grey", na.rm = TRUE) +
@@ -416,7 +419,6 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   theme_minimal()
 
 # plot that sucka, with seasonaility 
-Nitrate$mu_hat <- fitted(niSSTm3_sea, what = "mu")
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "azure4", na.rm = TRUE) +
   geom_line(aes(y = mu_hat), color = "darkred", linewidth = 1) +
@@ -564,40 +566,56 @@ resm6c <- pdf_SST_at_date(niSSTm2_sea, Nitrate, "1994-04-13",
                           time_var = "Date", date_var = "Date")
 
 
+# pdf for seasonaility model
+x <- seq(min(niSSTm3_sea$y, na.rm = TRUE),
+         max(niSSTm3_sea$y, na.rm = TRUE),
+         length.out = 200)
+
+pdf_1963 <- dSST(x, mu = 1.2156707, sigma = 3.290147, nu = 9.663093, tau = 6.874041)
+pdf_1980 <- dSST(x, mu = 8.671901, sigma = 6.657359, nu = 7.422281, tau = 6.874041)
+pdf_1994 <- dSST(x, mu = 31.41314, sigma = 24.87263, nu = 0.9332162, tau = 6.874041)
+
+
+
 # plot all three dates 
 
 par(mfrow = c(1, 3)) 
 # plot the models together for date 1: 1963-09-23
-plot(resm1$x, resm1$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,0.08),
+plot(resm1$x, resm1$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,0.15),
      ylab = "Density", xlab = "Value",
      main = "1963-09-23") # intercept model
 lines(resm2$x, resm2$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3$x, resm3$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-lines(resm4$x, resm4$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+lines(x, pdf_1963, col = "darkolivegreen", lwd = 2, lty = 1)# seasonaility model
+# lines(resm4$x, resm4$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
 #lines(resm5$x, resm5$density, col = "salmon",lwd = 2, lty = 1) # poly 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
 # plot the models together for date 2: 1980-09-23
-plot(resm1b$x, resm1b$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,0.08),
+plot(resm1b$x, resm1b$density, col = "black", type = "l", lwd = 2, lty = 2, ylim=c(0,0.15),
      ylab = "Density", xlab = "Value",
      main = "1980-09-03") # intercept model
 lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
-lines(resm3b$x, resm3b$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-lines(resm4b$x, resm4b$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+lines(resm3b$x, resm3b$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma an nu 
+lines(x, pdf_1980, col = "darkolivegreen", lwd = 2, lty = 1)# seasonaility model
+#lines(resm4b$x, resm4b$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
 #lines(resm5b$x, resm5b$density, col = "salmon",lwd = 2, lty = 1) # poly 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
 # plot the models together for date 3: 1994-04-13
-plot(resm1c$x, resm1c$density, col = "black", type = "l", lwd = 2, lty =2, ylim=c(0,0.08),
+plot(resm1c$x, resm1c$density, col = "black", type = "l", lwd = 2, lty =2, ylim=c(0,0.15),
      ylab = "Density", xlab = "Value",
      main = "1994-04-13") # intercept model
 lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 2, lty = 1) # mean only model
 lines(resm3c$x, resm3c$density, col = "goldenrod",lwd = 2, lty = 1) # mean sigma and nu 
-lines(resm4c$x, resm4c$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
+lines(x, pdf_1994, col = "darkolivegreen", lwd = 2, lty = 1)# seasonaility model
+#lines(resm4c$x, resm4c$density, col = "darkolivegreen",lwd = 2, lty = 1) # NORMAL 
 #lines(resm5c$x, resm5c$density, col = "salmon",lwd = 2, lty = 1) # poly 
 legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
        col = c("black", "steelblue", "goldenrod"), cex = 0.5, lty = c(2,1,1), bty = "n")
 par(mfrow = c(1,1)) # reset
+
+
 
 
 ### parameters for the three dates ###
@@ -619,6 +637,18 @@ resm4$params #1963
 resm4b$params #1980
 resm4c$params #1994
 
+
+Nitrate$sigma_hat <- fitted(niSSTm3_sea, what = "sigma", type = "response")
+Nitrate$nu_hat <- fitted(niSSTm3_sea, what = "nu", type = "response")
+Nitrate$tau_hat <- fitted(niSSTm3_sea, what = "tau", type = "response")
+
+
+
+target_date <- as.Date("1963-09-23")
+row_1963_09_23 <- Nitrate %>%  filter(Date == target_date) %>% slice(1)
+
+# param for intercept model
+params_at(niSSTm, row_1963_09_23)
 
 
 ################################################################### Specific year PDF
