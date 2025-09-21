@@ -162,13 +162,13 @@ ggplot(df_year, aes(x = year, y = z, color = variable)) +
 ### Looking at trends per year ###
 ##################################
 
-target_year <- 1968
+target_year <- 1963
 
 df_one <- df %>%
   mutate(year = year(Date), month = month(Date, label = TRUE)) %>%
   filter(year == target_year) %>%
   group_by(month) %>%
-  summarise(across(all_of(c(nitrate, phyto_col)), ~mean(., na.rm = TRUE)),
+  summarise(across(all_of(c(Nitrate, phyto_col)), ~mean(., na.rm = TRUE)),
             .groups = "drop")
 
 df_long <- df_one %>%
@@ -403,7 +403,7 @@ Nitrate$mu_hat <- fitted(niSSTm3_sea, what = "mu")
 # plot that sucka (intercept model)
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "grey", na.rm = TRUE) +
-  geom_line(aes(y = mu_hat), color = "cadetblue", linewidth = 1) +
+  geom_line(aes(y = mu_hat), color = "chocolate", linewidth = 1) +
   geom_abline(intercept = niSSTm2$mu.coefficients[1], slope = niSSTm2$mu.coefficients[2], 
               color = "steelblue", linewidth = 1) + # only mean as function of time 
   geom_abline(intercept = niSSTm3$mu.coefficients[1], slope = niSSTm3$mu.coefficients[2], 
@@ -416,7 +416,7 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
   geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed", color = "darkred") +
   labs(x = "Time", y = "Nitrate (µmol/l)") +
-  theme_minimal()
+  theme_classic()
 
 # plot that sucka, with seasonaility 
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
@@ -620,6 +620,12 @@ par(mfrow = c(1,1)) # reset
 
 ### parameters for the three dates ###
 
+# get the predicted param for seasonaility model
+Nitrate$sigma_hat <- fitted(niSSTm3_sea, what = "sigma", type = "response")
+Nitrate$nu_hat <- fitted(niSSTm3_sea, what = "nu", type = "response")
+Nitrate$tau_hat <- fitted(niSSTm3_sea, what = "tau", type = "response")
+
+
 # m1 (intercept model)
 resm1$params #1963
 resm1b$params #1980
@@ -636,19 +642,15 @@ resm3c$params #1994
 resm4$params #1963
 resm4b$params #1980
 resm4c$params #1994
+# seasonaility 
+param_1963 <- c(Nitrate[242,5], Nitrate[242,6], Nitrate[242,7], Nitrate[242,8])
+param_1980 <- c(Nitrate[3025,5], Nitrate[3025,6], Nitrate[3025,7], Nitrate[3025,8])
+param_1994 <- c(Nitrate[6323,5], Nitrate[6323,6], Nitrate[6323,7], Nitrate[6323,8])
+param_1994 <- c(Nitrate[6435,5], Nitrate[6435,6], Nitrate[6435,7], Nitrate[6435,8])
 
 
-Nitrate$sigma_hat <- fitted(niSSTm3_sea, what = "sigma", type = "response")
-Nitrate$nu_hat <- fitted(niSSTm3_sea, what = "nu", type = "response")
-Nitrate$tau_hat <- fitted(niSSTm3_sea, what = "tau", type = "response")
 
 
-
-target_date <- as.Date("1963-09-23")
-row_1963_09_23 <- Nitrate %>%  filter(Date == target_date) %>% slice(1)
-
-# param for intercept model
-params_at(niSSTm, row_1963_09_23)
 
 
 ################################################################### Specific year PDF
@@ -663,6 +665,32 @@ Nitrate_1994 <- Nitrate %>%
   filter(year(Date) == 1994)
 
 
+Nitrate <- Nitrate %>%
+  mutate(DOY  = yday(Date))   # 1–365
+
+years_to_plot <- c(1994, 1980, 1963)
+
+ggplot(Nitrate %>% filter(year %in% years_to_plot),
+       aes(x = DOY, y = Nitrate, color = factor(year))) +
+  geom_line() +
+  scale_colour_brewer(palette = "Dark2") +
+  labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
+  theme_classic()
+
+
+# look at nitrate trends per year 
+ggplot(Nitrate_1994, aes(x = Date, y = Nitrate)) +
+  geom_line(color = "azure4", na.rm = TRUE) +
+  geom_abline()
+  theme_classic()
+
+ggplot() +
+  geom_line(data = Nitrate_1963, aes(x = month, y = Nitrate), linetype = 2) +
+  geom_line(data = Nitrate_1980, aes(x = month, y = Nitrate), color = "azure4") +
+  geom_line(data = Nitrate_1994, aes(x = month, y = Nitrate), linetype = 4 , color = "grey") +
+  theme_minimal()
+  
+# density plot
 ggplot(Nitrate_1994, aes(y = Nitrate)) +
   geom_density(linewidth = 0.8) +
   labs(

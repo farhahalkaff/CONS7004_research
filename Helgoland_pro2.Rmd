@@ -104,7 +104,7 @@ Nitrate$tau_hat <- fitted(niSSTm3_sea, what = "tau", type = "response")
 
 ## Nitrate data with models
 
-```{r pressure, fig.width = 12, fig.height = 6, echo=FALSE}
+```{r pressure, fig.width = 11, fig.height = 6, echo=FALSE}
 # plot that sucka (intercept model)
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "grey", na.rm = TRUE) +
@@ -116,10 +116,10 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   #geom_abline(intercept = niNOm1$mu.coefficients[1], slope = niNOm1$mu.coefficients[2], 
   #color = "darkolivegreen", linewidth = 1) + # mean, sigma and nu as function of time
   #geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "salmon") +
-  geom_hline(yintercept = 16.718, linetype = "dashed", color = "black", linewidth = 2) + # intercept mean
+  geom_hline(yintercept = 16.718, linetype = "dashed", color = "black", linewidth = 1) + # intercept mean
   geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
   geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
-  geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed", color = "darkred") +
+  geom_vline(xintercept = as.Date("1994-09-23"), linetype = "dashed", color = "darkred") +
   labs(x = "Time", y = "Nitrate (µmol/l)") +
   theme_classic()
 ```
@@ -161,21 +161,21 @@ resm1 <- pdf_SST_at_date(niSSTm, Nitrate, "1963-09-23",
                          time_var = "Date", date_var = "Date")
 resm1b <- pdf_SST_at_date(niSSTm, Nitrate, "1980-09-23",
                           time_var = "Date", date_var = "Date")
-resm1c <- pdf_SST_at_date(niSSTm, Nitrate, "1994-04-13",
+resm1c <- pdf_SST_at_date(niSSTm, Nitrate, "1994-09-23",
                           time_var = "Date", date_var = "Date")
 # m2 (mean only)
 resm2 <- pdf_SST_at_date(niSSTm2, Nitrate, "1963-09-23",
                          time_var = "Date", date_var = "Date")
 resm2b <- pdf_SST_at_date(niSSTm2, Nitrate, "1980-09-23",
                           time_var = "Date", date_var = "Date")
-resm2c <- pdf_SST_at_date(niSSTm2, Nitrate, "1994-04-13",
+resm2c <- pdf_SST_at_date(niSSTm2, Nitrate, "1994-09-23",
                           time_var = "Date", date_var = "Date")
 # m3 (mean sigma and nu)
 resm3 <- pdf_SST_at_date(niSSTm3, Nitrate, "1963-09-23",
                          time_var = "Date", date_var = "Date")
 resm3b <- pdf_SST_at_date(niSSTm3, Nitrate, "1980-09-23",
                           time_var = "Date", date_var = "Date")
-resm3c <- pdf_SST_at_date(niSSTm3, Nitrate, "1994-04-13",
+resm3c <- pdf_SST_at_date(niSSTm3, Nitrate, "1994-09-23",
                           time_var = "Date", date_var = "Date")
 # pdf for seasonaility model
 x <- seq(min(niSSTm3_sea$y, na.rm = TRUE),
@@ -184,7 +184,7 @@ x <- seq(min(niSSTm3_sea$y, na.rm = TRUE),
 
 pdf_1963 <- dSST(x, mu = 1.2156707, sigma = 3.290147, nu = 9.663093, tau = 6.874041)
 pdf_1980 <- dSST(x, mu = 8.671901, sigma = 6.657359, nu = 7.422281, tau = 6.874041)
-pdf_1994 <- dSST(x, mu = 31.41314, sigma = 24.87263, nu = 0.9332162, tau = 6.874041)
+pdf_1994 <- dSST(x, mu = 14.81233, sigma = 11.89524, nu = 5.9728054, tau = 6.874041)
 
 ```
 
@@ -199,26 +199,26 @@ plot(resm1$x, resm1$density, col = "black", type = "l", lwd = 3, lty = 2, ylim=c
 lines(resm2$x, resm2$density, col = "steelblue", lwd = 3, lty = 1) # mean only model
 lines(resm3$x, resm3$density, col = "goldenrod",lwd = 3, lty = 1) # mean sigma and nu 
 lines(x, pdf_1963, col = "darkolivegreen", lwd = 3, lty = 1)# seasonaility model
-legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
-       col = c("black", "steelblue", "goldenrod", "darkolivegreen"), cex = 0.7, lty = c(2,1,1,1), bty = "n")
+legend("topright", legend = c("Intercept", "mean(time)", "all param(time)", "seasonality"),
+       col = c("black", "steelblue", "goldenrod", "darkolivegreen"), cex = 0.8, lty = c(2,1,1,1), bty = "n")
 # plot the models together for date 2: 1980-09-23
 plot(resm1b$x, resm1b$density, col = "black", type = "l", lwd = 3, lty = 2, ylim=c(0,0.15),
      ylab = "Density", xlab = "Value",
-     main = "1980-09-03") # intercept model
+     main = "1980-09-23") # intercept model
 lines(resm2b$x, resm2b$density, col = "steelblue", lwd = 3, lty = 1) # mean only model
 lines(resm3b$x, resm3b$density, col = "goldenrod",lwd = 3, lty = 1) # mean sigma an nu 
 lines(x, pdf_1980, col = "darkolivegreen", lwd = 3, lty = 1)# seasonaility model
-legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
-       col = c("black", "steelblue", "goldenrod",  "darkolivegreen"), cex = 0.7, lty = c(2,1,1,1), bty = "n")
-# plot the models together for date 3: 1994-04-13
+legend("topright", legend = c("Intercept", "mean(time)", "all param(time)", "seasonality"),
+       col = c("black", "steelblue", "goldenrod",  "darkolivegreen"), cex = 0.8, lty = c(2,1,1,1), bty = "n")
+# plot the models together for date 3: 1994-09-23
 plot(resm1c$x, resm1c$density, col = "black", type = "l", lwd = 3, lty =2, ylim=c(0,0.15),
      ylab = "Density", xlab = "Value",
-     main = "1994-04-13") # intercept model
+     main = "1994-09-23") # intercept model
 lines(resm2c$x, resm2c$density, col = "steelblue", lwd = 3, lty = 1) # mean only model
 lines(resm3c$x, resm3c$density, col = "goldenrod",lwd = 3, lty = 1) # mean sigma and nu 
 lines(x, pdf_1994, col = "darkolivegreen", lwd = 3, lty = 1)# seasonaility model
-legend("topright", legend = c("Intercept model", "mean(time) only model", "mean(time), sigma(time) & nu(time) model"),
-       col = c("black", "steelblue", "goldenrod",  "darkolivegreen"), cex = 0.7, lty = c(2,1,1,1), bty = "n")
+legend("topright", legend = c("Intercept", "mean(time)", "all param(time)", "seasonality"),
+       col = c("black", "steelblue", "goldenrod",  "darkolivegreen"), cex = 0.8, lty = c(2,1,1,1), bty = "n")
 par(mfrow = c(1,1)) # reset
 ```
 
@@ -250,14 +250,14 @@ param_table %>%
   kable(caption = "Predicted parameters for 1980-09-23")
 ```
 
-### 1994-04-13
+### 1994-09-23
 ```{r echo=FALSE}
 param_table <- data.frame(
   models = c("Intercept", "Mean(time)", "All_param(time)", "Seasonality"),
-  mu = c(resm1c$params[1], resm2c$params[1],resm3c$params[1],  Nitrate[6323,5]),
-  sigma = c(resm1c$params[2], resm2c$params[2], resm3c$params[2], Nitrate[6323,6]),
-  nu = c(resm1c$params[3], resm2c$params[3], resm3c$params[3], Nitrate[6323,7]),
-  tau = c(resm1c$params[4], resm2c$params[4], resm3c$params[4], Nitrate[6323,8])
+  mu = c(resm1c$params[1], resm2c$params[1],resm3c$params[1],  Nitrate[6435,5]),
+  sigma = c(resm1c$params[2], resm2c$params[2], resm3c$params[2], Nitrate[6435,6]),
+  nu = c(resm1c$params[3], resm2c$params[3], resm3c$params[3], Nitrate[6435,7]),
+  tau = c(resm1c$params[4], resm2c$params[4], resm3c$params[4], Nitrate[6435,8])
 )
 
 param_table %>%
