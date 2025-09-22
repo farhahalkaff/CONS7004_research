@@ -668,7 +668,7 @@ Nitrate_1994 <- Nitrate %>%
 Nitrate <- Nitrate %>%
   mutate(DOY  = yday(Date))   # 1–365
 
-years_to_plot <- c(1994, 1980, 1963)
+years_to_plot <- c(1963, 1975, 1980, 1966, 1994, 1962, 1978, 1992)
 
 ggplot(Nitrate %>% filter(year %in% years_to_plot),
        aes(x = DOY, y = Nitrate, color = factor(year))) +
@@ -679,9 +679,8 @@ ggplot(Nitrate %>% filter(year %in% years_to_plot),
 
 
 # look at nitrate trends per year 
-ggplot(Nitrate_1994, aes(x = Date, y = Nitrate)) +
+ggplot(Nitrate_1963, aes(x = Date, y = Nitrate)) +
   geom_line(color = "azure4", na.rm = TRUE) +
-  geom_abline()
   theme_classic()
 
 ggplot() +
@@ -1351,6 +1350,33 @@ plot_mvgam_series(data = PM$data_train,
 
 
 
+############ TRENDS ###############
+
+
+# create day of the year for nitrate and phytopl
+Phosphate <- Phosphate %>%
+  mutate(DOY  = yday(Date)) 
+
+# look at phosphate patterns for different years 
+years_to_plot <- c(1963, 1975, 1980, 1966, 1994, 1962, 1978, 1992)
+
+ggplot(Phosphate %>% filter(year %in% years_to_plot),
+       aes(x = DOY, y = Phosphate, color = factor(year))) +
+  geom_line() +
+  scale_colour_manual(values = c("Other" = "lightgrey",
+                                 "1963" = "chocolate",
+                                 "1980" = "cornflowerblue",
+                                 "1994" = "darkseagreen4")) + 
+  geom_vline(xintercept = 355, linetype = "dashed") + # start of winter
+  geom_vline(xintercept = 80, linetype = "dashed") + # start of spring
+  geom_vline(xintercept = 173, linetype = "dashed") + # start of summer
+  geom_vline(xintercept = 266, linetype = "dashed") + # start of fall
+  annotate("text", x = 37, y = 3, label = "Winter", size = 4) +
+  annotate("text", x = 130, y = 3, label = "Spring", size = 4) +
+  annotate("text", x = 220, y = 3, label = "Summer", size = 4) +
+  annotate("text", x = 315, y = 3, label = "Fall", size = 4) +
+  labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
+  theme_classic()
 
 ####################################################
 ### Nitrite and fit models of different families ###
@@ -1651,6 +1677,36 @@ plot_mvgam_series(data = NaM$data_train,
                   newdata = NaM$data_test)
 
 
+############ TRENDS ###############
+
+
+# create day of the year for nitrate and phytopl
+Nitrite <- Nitrite %>%
+  mutate(DOY  = yday(Date)) 
+
+# look at phosphate patterns for different years 
+years_to_plot <- c(1963, 1975, 1980, 1966, 1994, 1962, 1978, 1992)
+
+ggplot(Nitrite %>% filter(year %in% years_to_plot),
+       aes(x = DOY, y = Nitrite, color = factor(year))) +
+  geom_line() +
+  scale_colour_manual(values = c("Other" = "lightgrey",
+                                 "1963" = "chocolate",
+                                 "1980" = "cornflowerblue",
+                                 "1994" = "darkseagreen4")) + 
+  geom_vline(xintercept = 355, linetype = "dashed") + # start of winter
+  geom_vline(xintercept = 80, linetype = "dashed") + # start of spring
+  geom_vline(xintercept = 173, linetype = "dashed") + # start of summer
+  geom_vline(xintercept = 266, linetype = "dashed") + # start of fall
+  annotate("text", x = 37, y = 4, label = "Winter", size = 4) +
+  annotate("text", x = 130, y = 4, label = "Spring", size = 4) +
+  annotate("text", x = 220, y = 4, label = "Summer", size = 4) +
+  annotate("text", x = 315, y = 4, label = "Fall", size = 4) +
+  labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
+  theme_classic()
+
+
+
 
 
 ################################################
@@ -1930,6 +1986,36 @@ dplyr::glimpse(DINM$data_train)
 # plot them 
 plot_mvgam_series(data = DINM$data_train,
                   newdata = DINM$data_test)
+
+
+########## TRENDS ################
+
+# create day of the year for nitrate and phytopl
+DIN <- DIN %>%
+  mutate(DOY  = yday(Date)) 
+
+# look at phosphate patterns for different years 
+years_to_plot <- c(1963, 1975, 1980, 1966, 1994, 1962, 1978, 1992)
+
+ggplot(DIN %>% filter(year %in% years_to_plot),
+       aes(x = DOY, y = DIN, color = factor(year))) +
+  geom_line() +
+  scale_colour_manual(values = c("Other" = "lightgrey",
+                                 "1963" = "chocolate",
+                                 "1980" = "cornflowerblue",
+                                 "1994" = "darkseagreen4")) + 
+  geom_vline(xintercept = 355, linetype = "dashed") + # start of winter
+  geom_vline(xintercept = 80, linetype = "dashed") + # start of spring
+  geom_vline(xintercept = 173, linetype = "dashed") + # start of summer
+  geom_vline(xintercept = 266, linetype = "dashed") + # start of fall
+  annotate("text", x = 37, y = 150, label = "Winter", size = 4) +
+  annotate("text", x = 130, y = 150, label = "Spring", size = 4) +
+  annotate("text", x = 220, y = 150, label = "Summer", size = 4) +
+  annotate("text", x = 315, y = 150, label = "Fall", size = 4) +
+  labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
+  theme_classic()
+
+
 
 
 #####################################################
@@ -2250,6 +2336,33 @@ plot_mvgam_series(data = SM$data_train,
                   newdata = SM$data_test)
 
 
+########## TRENDS ################
+
+# create day of the year for nitrate and phytopl
+Silicate <- Silicate %>%
+  mutate(DOY  = yday(Date)) 
+
+# look at phosphate patterns for different years 
+years_to_plot <- c(1963, 1975, 1980, 1966, 1994, 1962, 1978, 1992)
+
+ggplot(Silicate %>% filter(year %in% years_to_plot),
+       aes(x = DOY, y = Silicate, color = factor(year))) +
+  geom_line() +
+  scale_colour_manual(values = c("Other" = "lightgrey",
+                                 "1963" = "chocolate",
+                                 "1980" = "cornflowerblue",
+                                 "1994" = "darkseagreen4")) + 
+  geom_vline(xintercept = 355, linetype = "dashed") + # start of winter
+  geom_vline(xintercept = 80, linetype = "dashed") + # start of spring
+  geom_vline(xintercept = 173, linetype = "dashed") + # start of summer
+  geom_vline(xintercept = 266, linetype = "dashed") + # start of fall
+  annotate("text", x = 37, y = 40, label = "Winter", size = 4) +
+  annotate("text", x = 130, y = 40, label = "Spring", size = 4) +
+  annotate("text", x = 220, y = 40, label = "Summer", size = 4) +
+  annotate("text", x = 315, y = 40, label = "Fall", size = 4) +
+  labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
+  theme_classic()
+
 
 #####################################################
 ### Ammonium and fit models of different families ###
@@ -2503,3 +2616,31 @@ plot_mvgam_series(data = AM$data_train,
                   newdata = AM$data_test)
 
 
+
+########## TRENDS ################
+
+# create day of the year for nitrate and phytopl
+Ammonium <- Ammonium %>%
+  mutate(DOY  = yday(Date)) 
+
+# look at phosphate patterns for different years 
+years_to_plot <- c(1963, 1975, 1980, 1966, 1994, 1962, 1978, 1992)
+years_to_plot <- c(1963, 1980, 1994)
+
+ggplot(Ammonium %>% filter(year %in% years_to_plot),
+       aes(x = DOY, y = Ammonium, color = factor(year))) +
+  geom_line() +
+  scale_colour_manual(values = c("Other" = "lightgrey",
+                                 "1963" = "chocolate",
+                                 "1980" = "cornflowerblue",
+                                 "1994" = "darkseagreen4")) + 
+  geom_vline(xintercept = 355, linetype = "dashed") + # start of winter
+  geom_vline(xintercept = 80, linetype = "dashed") + # start of spring
+  geom_vline(xintercept = 173, linetype = "dashed") + # start of summer
+  geom_vline(xintercept = 266, linetype = "dashed") + # start of fall
+  annotate("text", x = 37, y = 22, label = "Winter", size = 4) +
+  annotate("text", x = 130, y = 22, label = "Spring", size = 4) +
+  annotate("text", x = 220, y = 22, label = "Summer", size = 4) +
+  annotate("text", x = 315, y = 22, label = "Fall", size = 4) +
+  labs(x = "Day of Year", y = "Ammonium (µmol/l)", colour = "Year") +
+  theme_classic()
