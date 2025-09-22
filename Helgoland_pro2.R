@@ -3,6 +3,7 @@ library(ggplot2)
 library(lubridate)
 library(tidyr)
 library(gamlss)
+library(DHARMa)
 
 # Set the directory where your files are located
 data_directory <- "dataset"
@@ -51,12 +52,14 @@ niSSTm <- gamlss(Nitrate ~ 1, family = SST(), data = Nitrate,
                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTm)
 
+
 # Only mean changing through time linearly 
 niSSTm2 <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate,
                   #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
                   method = mixed(10,200),
                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTm2)
+
 
 # mean, sigma and nu changing through time linearly 
 niSSTm3 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
@@ -318,12 +321,21 @@ years_to_plot <- c(1963, 1980, 1994)
 ggplot(Nitrate %>% filter(year %in% years_to_plot),
        aes(x = DOY, y = Nitrate, color = factor(year))) +
   geom_line() +
-  scale_colour_manual(values = c("1963" = "chocolate",
+  scale_colour_manual(values = c("Other" = "lightgrey",
+                                "1963" = "chocolate",
                                  "1980" = "cornflowerblue",
-                                 "1994" = "darkseagreen4",
-                                 "Other" = "grey70")) + 
+                                 "1994" = "darkseagreen4")) + 
+  geom_vline(xintercept = 355, linetype = "dashed") + # start of winter
+  geom_vline(xintercept = 80, linetype = "dashed") + # start of spring
+  geom_vline(xintercept = 173, linetype = "dashed") + # start of summer
+  geom_vline(xintercept = 266, linetype = "dashed") + # start of fall
+  annotate("text", x = 37, y = 145, label = "Winter", size = 4) +
+  annotate("text", x = 130, y = 145, label = "Spring", size = 4) +
+  annotate("text", x = 220, y = 145, label = "Summer", size = 4) +
+  annotate("text", x = 315, y = 145, label = "Fall", size = 4) +
   labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
   theme_classic()
+
 
 ggplot(Phytopl %>% filter(year %in% years_to_plot),
        aes(x = DOY, y = Phytopl, color = factor(year))) +
@@ -365,6 +377,116 @@ std_data$Phytopl_C <- std_function(x=std_data$Phytopl_C)
 # look at correlation between nutrients
 cov_mat <- round(var(std_data))
 cov_mat
+
+
+
+## SIMULATIONS
+
+# seasonality pattern
+set.seed(1234)
+n <- 1825
+t_index  <- seq_len(n)
+mu0       <- 16
+sigma0   <- 15
+nu0      <- 10
+tau0     <- 10
+
+# changing rate
+beta1 <- 0.6
+beta2 <- 0.4
+
+cov1 <- sin(2*pi*(t_index)/12)
+cov2 <- cos(2*pi*(t_index)/12)
+
+yt <- beta1*cov1 + beta2*cov2
+plot(yt, type="l", xlab="t")
+
+
+
+n <- 365*2             
+beta1 <- 0.6; beta2 <- 0.4
+period <- 365   
+t_index <- 1:n
+
+# mean changing through time
+yt <- beta1 * sin(2 * pi * t_index / period) +
+  beta2 * cos(2 * pi * t_index / period)
+
+
+plot(t_index, yt, type="l", xlab="t (days)", ylab="yt")
+
+# sigma and nu changing though time
+sigma_t <- sigma0 + 4.146e-02
+nu_t <- nu0 + -0.015507
+
+
+y <- rSST(n, mu = yt, sigma = sigma_t, nu = nu0, tau = tau0)
+
+dat <- data.frame(
+  t = t_index,
+  y = y,
+  sd_true = sigma_t,
+  mu_true = yt,
+  nu_true = nu0,
+  tau_true = tau0,
+  dist = "SST"
+)
+
+ggplot(dat, aes(x = t)) +
+  geom_line(
+    aes(y = y),
+    color = "darkred",
+    linewidth = 0.8
+  ) +
+  labs(
+    x = "Time",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+
+
+
+
+# ---- timeline ----
+yrs   <- 33                      # ~ like 1962–1994
+n     <- 365 * yrs               # daily
+t_index    <- 1:n
+u     <- (t_index - 1) %% 365 / 365    # position within year [0,1)
+
+# ---- 1) mean: linear trend + 2-peak seasonality (spring & autumn) ----
+b0 <- 6                          # baseline level
+b1 <- 0.03                       # slow upward trend per year
+A1 <- 14; B1 <- -4               # annual component
+A2 <-  8; B2 <-  -2               # semi-annual component
+mu_t <- b0 + b1 * (t_index/365) +
+  A1*sin(2*pi*u) + B1*cos(2*pi*u) +
+  A2*sin(4*pi*u) + B2*cos(4*pi*u)
+
+# ---- 2) sigma: larger in winter + grows through time (log link) ----
+s0 <- log(4)                     # baseline sd on log-scale
+s_trend <- 2 * (t_index/n)           # variance increases later in the record
+s_seas  <- 0.6 * sin(2*pi*(u - 0.15))   # wintery spread
+sigma_t <- pmax(0.5, exp(s0 + s_trend + s_seas))
+
+# ---- 3) skewness & tails (identity for nu, logshiftto2 for tau) ----
+nu_t  <- 0.8 + 0.2 * sin(2*pi*(u - 0.1))           # mild seasonal skew
+tau_t <- (exp(log(6.5) + 0.15*sin(2*pi*(u+0.1))) + 2) # slightly heavier tails in parts of year
+
+# ---- 4) draw from SST ----
+y <- rSST(n, mu = mu_t, sigma = sigma_t, nu = nu_t, tau = tau_t)
+
+# ---- 5) occasional spikes (right-tail events), more common later ----
+p_spike <- 0.002 + 0.006 * (t_index/n)                    # prob of spike grows over time
+hits    <- runif(n) < p_spike
+y[hits] <- y[hits] + rexp(sum(hits), rate = 1/25)    # add positive bursts
+
+# ---- 6) keep nonnegative if you want nitrate-like units ----
+y <- pmax(0, y)
+
+# ---- 7) quick plot ----
+plot(t_index, y, type = "l", col = "#7A0C0C", xlab = "Time", ylab = "Value", xlim = c(731, 1095))
 
 
 
