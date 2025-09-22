@@ -67,6 +67,7 @@ niSSTm3 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SS
                   method = mixed(10,200),
                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTm3)
+AIC(niSSTm3)
 
 # polynomial
 niSSTpolym1 <- gamlss(Nitrate ~ poly(Date, 2), sigma.fo = ~ poly(Date, 2), nu.fo = ~ poly(Date, 2), family = SST(), data = Nitrate,
@@ -74,6 +75,7 @@ niSSTpolym1 <- gamlss(Nitrate ~ poly(Date, 2), sigma.fo = ~ poly(Date, 2), nu.fo
                      method = mixed(10,200),
                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTpolym1)
+AIC(niSSTpolym1)
 
 # mu sig and nu changing with seasonality
 niSSTm3_sea <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, family = SST(), data = Nitrate,
@@ -81,6 +83,15 @@ niSSTm3_sea <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo =
                       method = mixed(10,200),
                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(niSSTm3_sea)
+AIC(niSSTm3_sea)
+
+# only mean seasonaility
+niSSTm2_sea <- gamlss(Nitrate ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
+                      #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                      method = mixed(10,200),
+                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm2_sea)
+AIC(niSSTm2_sea)
 #============================================================================================
 
 # predict mu based on seasonaility model
@@ -449,44 +460,125 @@ ggplot(dat, aes(x = t)) +
 
 
 
-# ---- timeline ----
-yrs   <- 33                      # ~ like 1962–1994
-n     <- 365 * yrs               # daily
-t_index    <- 1:n
-u     <- (t_index - 1) %% 365 / 365    # position within year [0,1)
+# Simulate 
 
-# ---- 1) mean: linear trend + 2-peak seasonality (spring & autumn) ----
-b0 <- 6                          # baseline level
-b1 <- 0.03                       # slow upward trend per year
-A1 <- 14; B1 <- -4               # annual component
-A2 <-  8; B2 <-  -2               # semi-annual component
-mu_t <- b0 + b1 * (t_index/365) +
-  A1*sin(2*pi*u) + B1*cos(2*pi*u) +
-  A2*sin(4*pi*u) + B2*cos(4*pi*u)
+simulate_nitrate <- function(years = 33,
+                             # MEAN (μ): baseline + trend + shaped seasonality
+                             mu_base   = 8,            # baseline level
+                             mu_trend  = 0.20,         # ↑ per year (additive)
+                             peak_day  = 120,          # spring peak ~ day-of-year
+                             A1        = 14,           # annual amplitude
+                             A2        = -0.25,        # small 2nd harmonic to sharpen spring (keep |A2| <= ~0.33)
+                             # VARIANCE (σ): log-link trend + seasonal bump in winter
+                             sigma0    = 3.5,          # starting SD
+                             sigma_trend_mult = 3.0,   # by the last year SD ≈ sigma0 * sigma_trend_mult
+                             sigma_seas = 0.35,        # wintery ↑ in spread (0..~0.6)
+                             winter_shift = 0.15,      # shifts “winter spread” timing
+                             # Distribution (Gaussian or SST)
+                             family = c("GAUS", "SST"),
+                             nu = 0.9, tau = 7,        # SST shape params (ignored if GAUS)
+                             seed = 42) {
+  
+  set.seed(seed)
+  family <- match.arg(family)
+  
+  # timeline
+  T  <- 365 * years
+  t  <- 1:T
+  u  <- (t - 1) %% 365 / 365                 # within-year position [0,1)
+  yr <- floor((t - 1) / 365)                 # 0,1,...,years-1
+  
+  # ---- MEAN: trend + single spring peak ----
+  phi <- 2*pi*peak_day/365                   # place the peak in spring
+  # annual wave + small 2nd harmonic to skew shape (kept small so only 1 peak)
+  seas <- sin(2*pi*u - phi) + A2 * sin(4*pi*u - 2*phi)
+  mu_t <- mu_base + mu_trend * (yr) + A1 * seas
+  
+  # ---- SIGMA: multiplicative growth + wintery spread ----
+  # log-sigma rises linearly from log(sigma0) to log(sigma0*sigma_trend_mult)
+  log_sigma_t <- log(sigma0) +
+    log(sigma_trend_mult) * (yr / (years - 1)) +
+    sigma_seas * cos(2*pi*(u + winter_shift))  # bigger spread in winter
+  sigma_t <- pmax(0.1, exp(log_sigma_t))
+  
+  # ---- draw series ----
+  if (family == "GAUS") {
+    y <- rnorm(T, mean = mu_t, sd = sigma_t)
+  } else {
+    # skew + heavy tails like nitrate extremes
+    if (!requireNamespace("gamlss.dist", quietly = TRUE))
+      stop("Please install.packages('gamlss.dist') for SST draws.")
+    y <- gamlss.dist::rSST(T, mu = mu_t, sigma = sigma_t, nu = nu, tau = tau)
+  }
+  
+  # keep nonnegative (nitrate units)
+  y <- pmax(0, y)
+  
+  data.frame(t = t, year = yr, u = u, mu_t = mu_t, sigma_t = sigma_t, y = y)
+}
 
-# ---- 2) sigma: larger in winter + grows through time (log link) ----
-s0 <- log(4)                     # baseline sd on log-scale
-s_trend <- 2 * (t_index/n)           # variance increases later in the record
-s_seas  <- 0.6 * sin(2*pi*(u - 0.15))   # wintery spread
-sigma_t <- pmax(0.5, exp(s0 + s_trend + s_seas))
+start_date <- as.Date("1962-01-01")
 
-# ---- 3) skewness & tails (identity for nu, logshiftto2 for tau) ----
-nu_t  <- 0.8 + 0.2 * sin(2*pi*(u - 0.1))           # mild seasonal skew
-tau_t <- (exp(log(6.5) + 0.15*sin(2*pi*(u+0.1))) + 2) # slightly heavier tails in parts of year
 
-# ---- 4) draw from SST ----
-y <- rSST(n, mu = mu_t, sigma = sigma_t, nu = nu_t, tau = tau_t)
+# add Date, Year, Month (no need to change how you simulated y)
+sim <- sim %>%
+  mutate(
+    Date  = start_date + (t - 1),
+    Year  = year(Date),
+    Month = factor(month(Date), levels = 1:12, labels = month.abb)
+  )
 
-# ---- 5) occasional spikes (right-tail events), more common later ----
-p_spike <- 0.002 + 0.006 * (t_index/n)                    # prob of spike grows over time
-hits    <- runif(n) < p_spike
-y[hits] <- y[hits] + rexp(sum(hits), rate = 1/25)    # add positive bursts
+# plot that sucka
+ggplot(sim, aes(Date, y)) +
+  geom_line(color = "#7A0C0C") +
+  labs(x = "Date", y = "Value") +
+  theme_classic()
 
-# ---- 6) keep nonnegative if you want nitrate-like units ----
-y <- pmax(0, y)
+# center ghe year and date 
+sim$Year_C <- sim$Year - min(sim$Year)
+sim$Date_C <- sim$Date - min(sim$Date)
 
-# ---- 7) quick plot ----
-plot(t_index, y, type = "l", col = "#7A0C0C", xlab = "Time", ylab = "Value", xlim = c(731, 1095))
+#===========================================================================================
+# seasonality for just the mean
+m1 <- gamlss(y ~ Year + Month, family = SST(), data = sim,
+             method = mixed(10,200),
+             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(m1)
 
+# seasonality for other param
+m2 <- gamlss(y ~ Year_C + Month, sigma.fo = ~ Year_C + Month, nu.fo = ~ Date, family = SST(), data = sim,
+             mu.start = mean(sim$mu_t), sigma.start = sd(sim$sigma_t),
+             method = mixed(10,200),
+             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(m2)
+
+# mean only model 
+mean_m <- gamlss(y ~ Date_C, family = SST(), data = sim,
+             mu.start = mean(sim$y), sigma.start = sd(sim$y),
+             method = mixed(10,200),
+             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+# all param (time)
+param_m <- gamlss(y ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date,  family = SST(), data = sim,
+                  mu.start = mean(sim$mu_t), sigma.start = sd(sim$sigma_t),
+                 method = mixed(10,200),
+                 control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+#===========================================================================================
+
+
+# predict mu based on seasonality model
+sim$mu_hat <- fitted(m2, what = "mu")
+sim$sigma_hat <- fitted(m2, what = "sigma")
+sim$nu_hat <- fitted(m2, what = "nu")
+sim$tau_hat <- fitted(m2, what = "tau")
+
+# plot best of fit line to data
+ggplot(sim, aes(Date, y)) +
+  geom_line(color = "grey") +
+  geom_line(aes(y = mu_hat), color = "darkolivegreen", linewidth = 1) +
+  geom_hline(yintercept = mean(sim$y), linetype = "dashed", color = "black") +
+  labs(x = "Date", y = "Value") +
+  theme_classic()
 
 
