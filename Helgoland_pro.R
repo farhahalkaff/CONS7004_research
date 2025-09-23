@@ -1112,6 +1112,149 @@ phNOm <- gamlss(Phosphate ~ Date, family = NO(), data = Phosphate,
 #                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 # summary(phSEPm3)
 
+
+# TEST
+#============================================================================================
+# intercept model 
+
+### LINEAR ###
+
+## just mean
+#  ~ Date
+# ~ year 
+# ~ year + month 
+# ~ year + month + DOY
+
+## all param basic
+#  ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date 
+# ~ year, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month
+# ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY
+
+# all param switch-a-roo
+#  ~ Date, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+# ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date
+# ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month
+# ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date
+
+
+# intercept 
+ph_Intercept <- gamlss(Phosphate ~ 1, family = JSU(), data = Phosphate,
+                    mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+## just mean
+#  ~ Date
+ph_mean_date <- gamlss(Phosphate ~ Date, family = JSU(), data = Phosphate,
+                    mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year 
+ph_mean_year <- gamlss(Phosphate ~ year, family = JSU(), data = Phosphate,
+                    mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month
+ph_mean_year_month <- gamlss(Phosphate ~ year + month, family = JSU(), data = Phosphate,
+                          mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY
+ph_mean_year_month_DOY <- gamlss(Phosphate ~ year + month + DOY, family = JSU(), data = Phosphate,
+                              mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                              method = mixed(10,200),
+                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(ph_mean_date)
+AIC(ph_mean_year)
+AIC(ph_mean_year_month)
+AIC(ph_mean_year_month_DOY)
+
+
+## all param basic 
+#  ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date 
+ph_param_date <- gamlss(Phosphate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date,  tau.fo = ~ Date, family = JSU(), data = Phosphate,
+                     #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+ph_param_year <- gamlss(Phosphate ~ year, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, family = JSU(), data = Phosphate,
+                     #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month
+ph_param_year_month <- gamlss(Phosphate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                              family = JSU(), data = Phosphate,
+                           #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY
+ph_param_year_month_DOY <- gamlss(Phosphate ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY, tau.fo = ~ year + month + DOY,
+                                  family = JSU(), data = Phosphate,
+                                     mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                     method = mixed(10,200),
+                                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(ph_param_date)
+AIC(ph_param_year)
+AIC(ph_param_year_month)
+AIC(ph_mean_year_month_DOY) 
+
+# all param switch-a-roo
+#  ~ Date, sigma.fo = ~ year, nu.fo = ~ year 
+ph_param_date_sw_year <- gamlss(Phosphate ~ Date, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year,
+                                family = JSU(), data = Phosphate,
+                             mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+ph_param_year_month_sw_year <- gamlss(Phosphate ~ year + month, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year,
+                                      family = JSU(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date
+ph_param_year_month_sw_date <- gamlss(Phosphate ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, 
+                                      family = JSU(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year 
+ph_param_year_month_DOY_sw_year <- gamlss(Phosphate ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year,
+                                          family = JSU(), data = Phosphate,
+                                       #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                       method = mixed(10,200),
+                                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month
+ph_param_year_month_DOY_sw_year_month <- gamlss(Phosphate ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month,
+                                                family = JSU(), data = Phosphate,
+                                             #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                             method = mixed(10,200),
+                                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date
+ph_param_year_month_DOY_sw_date <- gamlss(Phosphate ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, 
+                                          family = JSU(), data = Phosphate,
+                                       #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                       method = mixed(10,200),
+                                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+AIC(ph_param_date_sw_year) 
+AIC(ph_param_year_month_sw_year)
+AIC(ph_param_year_month_sw_date)
+AIC(ph_param_year_month_DOY_sw_year)
+AIC(ph_param_year_month_DOY_sw_year_month)
+AIC(ph_param_year_month_DOY_sw_date)
+
+summary(ph_param_year_month) # BEST MODEL
+summary(ph_param_year_month_DOY_sw_year_month) # SECOND BEST MODEL
+summary(ph_param_year_month_sw_year) # THIRD BEST MODEL
+
+#=======================================================================================
+
 #=======================================================================================
 # intercept model
 phJSUm1 <- gamlss(Phosphate ~ 1, family = JSU(), data = Phosphate,
@@ -1375,7 +1518,7 @@ ggplot(Phosphate %>% filter(year %in% years_to_plot),
   annotate("text", x = 130, y = 3, label = "Spring", size = 4) +
   annotate("text", x = 220, y = 3, label = "Summer", size = 4) +
   annotate("text", x = 315, y = 3, label = "Fall", size = 4) +
-  labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
+  labs(x = "Day of Year", y = "Phosphate (µmol/l)", colour = "Year") +
   theme_classic()
 
 ####################################################
@@ -1702,7 +1845,7 @@ ggplot(Nitrite %>% filter(year %in% years_to_plot),
   annotate("text", x = 130, y = 4, label = "Spring", size = 4) +
   annotate("text", x = 220, y = 4, label = "Summer", size = 4) +
   annotate("text", x = 315, y = 4, label = "Fall", size = 4) +
-  labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
+  labs(x = "Day of Year", y = "Nitrite (µmol/l)", colour = "Year") +
   theme_classic()
 
 
@@ -2012,7 +2155,7 @@ ggplot(DIN %>% filter(year %in% years_to_plot),
   annotate("text", x = 130, y = 150, label = "Spring", size = 4) +
   annotate("text", x = 220, y = 150, label = "Summer", size = 4) +
   annotate("text", x = 315, y = 150, label = "Fall", size = 4) +
-  labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
+  labs(x = "Day of Year", y = "DIN (µmol/l)", colour = "Year") +
   theme_classic()
 
 
@@ -2336,7 +2479,7 @@ plot_mvgam_series(data = SM$data_train,
                   newdata = SM$data_test)
 
 
-########## TRENDS ################
+########## TRENDS ###############
 
 # create day of the year for nitrate and phytopl
 Silicate <- Silicate %>%
@@ -2360,7 +2503,7 @@ ggplot(Silicate %>% filter(year %in% years_to_plot),
   annotate("text", x = 130, y = 40, label = "Spring", size = 4) +
   annotate("text", x = 220, y = 40, label = "Summer", size = 4) +
   annotate("text", x = 315, y = 40, label = "Fall", size = 4) +
-  labs(x = "Day of Year", y = "Nitrate (µmol/l)", colour = "Year") +
+  labs(x = "Day of Year", y = "Silicate (µmol/l)", colour = "Year") +
   theme_classic()
 
 
