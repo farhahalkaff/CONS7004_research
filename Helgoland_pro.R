@@ -403,7 +403,7 @@ Nitrate$mu_hat <- fitted(niSSTm3_sea, what = "mu")
 # plot that sucka (intercept model)
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "grey", na.rm = TRUE) +
-  geom_line(aes(y = mu_hat), color = "chocolate", linewidth = 1) +
+  geom_line(aes(y = mu_hat), color = "darkolivegreen", linewidth = 1) +
   geom_abline(intercept = niSSTm2$mu.coefficients[1], slope = niSSTm2$mu.coefficients[2], 
               color = "steelblue", linewidth = 1) + # only mean as function of time 
   geom_abline(intercept = niSSTm3$mu.coefficients[1], slope = niSSTm3$mu.coefficients[2], 
@@ -1260,7 +1260,7 @@ poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = 
                               #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
                               method = mixed(10,200),
                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
-AIC(poly_ph_param_year_month)
+AIC(poly_ph_param_year_month) # Better?? negative AIC
 summary(poly_ph_param_year_month)
 #=======================================================================================
 
@@ -2436,6 +2436,159 @@ print(param_summary)
 # summary(siSSTm1)
 
 
+# TEST
+#============================================================================================
+# intercept model 
+
+### LINEAR ###
+
+## just mean
+#  ~ Date
+# ~ year 
+# ~ year + month 
+# ~ year + month + DOY
+
+## all param basic
+#  ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date 
+# ~ year, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month
+# ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY
+
+# all param switch-a-roo
+#  ~ Date, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+# ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date
+# ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month
+# ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date
+
+
+# intercept 
+si_Intercept <- gamlss(Silicate ~ 1, family = JSU(), data = Silicate,
+                    mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+## just mean
+#  ~ Date
+si_mean_date <- gamlss(Silicate ~ Date, family = JSU(), data = Silicate,
+                    mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year 
+si_mean_year <- gamlss(Silicate ~ year, family = JSU(), data = Silicate,
+                    mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month
+si_mean_year_month <- gamlss(Silicate ~ year + month, family = JSU(), data = Silicate,
+                          mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY
+si_mean_year_month_DOY <- gamlss(Silicate ~ year + month + DOY, family = JSU(), data = Silicate,
+                              mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                              method = mixed(10,200),
+                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(si_mean_date)
+AIC(si_mean_year)
+AIC(si_mean_year_month) # best
+AIC(si_mean_year_month_DOY)
+
+
+## all param basic 
+#  ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date 
+si_param_date <- gamlss(Silicate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, 
+                        family = JSU(), data = Silicate,
+                     #mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+si_param_year <- gamlss(Silicate ~ year, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, 
+                        family = JSU(), data = Silicate,
+                     mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month
+si_param_year_month <- gamlss(Silicate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                              family = JSU(), data = Silicate,
+                           mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY
+si_param_year_month_DOY <- gamlss(Silicate ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY, tau.fo = ~ year + month + DOY, 
+                                  family = JSU(), data = Silicate,
+                                     mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                                     method = mixed(10,200),
+                                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(si_param_date)
+AIC(si_param_year)
+AIC(si_param_year_month) # best
+AIC(si_mean_year_month_DOY) 
+
+# all param switch-a-roo
+#  ~ Date, sigma.fo = ~ year, nu.fo = ~ year 
+si_param_date_sw_year <- gamlss(Silicate ~ Date, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, 
+                                family = JSU(), data = Silicate,
+                             mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+si_param_year_month_sw_year <- gamlss(Silicate ~ year + month, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, 
+                                      family = JSU(), data = Silicate,
+                                   mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date
+si_param_year_month_sw_date <- gamlss(Silicate ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date,  tau.fo = ~ Date, 
+                                      family = JSU(), data = Silicate,
+                                   mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year 
+si_param_year_month_DOY_sw_year <- gamlss(Silicate ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year,  
+                                          family = JSU(), data = Silicate,
+                                       mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                                       method = mixed(10,200),
+                                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month
+si_param_year_month_DOY_sw_year_month <- gamlss(Silicate ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                                                family = JSU(), data = Silicate,
+                                             mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                                             method = mixed(10,200),
+                                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date
+si_param_year_month_DOY_sw_date <- gamlss(Silicate ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, 
+                                          family = JSU(), data = Silicate,
+                                       mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                                       method = mixed(10,200),
+                                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+AIC(si_param_date_sw_year) 
+AIC(si_param_year_month_sw_year)
+AIC(si_param_year_month_sw_date)
+AIC(si_param_year_month_DOY_sw_year)
+AIC(si_param_year_month_DOY_sw_year_month)
+AIC(si_param_year_month_DOY_sw_date)
+
+summary(si_param_year_month) # BEST MODEL
+summary(si_param_year_month_DOY_sw_year_month) # SECOND BEST MODEL
+summary(si_param_year_month_sw_date) # THIRD BEST MODEL
+
+
+# adding poly to best model 
+poly_si_param_year_month <- gamlss(Silicate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                              family = JSU(), data = Silicate,
+                              mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                              method = mixed(10,200),
+                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+AIC(poly_si_param_year_month)
+summary(poly_si_param_year_month)
+#==========================================================================================
+
 
 #==========================================================================================
 # Intercept model with SEP3 => mu is mode, not mean
@@ -2472,15 +2625,18 @@ siJSUm3_sea <- gamlss(Silicate ~ year + month, sigma.fo = ~ year + month, nu.fo 
                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(siJSUm3_sea)
 #==========================================================================================
+# predict mu from seasonailty model
+Silicate$mu_hat <- fitted(si_param_year_month, what = "mu")
+Silicate$mu_hat2 <- fitted(poly_si_param_year_month, what = "mu")
 
 # plot that sucka 
 ggplot(Silicate, aes(x = Date, y = Silicate)) +
   geom_line(color = "grey") +
-  geom_line(aes(y = mu_hat), color = "darkred", linewidth = 1) +
-  geom_abline(intercept = siJSUm2$mu.coefficients[1], slope = siJSUm2$mu.coefficients[2],
+  geom_abline(intercept = si_mean_date$mu.coefficients[1], slope = si_mean_date$mu.coefficients[2],
               color = "steelblue", linewidth = 1) + # mean only
-  geom_abline(intercept = siJSUm3$mu.coefficients[1], slope = siJSUm3$mu.coefficients[2],
+  geom_abline(intercept = si_param_date$mu.coefficients[1], slope = si_param_date$mu.coefficients[2],
               color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
+  geom_line(aes(y = mu_hat2), color = "darkolivegreen", linewidth = 1) +
   geom_hline(yintercept = 7.378, linetype = "dashed", color = "black") +
   labs(x = "Time", y = "Silicate (µmol/l)") +
   theme_minimal()
@@ -2729,6 +2885,156 @@ amNOm <- gamlss(Ammonium ~ Date, family = NO(), data = Ammonium,
                 control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
+# TEST
+#============================================================================================
+# intercept model 
+
+### LINEAR ###
+
+## just mean
+#  ~ Date
+# ~ year 
+# ~ year + month 
+# ~ year + month + DOY
+
+## all param basic
+#  ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date 
+# ~ year, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month
+# ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY
+
+# all param switch-a-roo
+#  ~ Date, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+# ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date
+# ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month
+# ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date
+
+
+# intercept 
+am_Intercept <- gamlss(Ammonium ~ 1, family = SST(), data = Ammonium,
+                    method = mixed(5,200),
+                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+## just mean
+#  ~ Date
+am_mean_date <- gamlss(Ammonium ~ Date, family = SST(), data = Ammonium,
+                    mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year 
+am_mean_year <- gamlss(Ammonium ~ year, family = SST(), data = Ammonium,
+                    mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month
+am_mean_year_month <- gamlss(Ammonium ~ year + month, family = SST(), data = Ammonium,
+                          mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY
+am_mean_year_month_DOY <- gamlss(Ammonium ~ year + month + DOY, family = SST(), data = Ammonium,
+                              mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                              method = mixed(10,200),
+                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(am_mean_date)
+AIC(am_mean_year)
+AIC(am_mean_year_month) # best
+AIC(am_mean_year_month_DOY)
+
+
+## all param basic 
+#  ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date 
+am_param_date <- gamlss(Ammonium ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date,
+                        family = SST(), data = Ammonium,
+                     #mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+am_param_year <- gamlss(Ammonium ~ year, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, 
+                        family = SST(), data = Ammonium,
+                     #mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month
+am_param_year_month <- gamlss(Ammonium ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                              family = SST(), data = Ammonium,
+                           mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                           method = mixed(5,200),
+                           control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY
+am_param_year_month_DOY <- gamlss(Ammonium ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY, tau.fo = ~ year, 
+                                  family = SST(), data = Ammonium,
+                                     mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                     method = mixed(10,200),
+                                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(am_param_date)
+AIC(am_param_year)
+AIC(am_param_year_month) # worked for JSU; for SST, tau has to be ~ year only
+AIC(am_mean_year_month_DOY) # tau has to be ~ year only 
+
+# all param switch-a-roo
+#  ~ Date, sigma.fo = ~ year, nu.fo = ~ year 
+am_param_date_sw_year <- gamlss(Ammonium ~ Date, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, 
+                                family = SST(), data = Ammonium,
+                             mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+am_param_year_month_sw_year <- gamlss(Ammonium ~ year + month, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, 
+                                      family = SST(), data = Ammonium,
+                                   #mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date
+am_param_year_month_sw_date <- gamlss(Ammonium ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, 
+                                      family = SST(), data = Ammonium,
+                                   #mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year 
+am_param_year_month_DOY_sw_year <- gamlss(Ammonium ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, 
+                                          family = SST(), data = Ammonium,
+                                       #mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                       method = mixed(10,200),
+                                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month
+am_param_year_month_DOY_sw_year_month <- gamlss(Ammonium ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                                family = SST(), data = Ammonium,
+                                             mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                             method = mixed(5,200),
+                                             control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date
+am_param_year_month_DOY_sw_date <- gamlss(Ammonium ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date, tau.fo = ~ Date, 
+                                          family = SST(), data = Ammonium,
+                                       #mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                       method = mixed(10,200),
+                                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+AIC(am_param_date_sw_year) 
+AIC(am_param_year_month_sw_year)
+AIC(am_param_year_month_sw_date)
+AIC(am_param_year_month_DOY_sw_year)
+AIC(am_param_year_month_DOY_sw_year_month) # tau had to be ~ year only
+AIC(am_param_year_month_DOY_sw_date)
+
+summary(am_param_year_month) # BEST MODEL
+summary(am_param_year_month_DOY_sw_year_month) # SECOND BEST MODEL
+summary(am_param_year_month_sw_year) # THIRD BEST MODEL
+
+# adding poly to best model 
+poly_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                              family = SST(), data = Ammonium,
+                              mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                              method = mixed(5,200),
+                              control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+AIC(poly_am_param_year_month)
+summary(poly_am_param_year_month)
+#=========================================================================================
 
 #=========================================================================================
 # Intercept model 
@@ -2763,14 +3069,18 @@ amSSTm4_sea <- gamlss(Ammonium ~ year + month, sigma.fo = ~ year + month, nu.fo 
                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(amSSTm4_sea)
 #=========================================================================================
+# predict mu from seasonality model 
+Ammonium$mu_hat <- fitted(am_param_year_month, what = "mu")
+Ammonium$mu_hat2 <- fitted(poly_am_param_year_month, what = "mu")
 
 # plot that sucka
 ggplot(Ammonium, aes(x = Date, y = Ammonium)) +
   geom_line(color = "grey") +
-  geom_abline(intercept = amSSTm2$mu.coefficients[1], slope = amSSTm2$mu.coefficients[2], 
+  geom_abline(intercept = am_mean_date$mu.coefficients[1], slope = am_mean_date$mu.coefficients[2], 
               color = "steelblue", linewidth = 1) + # only mean as function of time 
-  geom_abline(intercept = amSSTm4$mu.coefficients[1], slope = amSSTm4$mu.coefficients[2], 
+  geom_abline(intercept = am_param_date$mu.coefficients[1], slope = am_param_date$mu.coefficients[2], 
               color = "goldenrod", linewidth = 1) + # mean, sigma and nu as function of time
+  geom_line(aes(y = mu_hat), color = "darkolivegreen", linewidth = 1) +
   geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed" ,color = "darkred") +
   geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed" ,color = "darkred") +
   geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed" ,color = "darkred") +
