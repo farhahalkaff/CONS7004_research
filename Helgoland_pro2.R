@@ -69,6 +69,16 @@ niSSTm3 <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SS
 summary(niSSTm3)
 AIC(niSSTm3)
 
+
+# mean, sigma and nu changing through time linearly 
+niSSTm3_test <- gamlss(Nitrate ~ year, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
+                  #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                  method = mixed(10,200),
+                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(niSSTm3_test)
+AIC(niSSTm3)
+
+
 # polynomial
 niSSTpolym1 <- gamlss(Nitrate ~ poly(Date, 2), sigma.fo = ~ poly(Date, 2), nu.fo = ~ poly(Date, 2), family = SST(), data = Nitrate,
                      #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
@@ -94,6 +104,161 @@ summary(niSSTm2_sea)
 AIC(niSSTm2_sea)
 #============================================================================================
 
+# TEST
+#============================================================================================
+# intercept model 
+
+### LINEAR ###
+
+## just mean
+#  ~ Date
+# ~ year 
+# ~ year + month 
+# ~ year + month + DOY
+
+## all param basic
+#  ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date 
+# ~ year, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month
+# ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY
+
+# all param switch-a-roo
+#  ~ Date, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+# ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date
+# ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year 
+# ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month
+# ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date
+
+
+# intercept 
+Intercept <- gamlss(Nitrate ~ 1, family = SST(), data = Nitrate,
+                 mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                 method = mixed(10,200),
+                 control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+## just mean
+#  ~ Date
+mean_date <- gamlss(Nitrate ~ Date, family = SST(), data = Nitrate,
+                    mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year 
+mean_year <- gamlss(Nitrate ~ year, family = SST(), data = Nitrate,
+                    mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month
+mean_year_month <- gamlss(Nitrate ~ year + month, family = SST(), data = Nitrate,
+                    mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                    method = mixed(10,200),
+                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY
+mean_year_month_DOY <- gamlss(Nitrate ~ year + month + DOY, family = SST(), data = Nitrate,
+                          mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(mean_date)
+AIC(mean_year)
+AIC(mean_year_month)
+AIC(mean_year_month_DOY)
+
+
+## all param basic 
+#  ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date 
+param_date <- gamlss(Nitrate ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
+                       #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                       method = mixed(10,200),
+                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+param_year <- gamlss(Nitrate ~ year, sigma.fo = ~ year, nu.fo = ~ year, family = SST(), data = Nitrate,
+                     #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month
+param_year_month <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, family = SST(), data = Nitrate,
+                     #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY
+ERROR_param_year_month_DOY <- gamlss(Nitrate ~ year + month + DOY, sigma.fo = ~ year + month + DOY, nu.fo = ~ year + month + DOY, family = SST(), data = Nitrate,
+                           mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(param_date)
+AIC(param_year)
+AIC(param_year_month)
+# AIC(mean_year_month_DOY) Sigma must be positive
+
+# all param switch-a-roo
+#  ~ Date, sigma.fo = ~ year, nu.fo = ~ year 
+param_date_sw_year <- gamlss(Nitrate ~ Date, sigma.fo = ~ year, nu.fo = ~ year, family = SST(), data = Nitrate,
+                     mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                     method = mixed(10,200),
+                     control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ year, nu.fo = ~ year
+param_year_month_sw_year <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year, nu.fo = ~ year, family = SST(), data = Nitrate,
+                             #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date
+param_year_month_sw_date <- gamlss(Nitrate ~ year + month, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
+                                   #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year 
+param_year_month_DOY_sw_year <- gamlss(Nitrate ~ year + month + DOY, sigma.fo = ~ year, nu.fo = ~ year, family = SST(), data = Nitrate,
+                                   #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month
+param_year_month_DOY_sw_year_month <- gamlss(Nitrate ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month, family = SST(), data = Nitrate,
+                                       #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                       method = mixed(10,200),
+                                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date
+param_year_month_DOY_sw_date <- gamlss(Nitrate ~ year + month + DOY, sigma.fo = ~ Date, nu.fo = ~ Date, family = SST(), data = Nitrate,
+                                             #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                             method = mixed(10,200),
+                                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+AIC(param_date_sw_year) 
+AIC(param_year_month_sw_year)
+AIC(param_year_month_sw_date)
+AIC(param_year_month_DOY_sw_year)
+AIC(param_year_month_DOY_sw_year_month)
+AIC(param_year_month_DOY_sw_date)
+
+summary(param_year_month) # BEST MODEL
+summary(param_year_month_DOY_sw_year_month) # SECOND BEST MODEL
+summary(param_year_month_sw_year) # THIRD BEST MODEL
+
+
+# Add tau in the best models 
+tau_param_year_month <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month,
+                              family = SST(), data = Nitrate,
+                           #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+tau_param_year_month_DOY_sw_year_month <- gamlss(Nitrate ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month,
+                                                family = SST(), data = Nitrate,
+                                             #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                             method = mixed(10,200),
+                                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+tau_param_year_month_sw_year <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, family = SST(), data = Nitrate,
+                                   #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+AIC(tau_param_year_month_sw_year) # BETTER YOHOO
+#============================================================================================
+
+
+
 # predict mu based on seasonaility model
 Nitrate$mu_hat <- fitted(niSSTm3_sea, what = "mu")
 Nitrate$sigma_hat <- fitted(niSSTm3_sea, what = "sigma", type = "response")
@@ -109,6 +274,8 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
               color = "steelblue", linewidth = 1) + # only mean as function of time 
   geom_abline(intercept = niSSTm3$mu.coefficients[1], slope = niSSTm3$mu.coefficients[2], 
               color = "goldenrod", linewidth = 1) + # mean, sigma and nu as function of time
+  geom_abline(intercept = niSSTm3_test$mu.coefficients[1], slope = niSSTm3_test$mu.coefficients[2], 
+              color = "chocolate", linewidth = 1) + # year
   #geom_abline(intercept = niNOm1$mu.coefficients[1], slope = niNOm1$mu.coefficients[2], 
   #color = "darkolivegreen", linewidth = 1) + # mean, sigma and nu as function of time
   #geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "salmon") +
@@ -118,6 +285,8 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed", color = "darkred") +
   labs(x = "Time", y = "Nitrate (µmol/l)") +
   theme_classic()
+
+niSSTm3_test$mu.coefficients[2]
 
 #============================================================================================
 # function for pdf 
@@ -465,8 +634,8 @@ ggplot(dat, aes(x = t)) +
 simulate_nitrate <- function(years = 33,
                              # MEAN (μ): baseline + trend + shaped seasonality
                              mu_base   = 8,            # baseline level
-                             mu_trend  = 0.20,         # ↑ per year (additive)
-                             peak_day  = 120,          # spring peak ~ day-of-year
+                             mu_trend  = 0.8,         # ↑ per year (additive)
+                             peak_day  = 90,          # spring peak ~ day-of-year
                              A1        = 14,           # annual amplitude
                              A2        = -0.25,        # small 2nd harmonic to sharpen spring (keep |A2| <= ~0.33)
                              # VARIANCE (σ): log-link trend + seasonal bump in winter
@@ -474,13 +643,16 @@ simulate_nitrate <- function(years = 33,
                              sigma_trend_mult = 3.0,   # by the last year SD ≈ sigma0 * sigma_trend_mult
                              sigma_seas = 0.35,        # wintery ↑ in spread (0..~0.6)
                              winter_shift = 0.15,      # shifts “winter spread” timing
-                             # Distribution (Gaussian or SST)
-                             family = c("GAUS", "SST"),
-                             nu = 0.9, tau = 7,        # SST shape params (ignored if GAUS)
+                             # skewness & kurtosis
+                             nu_base   = 1.5,         # >1 = right skew
+                             nu_seas   = 0.0,         # add seasonal skew if wanted
+                             tau_base  = 7,           # tails (higher = closer to normal)
+                             spike_prob = 0.002,      # chance of rare spike
+                             spike_scale = 25,        # magnitude of spikes
                              seed = 42) {
+
   
   set.seed(seed)
-  family <- match.arg(family)
   
   # timeline
   T  <- 365 * years
@@ -501,26 +673,35 @@ simulate_nitrate <- function(years = 33,
     sigma_seas * cos(2*pi*(u + winter_shift))  # bigger spread in winter
   sigma_t <- pmax(0.1, exp(log_sigma_t))
   
-  # ---- draw series ----
-  if (family == "GAUS") {
-    y <- rnorm(T, mean = mu_t, sd = sigma_t)
-  } else {
-    # skew + heavy tails like nitrate extremes
-    if (!requireNamespace("gamlss.dist", quietly = TRUE))
-      stop("Please install.packages('gamlss.dist') for SST draws.")
-    y <- gamlss.dist::rSST(T, mu = mu_t, sigma = sigma_t, nu = nu, tau = tau)
-  }
+  # ---- skewness (nu) ----
+  nu_t <- nu_base + nu_seas * sin(2*pi*u)
   
-  # keep nonnegative (nitrate units)
+  # ---- kurtosis (tau) ----
+  tau_t <- tau_base
+  
+  # ---- draw SST ----
+  if (!requireNamespace("gamlss.dist", quietly = TRUE))
+    stop("Please install.packages('gamlss.dist') for SST draws.")
+  y <- gamlss.dist::rSST(T, mu = mu_t, sigma = sigma_t, nu = nu_t, tau = tau_t)
+  
+  # ---- add rare spikes ----
+  hits <- runif(T) < spike_prob
+  y[hits] <- y[hits] + rexp(sum(hits), rate = 3/spike_scale)
+  
+  # ---- nonnegative ----
   y <- pmax(0, y)
   
-  data.frame(t = t, year = yr, u = u, mu_t = mu_t, sigma_t = sigma_t, y = y)
-}
+  data.frame(t = t, year = yr, u = u,
+             mu_t = mu_t, sigma_t = sigma_t, nu_t = nu_t, tau_t = tau_t, y = y,
+             spike = hits)
+  }
+  
 
-start_date <- as.Date("1962-01-01")
-
+start_date <- as.Date("1962-01-15")
 
 # add Date, Year, Month (no need to change how you simulated y)
+sim <- simulate_nitrate(years = 33)
+
 sim <- sim %>%
   mutate(
     Date  = start_date + (t - 1),
@@ -528,44 +709,64 @@ sim <- sim %>%
     Month = factor(month(Date), levels = 1:12, labels = month.abb)
   )
 
+
+# Check skewness visually
+hist(sim$y, breaks = 100, main = "Distribution of simulated nitrate")
+
 # plot that sucka
 ggplot(sim, aes(Date, y)) +
-  geom_line(color = "#7A0C0C") +
-  labs(x = "Date", y = "Value") +
+  geom_line(color = "grey") +
+  labs(x = "Date", y = "Nitrate") +
   theme_classic()
 
-# center ghe year and date 
+# density plot 
+ggplot(sim, aes(y = y)) +
+  geom_density(linewidth = 0.8) +
+  geom_hline(yintercept = mean(sim$year), linetype = "dashed", color = "azure4") +
+  labs(
+    x = "Density",
+    y = "Value"
+  ) +
+  theme_minimal(base_size = 14) +
+  coord_flip()
+
+
+# center the year and date 
 sim$Year_C <- sim$Year - min(sim$Year)
 sim$Date_C <- sim$Date - min(sim$Date)
+# recenter Date
+sim$Date_num <- as.numeric(sim$Date)
+sim$Date_C   <- scale(sim$Date_num, center = TRUE, scale = FALSE)  # centered days
+# scale it to 1
+T  <- 365 * 33
+t  <- 1:T
+sim$t_scaled <- (t - 1)/(T - 1)
+# scale year 
+sim$t_year_z  = as.numeric(scale(sim$Year))
+
 
 #===========================================================================================
-# seasonality for just the mean
-m1 <- gamlss(y ~ Year + Month, family = SST(), data = sim,
-             method = mixed(10,200),
-             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# mean only model 
+m <- gamlss(y ~ Date, family = SST(), data = sim,
+            method = mixed(10,200),
+            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(m)
+
+# all param (time)
+m1 <- gamlss(y ~ t_year_z, sigma.fo = ~ t_year_z, nu.fo = ~ t_year_z,  family = SST(), data = sim,
+                  mu.start = mean(sim$y), sigma.start = sd(sim$y),
+                  method = mixed(10,200),
+                  control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(m1)
 
 # seasonality for other param
 m2 <- gamlss(y ~ Year_C + Month, sigma.fo = ~ Year_C + Month, nu.fo = ~ Date, family = SST(), data = sim,
-             mu.start = mean(sim$mu_t), sigma.start = sd(sim$sigma_t),
+             mu.start = mean(sim$y), sigma.start = sd(sim$y),
              method = mixed(10,200),
              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(m2)
 
-# mean only model 
-mean_m <- gamlss(y ~ Date_C, family = SST(), data = sim,
-             mu.start = mean(sim$y), sigma.start = sd(sim$y),
-             method = mixed(10,200),
-             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
-
-
-# all param (time)
-param_m <- gamlss(y ~ Date, sigma.fo = ~ Date, nu.fo = ~ Date,  family = SST(), data = sim,
-                  mu.start = mean(sim$mu_t), sigma.start = sd(sim$sigma_t),
-                 method = mixed(10,200),
-                 control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 #===========================================================================================
-
 
 # predict mu based on seasonality model
 sim$mu_hat <- fitted(m2, what = "mu")
@@ -573,12 +774,17 @@ sim$sigma_hat <- fitted(m2, what = "sigma")
 sim$nu_hat <- fitted(m2, what = "nu")
 sim$tau_hat <- fitted(m2, what = "tau")
 
-# plot best of fit line to data
+# plot best of fit line to data 
 ggplot(sim, aes(Date, y)) +
   geom_line(color = "grey") +
+  geom_abline(intercept = m$mu.coefficients[1], slope = m$mu.coefficients[2], 
+              color = "steelblue", linewidth = 2) + # only mean as function of time 
   geom_line(aes(y = mu_hat), color = "darkolivegreen", linewidth = 1) +
   geom_hline(yintercept = mean(sim$y), linetype = "dashed", color = "black") +
-  labs(x = "Date", y = "Value") +
+  geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
+  geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
+  geom_vline(xintercept = as.Date("1994-09-23"), linetype = "dashed", color = "darkred") +
+  labs(x = "Date", y = "Nitrate") +
   theme_classic()
 
 
