@@ -1254,6 +1254,14 @@ summary(ph_param_year_month) # BEST MODEL
 summary(ph_param_year_month_DOY_sw_year_month) # SECOND BEST MODEL
 summary(ph_param_year_month_sw_year) # THIRD BEST MODEL
 
+# add polynomial to best model 
+poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                              family = JSU(), data = Phosphate,
+                              #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                              method = mixed(10,200),
+                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+AIC(poly_ph_param_year_month)
+summary(poly_ph_param_year_month)
 #=======================================================================================
 
 #=======================================================================================
@@ -1305,6 +1313,7 @@ summary(phJSUm4_sea)
 #========================================================================================
 # predict mu based on seasonality model
 Phosphate$mu_hat <- fitted(ph_param_year_month, what = "mu")
+Phosphate$mu_hat2 <- fitted(poly_ph_param_year_month, what = "mu")
 
 # plot that sucka
 ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
@@ -1315,7 +1324,7 @@ ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
   #color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
   geom_abline(intercept = ph_param_date$mu.coefficients[1], slope = ph_param_date$mu.coefficients[2],
               color = "goldenrod", linewidth = 1) + # mean sigma nu and tau changing through time
-  geom_line(aes(y = mu_hat), color = "darkolivegreen", linewidth = 1) + 
+  geom_line(aes(y = mu_hat2), color = "darkolivegreen", linewidth = 1) + 
   geom_hline(yintercept = 0.75230, linetype = "dashed", color = "black") + 
   geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
   geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
@@ -1719,8 +1728,15 @@ summary(ni_param_year_month) # BEST MODEL
 summary(ni_param_year_month_DOY_sw_year_month) # SECOND BEST MODEL
 summary(ni_param_year_month_sw_year) # THIRD BEST MODEL
 
+# adding polynomial to best model
+poly_ni_param_year_month <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                              family = SST(), data = Nitrite,
+                              mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                              method = mixed(10,200),
+                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+AIC(poly_ni_param_year_month) # BETTER YOHOO
+summary(poly_ni_param_year_month)
 
-# adding polynomial
 #=====================================================================================
 
 #=====================================================================================
@@ -1758,6 +1774,7 @@ summary(niiSSTm4_sea)
 #=====================================================================================
 # predicted mu param for seasonaility model 
 Nitrite$mu_hat <- fitted(ni_param_year_month, what = "mu")
+Nitrite$mu_hat2 <- fitted(poly_ni_param_year_month, what = "mu")
 
 # plot that sucka
 ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
@@ -1766,7 +1783,7 @@ ggplot(Nitrite, aes(x = Date, y = Nitrite)) +
               color = "steelblue", linewidth = 1) + # mean only changing through time 
   geom_abline(intercept = ni_param_date$mu.coefficients[1], slope = ni_param_date$mu.coefficients[2],
               color = "goldenrod", linewidth = 1) + # mean, sigma and nu changing through time
-  geom_line(aes(y = mu_hat), color = "darkolivegreen", linewidth = 1) +
+  geom_line(aes(y = mu_hat2), color = "darkolivegreen", linewidth = 1) +
   #geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "darkolivegreen") +
   geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
   geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
