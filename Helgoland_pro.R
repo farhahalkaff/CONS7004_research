@@ -1111,6 +1111,7 @@ phNOm <- gamlss(Phosphate ~ Date, family = NO(), data = Phosphate,
 #                   method = mixed(5, 200),
 #                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 # summary(phSEPm3)
+#========================================================================================
 
 
 # TEST
@@ -1302,17 +1303,19 @@ phJSUm4_sea <- gamlss(Phosphate ~ year + month, sigma.fo = ~ year + month, nu.fo
                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 summary(phJSUm4_sea)
 #========================================================================================
+# predict mu based on seasonaility model
+Phosphate$mu_hat <- fitted(ph_param_year_month, what = "mu")
 
 # plot that sucka
 ggplot(Phosphate, aes(x = Date, y = Phosphate)) +
   geom_line(color = "grey") +
-  geom_abline(intercept = phJSUm2$mu.coefficients[1], slope = phJSUm2$mu.coefficients[2],
+  geom_abline(intercept = ph_mean_date$mu.coefficients[1], slope = ph_mean_date$mu.coefficients[2],
               color = "steelblue", linewidth = 1) + #mean only
   #geom_abline(intercept = phJSUm3$mu.coefficients[1], slope = phJSUm3$mu.coefficients[2],
   #color = "goldenrod", linewidth = 1) + # mean sigma and nu changing through time
-  geom_abline(intercept = phJSUm4$mu.coefficients[1], slope = phJSUm4$mu.coefficients[2],
+  geom_abline(intercept = ph_param_date$mu.coefficients[1], slope = ph_param_date$mu.coefficients[2],
               color = "goldenrod", linewidth = 1) + # mean sigma nu and tau changing through time
-  geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "darkolivegreen") + 
+  geom_line(aes(y = mu_hat), color = "darkolivegreen", linewidth = 1) + 
   geom_hline(yintercept = 0.75230, linetype = "dashed", color = "black") + 
   geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed", color = "darkred") + 
   geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed", color = "darkred") + 
