@@ -1526,13 +1526,40 @@ best_model_param <- function(model, data){
               mean_nu_hat = mean(nu_hat, na.rm = TRUE),
               mean_tau_hat = mean(tau_hat, na.rm = TRUE))
   
-  return(list(by_year = average_by_year, by_month = average_by_month))
+  #return(list(by_year = average_by_year, by_month = average_by_month))
+  return(average_by_year)
   
 }
 
 model_pred_param <- best_model_param(poly_ph_param_year_month, Phosphate)
 print(model_pred_param$by_year, n=33)
 print(model_pred_param$by_month)
+
+
+# plot empirical mean vs predicted mean
+plot(model_pred_param$mean_mu_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(0,1), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "mean")
+lines(summary$mean ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical sigma vs predicted sigma
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(0,0.5), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "variance")
+lines(summary$var ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical skew vs predicted skew
+plot(model_pred_param$mean_nu_hat ~ model_pred_param$year, type = "l", 
+    ylim = c(-0.4, 7), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "skewness")
+lines(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+abline(h = 0, lty = 3, col = "red")
+
+# plot empirical tau vs predicted tau
+plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(1, 7), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "kurtosis")
+lines(summary$kurt ~ summary$year, col = "azure4", lwd = 2, lty = 2)
 
 ################################################## Moment bucket 
 # intercept model 
