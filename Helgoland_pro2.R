@@ -238,44 +238,81 @@ summary(param_year_month_sw_year) # THIRD BEST MODEL
 
 
 # Add tau in the best models 
-tau_param_year_month <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month,
+tau_param_year_month <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year,
                               family = SST(), data = Nitrate,
-                           #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                           mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
                            method = mixed(10,200),
                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+AIC(tau_param_year_month) # NOT BETTER BOO
+summary(tau_param_year_month) # can only add year for tau
 
-tau_param_year_month_DOY_sw_year_month <- gamlss(Nitrate ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month,
+tau_param_year_month_DOY_sw_year_month <- gamlss(Nitrate ~ year + month + DOY, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year,
                                                 family = SST(), data = Nitrate,
-                                             #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                             mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
                                              method = mixed(10,200),
                                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+AIC(tau_param_year_month_DOY_sw_year_month) # 
+summary(tau_param_year_month_DOY_sw_year_month) # 
 
 tau_param_year_month_sw_year <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year, nu.fo = ~ year, tau.fo = ~ year, family = SST(), data = Nitrate,
                                    #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
                                    method = mixed(10,200),
                                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 AIC(tau_param_year_month_sw_year) # BETTER YOHOO
+summary(tau_param_year_month_sw_year)
+
+
+# Add polynomial to best model 
+poly_param_year_month <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month,
+                               family = SST(), data = Nitrate,
+                               mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                               method = mixed(10,200),
+                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+summary(poly_param_year_month) # BETTER YOHOO
+
+# compare other families 
+JSU_poly_param_year_month <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month,
+                                family = JSU(), data = Nitrate,
+                                mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                method = mixed(10,200),
+                                control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+SHASHo_poly_param_year_month <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month,
+                                family = SHASHo(), data = Nitrate,
+                                mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                method = mixed(10,200),
+                                control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+NET_poly_param_year_month <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month,
+                                       family = NET(), data = Nitrate,
+                                       mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                       method = mixed(5,200),
+                                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(JSU_poly_param_year_month)
+AIC(SHASHo_poly_param_year_month) # tis is better 
+AIC(NET_poly_param_year_month)
+
+
 #============================================================================================
-
-
-
 # predict mu based on seasonaility model
 Nitrate$mu_hat <- fitted(niSSTm3_sea, what = "mu")
 Nitrate$sigma_hat <- fitted(niSSTm3_sea, what = "sigma", type = "response")
 Nitrate$nu_hat <- fitted(niSSTm3_sea, what = "nu", type = "response")
 Nitrate$tau_hat <- fitted(niSSTm3_sea, what = "tau", type = "response")
 
+Nitrate$mu_hat2 <- fitted(poly_param_year_month, what = "mu")
+
+
 
 # plot that sucka (intercept model)
 ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   geom_line(color = "grey", na.rm = TRUE) +
-  geom_line(aes(y = mu_hat), color = "darkolivegreen", linewidth = 1) +
+  geom_line(aes(y = mu_hat2), color = "darkolivegreen", linewidth = 1) +
   geom_abline(intercept = niSSTm2$mu.coefficients[1], slope = niSSTm2$mu.coefficients[2], 
               color = "steelblue", linewidth = 1) + # only mean as function of time 
   geom_abline(intercept = niSSTm3$mu.coefficients[1], slope = niSSTm3$mu.coefficients[2], 
               color = "goldenrod", linewidth = 1) + # mean, sigma and nu as function of time
-  geom_abline(intercept = niSSTm3_test$mu.coefficients[1], slope = niSSTm3_test$mu.coefficients[2], 
-              color = "chocolate", linewidth = 1) + # year
   #geom_abline(intercept = niNOm1$mu.coefficients[1], slope = niNOm1$mu.coefficients[2], 
   #color = "darkolivegreen", linewidth = 1) + # mean, sigma and nu as function of time
   #geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "salmon") +
@@ -474,7 +511,6 @@ param_1994_Dec <- c(Nitrate[6323,5], Nitrate[6323,6], Nitrate[6323,7], Nitrate[6
 
 
 
-
 # create df for phytoplankton count
 Phytopl <- df %>% filter(!is.na(Phytopl)) %>% 
   select(Date, Phytopl, year, month)
@@ -532,6 +568,111 @@ ggplot(Phytopl_C %>% filter(year %in% years_to_plot),
   theme_classic()
 
 
+#============================================================================================
+# pdf per year function
+pdf_SST_at_year <- function(model, data, year, x = NULL, n = 200,
+                            time_var = "Date", date_var = "Date") {
+  # 1. Filter dates for the specified year
+  all_dates <- unique(data[[date_var]][format(as.Date(data[[date_var]]), "%Y") == as.character(year)])
+  if (length(all_dates) == 0) stop("Year not found in data frame.")
+  
+  # 2. Create common x grid
+  if (is.null(x)) {
+    x <- seq(min(model$y, na.rm = TRUE),
+             max(model$y, na.rm = TRUE),
+             length.out = n)
+  }
+  
+  # 3. For each date, calculate params and PDF
+  results <- lapply(all_dates, function(date_str) {
+    t_val <- data[[time_var]][as.Date(data[[date_var]]) == as.Date(date_str)]
+    if (length(t_val) == 0) return(NULL)
+    newdat <- data.frame(setNames(list(t_val), time_var))
+    mu    <- predict(model, "mu",    newdata = newdat, type = "response")
+    sigma <- predict(model, "sigma", newdata = newdat, type = "response")
+    nu    <- predict(model, "nu",    newdata = newdat, type = "response")
+    tau   <- predict(model, "tau",   newdata = newdat, type = "response")
+    dens  <- dSST(x, mu = mu, sigma = sigma, nu = nu, tau = tau)
+    list(params = c(mu = mu, sigma = sigma, nu = nu, tau = tau), density = dens)
+  })
+  
+  # Remove NULLs if any
+  results <- Filter(Negate(is.null), results)
+  
+  # 4. Average parameters and density
+  params_mat <- do.call(rbind, lapply(results, function(res) res$params))
+  avg_params <- colMeans(params_mat, na.rm = TRUE)
+  
+  dens_mat <- do.call(rbind, lapply(results, function(res) res$density))
+  avg_density <- colMeans(dens_mat, na.rm = TRUE)
+  
+  list(
+    x = x,
+    avg_density = avg_density,
+    avg_params = avg_params,
+    all_params = params_mat
+  )
+}
+
+polym_1962 <- pdf_SST_at_year(poly_param_year_month, Nitrate, "1962", time_var = "Date", date_var = "Date")
+
+
+
+Nitrate_1962 <- Nitrate %>%
+  filter(year(Date) == 1962)
+
+hist(Nitrate_1962$Nitrate)
+density_1962 <- density(Nitrate_1962$Nitrate)
+
+
+# plot that sucka (intercept model)
+p <- ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
+  geom_line(color = "azure4", na.rm = TRUE) +
+  labs(x = "Time", y = "Nitrate (µmol/l)") +
+  theme_minimal()
+
+
+# sum(Nitrate$year == 1990)
+
+###### Look at moment changes every n years ########
+
+library(moments)
+library(zoo)
+
+summary <- Nitrate %>% 
+  mutate(year = as.numeric(format(Date, "%Y"))) %>% 
+  group_by(year = floor(year/1)*1) %>% 
+  summarise(
+    mean = mean(Nitrate, na.rm = TRUE),
+    var = var(Nitrate, na.rm = TRUE),
+    skew = skewness(Nitrate, na.rm = TRUE),
+    kurt = kurtosis(Nitrate, na.rm = TRUE)
+  )
+
+print(summary, n=33)
+
+###### Look at moment changes average months ########
+
+month_moments <- Nitrate %>%
+  mutate(
+    month_num = month(Date),
+    month_lab = month(Date, label = TRUE, abbr = TRUE)
+  ) %>%
+  group_by(month_num, month_lab) %>%
+  summarise(
+    n     = sum(!is.na(Nitrate)),
+    mean  = mean(Nitrate, na.rm = TRUE),
+    var   = var(Nitrate, na.rm = TRUE),
+    skew  = skewness(Nitrate, na.rm = TRUE),
+    kurt  = kurtosis(Nitrate, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(month_num)
+
+month_moments
+
+
+#============================================================================================
 
 #PCA 
 
@@ -624,10 +765,17 @@ ggplot(dat, aes(x = t)) +
   ) +
   theme_minimal(base_size = 14)
 
+#============================================================================================
 
 
 
 
+
+
+
+
+
+#============================================================================================
 
 # Simulate 
 
