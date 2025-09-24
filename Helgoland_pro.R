@@ -1527,7 +1527,8 @@ best_model_param <- function(model, data){
               mean_tau_hat = mean(tau_hat, na.rm = TRUE))
   
   #return(list(by_year = average_by_year, by_month = average_by_month))
-  return(average_by_year)
+  #return(average_by_year)
+  return(average_by_month)
   
 }
 
@@ -1535,6 +1536,8 @@ model_pred_param <- best_model_param(poly_ph_param_year_month, Phosphate)
 print(model_pred_param$by_year, n=33)
 print(model_pred_param$by_month)
 
+
+## PLOT comparison per year 
 
 # plot empirical mean vs predicted mean
 plot(model_pred_param$mean_mu_hat ~ model_pred_param$year, type = "l", 
@@ -1560,6 +1563,33 @@ plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l",
      ylim = c(1, 7), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "kurtosis")
 lines(summary$kurt ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+
+
+## PLOT comparison per month 
+# plot empirical mean vs predicted mean
+plot(model_pred_param$mean_mu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0,1.2), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "mean")
+lines(month_moments$mean ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical sigma vs predicted sigma
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0,0.5), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "variance")
+lines(month_moments$var ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical skew vs predicted skew
+plot(model_pred_param$mean_nu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(-10, 19), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "skew")
+lines(month_moments$skew ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+abline(h = 0, lty = 3, col = "red")
+
+# plot empirical tau vs predicted tau
+plot(model_pred_param$mean_tau_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(1, 12), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "kurtosis")
+lines(month_moments$kurt ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
 
 ################################################## Moment bucket 
 # intercept model 
@@ -2031,6 +2061,139 @@ resm3c$params #1994
 
 
 #######################################################
+
+###### Look at moment changes every n years ########
+
+
+summary <- Nitrite %>% 
+  mutate(year = as.numeric(format(Date, "%Y"))) %>% 
+  group_by(year = floor(year/1)*1) %>% 
+  summarise(
+    mean = mean(Nitrite, na.rm = TRUE),
+    var = var(Nitrite, na.rm = TRUE),
+    skew = skewness(Nitrite, na.rm = TRUE),
+    kurt = kurtosis(Nitrite, na.rm = TRUE)
+  )
+
+print(summary, n=33)
+
+###### Look at moment changes average months ########
+
+month_moments <- Nitrite %>%
+  mutate(
+    month_num = month(Date),
+    month_lab = month(Date, label = TRUE, abbr = TRUE)
+  ) %>%
+  group_by(month_num, month_lab) %>%
+  summarise(
+    n     = sum(!is.na(Nitrite)),
+    mean  = mean(Nitrite, na.rm = TRUE),
+    var   = var(Nitrite, na.rm = TRUE),
+    skew  = skewness(Nitrite, na.rm = TRUE),
+    kurt  = kurtosis(Nitrite, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(month_num)
+
+month_moments
+
+# compare the param with the predicted param of the best model 
+poly_ni_param_year_month <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = SST(), data = Nitrite,
+                                   mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# create function to get predicted param from model
+best_model_param <- function(model, data){
+  
+  # get the param_hat 
+  data$mu_hat <- fitted(model, what = "mu")
+  data$sigma_hat <- fitted(model, what = "sigma")
+  data$nu_hat <- fitted(model, what = "nu")
+  data$tau_hat <- fitted(model, what = "tau")
+  
+  # get the average per year 
+  average_by_year <- data %>%
+    group_by(year) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  # get the average per month 
+  average_by_month <- data %>%
+    group_by(month) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  #return(list(by_year = average_by_year, by_month = average_by_month))
+  #return(average_by_year)
+  return(average_by_month)
+  
+}
+
+model_pred_param <- best_model_param(poly_ni_param_year_month, Nitrite)
+print(model_pred_param, n=33)
+print(model_pred_param$by_month)
+
+
+## PLOT comparison per year 
+
+# plot empirical mean vs predicted mean
+plot(model_pred_param$mean_mu_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(0,1.5), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "mean")
+lines(summary$mean ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical sigma vs predicted sigma
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(0,1), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "variance")
+lines(summary$var ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical skew vs predicted skew
+plot(model_pred_param$mean_nu_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(0, 5), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "skewness")
+lines(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+abline(h = 0, lty = 3, col = "red")
+
+# plot empirical tau vs predicted tau
+#plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l", 
+     #ylim = c(1, 7), col = "goldenrod", lwd = 2,
+     #xlab = "year", ylab = "kurtosis")
+plot(summary$kurt ~ summary$year, col = "azure4", lwd = 2, type = "l", lty = 2)
+abline(h = 3, lty = 3, col = "red") # normal tails
+
+
+## PLOT comparison per month 
+# plot empirical mean vs predicted mean
+plot(model_pred_param$mean_mu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0,1.5), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "mean")
+lines(month_moments$mean ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical sigma vs predicted sigma
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0,1), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "variance")
+lines(month_moments$var ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical skew vs predicted skew
+plot(model_pred_param$mean_nu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0, 7), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "skew")
+lines(month_moments$skew ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical tau vs predicted tau
+#plot(model_pred_param$mean_tau_hat ~ model_pred_param$month, type = "l", 
+     #ylim = c(1, 12), col = "goldenrod", lwd = 1,
+     #xlab = "month", ylab = "kurtosis")
+plot(month_moments$kurt ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2, type = "l")
+abline(h = 3, lty = 3, col = "red") # normal tails
 
 ################################################## Moment bucket 
 # intercept model 
@@ -2744,7 +2907,7 @@ poly_si_param_year_month <- gamlss(Silicate ~ poly(year,2) + month, sigma.fo = ~
                               mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
                               method = mixed(10,200),
                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
-AIC(poly_si_param_year_month)
+AIC(poly_si_param_year_month) # BETTER YOOHOO
 summary(poly_si_param_year_month)
 
 # compare different families on the best model 
@@ -2889,6 +3052,138 @@ resm3c$params #1992
 
 
 #######################################################
+###### Look at moment changes every n years ########
+
+
+summary <- Silicate %>% 
+  mutate(year = as.numeric(format(Date, "%Y"))) %>% 
+  group_by(year = floor(year/1)*1) %>% 
+  summarise(
+    mean = mean(Silicate, na.rm = TRUE),
+    var = var(Silicate, na.rm = TRUE),
+    skew = skewness(Silicate, na.rm = TRUE),
+    kurt = kurtosis(Silicate, na.rm = TRUE)
+  )
+
+print(summary, n=33)
+
+###### Look at moment changes average months ########
+
+month_moments <- Silicate %>%
+  mutate(
+    month_num = month(Date),
+    month_lab = month(Date, label = TRUE, abbr = TRUE)
+  ) %>%
+  group_by(month_num, month_lab) %>%
+  summarise(
+    n     = sum(!is.na(Silicate)),
+    mean  = mean(Silicate, na.rm = TRUE),
+    var   = var(Silicate, na.rm = TRUE),
+    skew  = skewness(Silicate, na.rm = TRUE),
+    kurt  = kurtosis(Silicate, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(month_num)
+
+month_moments
+
+# compare the param with the predicted param of the best model 
+poly_si_param_year_month <- gamlss(Silicate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                                   family = JSU(), data = Silicate,
+                                   mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# create function to get predicted param from model
+best_model_param <- function(model, data){
+  
+  # get the param_hat 
+  data$mu_hat <- fitted(model, what = "mu")
+  data$sigma_hat <- fitted(model, what = "sigma")
+  data$nu_hat <- fitted(model, what = "nu")
+  data$tau_hat <- fitted(model, what = "tau")
+  
+  # get the average per year 
+  average_by_year <- data %>%
+    group_by(year) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  # get the average per month 
+  average_by_month <- data %>%
+    group_by(month) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  #return(list(by_year = average_by_year, by_month = average_by_month))
+  #return(average_by_year)
+  return(average_by_month)
+  
+}
+
+model_pred_param <- best_model_param(poly_si_param_year_month, Silicate)
+print(model_pred_param, n=33)
+print(model_pred_param)
+
+
+## PLOT comparison per year 
+
+# plot empirical mean vs predicted mean
+plot(model_pred_param$mean_mu_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(2,18), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "mean")
+lines(summary$mean ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical sigma vs predicted sigma
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$year, type = "l", 
+    ylim = c(0,68), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "variance")
+lines(summary$var ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical skew vs predicted skew
+plot(model_pred_param$mean_nu_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(-0.3, 11), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "skewness")
+lines(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+abline(h = 0, lty = 3, col = "red")
+
+# plot empirical tau vs predicted tau
+plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l",
+     ylim = c(1, 9), col = "goldenrod", lwd = 2,
+    xlab = "year", ylab = "kurtosis")
+lines(summary$kurt ~ summary$year, col = "azure4", lwd = 2, type = "l", lty = 2)
+abline(h = 3, lty = 3, col = "red") # normal tails for empirical
+
+
+## PLOT comparison per month 
+# plot empirical mean vs predicted mean
+plot(model_pred_param$mean_mu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(2,12), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "mean")
+lines(month_moments$mean ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical sigma vs predicted sigma
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0,67), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "variance")
+lines(month_moments$var ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical skew vs predicted skew
+plot(model_pred_param$mean_nu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0, 20), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "skew")
+lines(month_moments$skew ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical tau vs predicted tau
+plot(model_pred_param$mean_tau_hat ~ model_pred_param$month, type = "l",
+ylim = c(1, 20), col = "goldenrod", lwd = 1,
+xlab = "month", ylab = "kurtosis")
+lines(month_moments$kurt ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2, type = "l")
+abline(h = 3, lty = 3, col = "red") # normal tails
 
 
 ################################################## Moment bucket 
@@ -3194,7 +3489,7 @@ poly_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~
                               mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
                               method = mixed(5,200),
                               control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
-AIC(poly_am_param_year_month)
+AIC(poly_am_param_year_month) # BETTER YOOHOO
 summary(poly_am_param_year_month)
 
 # compare different families on the best model
@@ -3361,6 +3656,141 @@ resm3c$params #1994
 
 
 #######################################################
+
+#######################################################
+###### Look at moment changes every n years ########
+
+
+summary <- Ammonium %>% 
+  mutate(year = as.numeric(format(Date, "%Y"))) %>% 
+  group_by(year = floor(year/1)*1) %>% 
+  summarise(
+    mean = mean(Ammonium, na.rm = TRUE),
+    var = var(Ammonium, na.rm = TRUE),
+    skew = skewness(Ammonium, na.rm = TRUE),
+    kurt = kurtosis(Ammonium, na.rm = TRUE)
+  )
+
+print(summary, n=33)
+
+###### Look at moment changes average months ########
+
+month_moments <- Ammonium %>%
+  mutate(
+    month_num = month(Date),
+    month_lab = month(Date, label = TRUE, abbr = TRUE)
+  ) %>%
+  group_by(month_num, month_lab) %>%
+  summarise(
+    n     = sum(!is.na(Ammonium)),
+    mean  = mean(Ammonium, na.rm = TRUE),
+    var   = var(Ammonium, na.rm = TRUE),
+    skew  = skewness(Ammonium, na.rm = TRUE),
+    kurt  = kurtosis(Ammonium, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(month_num)
+
+month_moments
+
+# compare the param with the predicted param of the best model 
+poly_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = SST(), data = Ammonium,
+                                   mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                   method = mixed(5,200),
+                                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+# create function to get predicted param from model
+best_model_param <- function(model, data){
+  
+  # get the param_hat 
+  data$mu_hat <- fitted(model, what = "mu")
+  data$sigma_hat <- fitted(model, what = "sigma")
+  data$nu_hat <- fitted(model, what = "nu")
+  data$tau_hat <- fitted(model, what = "tau")
+  
+  # get the average per year 
+  average_by_year <- data %>%
+    group_by(year) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  # get the average per month 
+  average_by_month <- data %>%
+    group_by(month) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  #return(list(by_year = average_by_year, by_month = average_by_month))
+  #return(average_by_year)
+  return(average_by_month)
+  
+}
+
+model_pred_param <- best_model_param(poly_am_param_year_month, Ammonium)
+print(model_pred_param, n=33)
+print(model_pred_param)
+
+
+## PLOT comparison per year 
+
+# plot empirical mean vs predicted mean
+plot(model_pred_param$mean_mu_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(0,13), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "mean")
+lines(summary$mean ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical sigma vs predicted sigma
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(0,22), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "variance")
+lines(summary$var ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical skew vs predicted skew
+plot(model_pred_param$mean_nu_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(-0.3, 4), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "skewness")
+lines(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+abline(h = 0, lty = 3, col = "red")
+
+# plot empirical tau vs predicted tau
+plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l",
+     ylim = c(1, 20), col = "goldenrod", lwd = 2,
+    xlab = "year", ylab = "kurtosis")
+lines(summary$kurt ~ summary$year, col = "azure4", lwd = 2, type = "l", lty = 2)
+abline(h = 3, lty = 3, col = "red") # normal tails
+
+
+## PLOT comparison per month 
+# plot empirical mean vs predicted mean
+plot(model_pred_param$mean_mu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(4,8), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "mean")
+lines(month_moments$mean ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical sigma vs predicted sigma
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0,16), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "variance")
+lines(month_moments$var ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical skew vs predicted skew
+plot(model_pred_param$mean_nu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0, 4), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "skew")
+lines(month_moments$skew ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical tau vs predicted tau
+plot(model_pred_param$mean_tau_hat ~ model_pred_param$month, type = "l",
+ylim = c(1, 12), col = "goldenrod", lwd = 1,
+xlab = "month", ylab = "kurtosis")
+lines(month_moments$kurt ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+abline(h = 3, lty = 3, col = "red") # normal tails
+
 
 ################################################## Moment bucket 
 # intercept model 
