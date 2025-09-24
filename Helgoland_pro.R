@@ -655,6 +655,9 @@ param_1994 <- c(Nitrate[6435,5], Nitrate[6435,6], Nitrate[6435,7], Nitrate[6435,
 
 ################################################################### Specific year PDF
 
+Nitrate_1962 <- Nitrate %>%
+  filter(year(Date) == 1962)
+
 Nitrate_1963 <- Nitrate %>%
   filter(year(Date) == 1963)
 
@@ -690,13 +693,13 @@ ggplot() +
   theme_minimal()
   
 # density plot
-ggplot(Nitrate_1994, aes(y = Nitrate)) +
+ggplot(Nitrate_1963, aes(y = Nitrate)) +
   geom_density(linewidth = 0.8) +
   labs(
     x = "Density",
     y = "Value"
   ) +
-  geom_hline(yintercept = mean(Nitrate_1994$Nitrate), linetype = "dashed", color = "azure4") +
+  geom_hline(yintercept = mean(Nitrate_1963$Nitrate), linetype = "dashed", color = "azure4") +
   theme_minimal(base_size = 14) +
   coord_flip()
 
@@ -1262,6 +1265,36 @@ poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = 
                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 AIC(poly_ph_param_year_month) # Better?? negative AIC
 summary(poly_ph_param_year_month)
+
+# compare different families for the best model 
+SHASHo_poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                                   family = SHASHo(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+NET_poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                                   family = NET(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+SEP3_poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                                   family = SEP3(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+SST_poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = SST(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(SHASHo_poly_ph_param_year_month)
+AIC(NET_poly_ph_param_year_month)
+AIC(SEP3_poly_ph_param_year_month)
+AIC(SST_poly_ph_param_year_month) # tau is only ~ year
 #=======================================================================================
 
 #=======================================================================================
@@ -1426,6 +1459,80 @@ resm4c$params #1994
 
 #######################################################
 
+###### Look at moment changes every n years ########
+
+
+summary <- Phosphate %>% 
+  mutate(year = as.numeric(format(Date, "%Y"))) %>% 
+  group_by(year = floor(year/1)*1) %>% 
+  summarise(
+    mean = mean(Phosphate, na.rm = TRUE),
+    var = var(Phosphate, na.rm = TRUE),
+    skew = skewness(Phosphate, na.rm = TRUE),
+    kurt = kurtosis(Phosphate, na.rm = TRUE)
+  )
+
+print(summary, n=33)
+
+###### Look at moment changes average months ########
+
+month_moments <- Phosphate %>%
+  mutate(
+    month_num = month(Date),
+    month_lab = month(Date, label = TRUE, abbr = TRUE)
+  ) %>%
+  group_by(month_num, month_lab) %>%
+  summarise(
+    n     = sum(!is.na(Phosphate)),
+    mean  = mean(Phosphate, na.rm = TRUE),
+    var   = var(Phosphate, na.rm = TRUE),
+    skew  = skewness(Phosphate, na.rm = TRUE),
+    kurt  = kurtosis(Phosphate, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(month_num)
+
+month_moments
+
+# compare the param with the predicted param of the best model 
+poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month, 
+                                   family = JSU(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# create function to get predicted param from model
+best_model_param <- function(model, data){
+  
+  # get the param_hat 
+  data$mu_hat <- fitted(model, what = "mu")
+  data$sigma_hat <- fitted(model, what = "sigma")
+  data$nu_hat <- fitted(model, what = "nu")
+  data$tau_hat <- fitted(model, what = "tau")
+  
+  # get the average per year 
+  average_by_year <- data %>%
+    group_by(year) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  # get the average per month 
+  average_by_month <- data %>%
+    group_by(month) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  return(list(by_year = average_by_year, by_month = average_by_month))
+  
+}
+
+model_pred_param <- best_model_param(poly_ph_param_year_month, Phosphate)
+print(model_pred_param$by_year, n=33)
+print(model_pred_param$by_month)
 
 ################################################## Moment bucket 
 # intercept model 
@@ -1736,6 +1843,31 @@ poly_ni_param_year_month <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ 
                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 AIC(poly_ni_param_year_month) # BETTER YOHOO
 summary(poly_ni_param_year_month)
+
+# compare different family for the best model
+JSU_poly_ni_param_year_month <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = JSU(), data = Nitrite,
+                                   mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+SHASHo_poly_ni_param_year_month <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = SHASHo(), data = Nitrite,
+                                   mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+NET_poly_ni_param_year_month <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = NET(), data = Nitrite,
+                                   mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+AIC(JSU_poly_ni_param_year_month)
+AIC(SHASHo_poly_ni_param_year_month)
+AIC(NET_poly_ni_param_year_month)
+
 
 #=====================================================================================
 
@@ -2587,6 +2719,9 @@ poly_si_param_year_month <- gamlss(Silicate ~ poly(year,2) + month, sigma.fo = ~
                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 AIC(poly_si_param_year_month)
 summary(poly_si_param_year_month)
+
+# compare different families on the best model 
+## too many errors
 #==========================================================================================
 
 
@@ -3034,6 +3169,37 @@ poly_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~
                               control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 AIC(poly_am_param_year_month)
 summary(poly_am_param_year_month)
+
+# compare different families on the best model
+JSU_poly_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = JSU(), data = Ammonium,
+                                   mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                   method = mixed(5,200),
+                                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+SHASHo_poly_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = SHASHo(), data = Ammonium,
+                                   mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                   method = mixed(5,200),
+                                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+SEP3_poly_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = SEP3(), data = Ammonium,
+                                   mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                   method = mixed(5,200),
+                                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+NET_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+                                   family = NET(), data = Ammonium,
+                                   mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                   method = mixed(5,200),
+                                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+
+AIC(JSU_poly_am_param_year_month) # tis is better
+AIC(SHASHo_poly_am_param_year_month)
+AIC(SEP3_poly_am_param_year_month)
+AIC(NET_am_param_year_month)
 #=========================================================================================
 
 #=========================================================================================

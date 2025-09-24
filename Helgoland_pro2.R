@@ -634,6 +634,7 @@ p <- ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
 
 # sum(Nitrate$year == 1990)
 
+
 ###### Look at moment changes every n years ########
 
 library(moments)
@@ -671,6 +672,45 @@ month_moments <- Nitrate %>%
 
 month_moments
 
+# compare the param with the predicted param of the best model 
+poly_param_year_month <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month,
+                                family = SST(), data = Nitrate,
+                                mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                method = mixed(10,200),
+                                control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# create function to get predicted param from model
+best_model_param <- function(model, data){
+  
+  # get the param_hat 
+  data$mu_hat <- fitted(model, what = "mu")
+  data$sigma_hat <- fitted(model, what = "sigma")
+  data$nu_hat <- fitted(model, what = "nu")
+  data$tau_hat <- fitted(model, what = "tau")
+  
+  # get the average per year 
+  average_by_year <- data %>%
+    group_by(year) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  # get the average per month 
+  average_by_month <- data %>%
+    group_by(month) %>%
+    summarise(mean_mu_hat = mean(mu_hat, na.rm = TRUE),
+              mean_sigma_hat = mean(sigma_hat, na.rm = TRUE),
+              mean_nu_hat = mean(nu_hat, na.rm = TRUE),
+              mean_tau_hat = mean(tau_hat, na.rm = TRUE))
+  
+  return(list(by_year = average_by_year, by_month = average_by_month))
+  
+}
+
+model_pred_param <- best_model_param(poly_param_year_month, Nitrate)
+print(model_pred_param$by_year, n=33)
+print(model_pred_param$by_month)
 
 #============================================================================================
 
