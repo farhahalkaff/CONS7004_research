@@ -3120,12 +3120,13 @@ best_model_param <- function(model, data){
               mean_tau_hat = mean(tau_hat, na.rm = TRUE))
   
   #return(list(by_year = average_by_year, by_month = average_by_month))
-  #return(average_by_year)
-  return(average_by_month)
+  return(average_by_year)
+  #return(average_by_month)
   
 }
 
 model_pred_param <- best_model_param(poly_si_param_year_month, Silicate)
+model_pred_param2 <- best_model_param(si_param_date, Silicate)
 print(model_pred_param, n=33)
 print(model_pred_param)
 
@@ -3137,25 +3138,29 @@ plot(model_pred_param$mean_mu_hat ~ model_pred_param$year, type = "l",
      ylim = c(2,18), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "mean")
 lines(summary$mean ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+lines(model_pred_param2$mean_mu_hat ~ model_pred_param2$year)
 
 # plot empirical sigma vs predicted sigma
 plot(model_pred_param$mean_sigma_hat ~ model_pred_param$year, type = "l", 
     ylim = c(0,68), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "variance")
 lines(summary$var ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+lines(model_pred_param2$mean_sigma_hat ~ model_pred_param2$year)
 
 # plot empirical skew vs predicted skew
 plot(model_pred_param$mean_nu_hat ~ model_pred_param$year, type = "l", 
      ylim = c(-0.3, 11), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "skewness")
 lines(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+lines(model_pred_param2$mean_nu_hat ~ model_pred_param2$year)
 abline(h = 0, lty = 3, col = "red")
 
 # plot empirical tau vs predicted tau
 plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l",
-     ylim = c(1, 9), col = "goldenrod", lwd = 2,
+     ylim = c(0, 9), col = "goldenrod", lwd = 2,
     xlab = "year", ylab = "kurtosis")
 lines(summary$kurt ~ summary$year, col = "azure4", lwd = 2, type = "l", lty = 2)
+lines(model_pred_param2$mean_tau_hat ~ model_pred_param2$year)
 abline(h = 3, lty = 3, col = "red") # normal tails for empirical
 
 
@@ -3522,6 +3527,35 @@ AIC(JSU_poly_am_param_year_month) # tis is better
 AIC(SHASHo_poly_am_param_year_month)
 AIC(SEP3_poly_am_param_year_month)
 AIC(NET_am_param_year_month)
+
+
+
+
+# make sigma or skew or tau constant at a time 
+poly_am_param_year_month_meanonly <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, 
+                                          family = SST(), data = Ammonium,
+                                          mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                          method = mixed(5,200),
+                                          control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+poly_am_param_year_month_noskew <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ 1, tau.fo = ~ year, 
+                                   family = SST(), data = Ammonium,
+                                   mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                   method = mixed(5,200),
+                                   control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+
+poly_am_param_year_month_nokurt <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ 1, 
+                                          family = SST(), data = Ammonium,
+                                          mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                          method = mixed(5,200),
+                                          control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+AIC(poly_am_param_year_month)
+AIC(poly_am_param_year_month_meanonly) # holy moly its so bad
+AIC(poly_am_param_year_month_noskew) # does even worse
+AIC(poly_am_param_year_month_nokurt) # does worse 
+
 #=========================================================================================
 
 #=========================================================================================
@@ -3734,6 +3768,9 @@ best_model_param <- function(model, data){
 model_pred_param <- best_model_param(poly_am_param_year_month, Ammonium)
 print(model_pred_param, n=33)
 print(model_pred_param)
+model_pred_param2 <- best_model_param(poly_am_param_year_month_meanonly, Ammonium)
+model_pred_param3 <- best_model_param(poly_am_param_year_month_noskew, Ammonium)
+model_pred_param4 <- best_model_param(poly_am_param_year_month_nokurt, Ammonium)
 
 
 ## PLOT comparison per year 
@@ -3742,57 +3779,104 @@ print(model_pred_param)
 plot(model_pred_param$mean_mu_hat ~ model_pred_param$year, type = "l", 
      ylim = c(0,13), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "mean")
+lines(model_pred_param2$mean_mu_hat ~ model_pred_param2$year, type = "l", col = "steelblue", lwd = 2) # mean only
+lines(model_pred_param3$mean_mu_hat ~ model_pred_param3$year, type = "l", col = "chocolate", lwd = 2) # no skew
+lines(model_pred_param4$mean_mu_hat ~ model_pred_param4$year, type = "l", col = "darkolivegreen", lwd = 2) # no kurt
 lines(summary$mean ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+        col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
 
 # plot empirical sigma vs predicted sigma
 plot(model_pred_param$mean_sigma_hat ~ model_pred_param$year, type = "l", 
      ylim = c(0,22), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "variance")
+lines(model_pred_param2$mean_sigma_hat ~ model_pred_param2$year, type = "l", col = "steelblue", lwd = 2) # mean only
+lines(model_pred_param3$mean_sigma_hat ~ model_pred_param3$year, type = "l", col = "chocolate", lwd = 2) # no skew
+lines(model_pred_param4$mean_sigma_hat ~ model_pred_param4$year, type = "l", col = "darkolivegreen", lwd = 2) # no kurt
 lines(summary$var ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
 
 # plot empirical skew vs predicted skew
 plot(model_pred_param$mean_nu_hat ~ model_pred_param$year, type = "l", 
      ylim = c(-0.3, 4), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "skewness")
+lines(model_pred_param2$mean_nu_hat ~ model_pred_param2$year, type = "l", col = "steelblue", lwd = 2) # mean only
+lines(model_pred_param3$mean_nu_hat ~ model_pred_param3$year, type = "l", col = "chocolate", lwd = 2) # no skew
+lines(model_pred_param4$mean_nu_hat ~ model_pred_param4$year, type = "l", col = "darkolivegreen", lwd = 2) # no kurt
 lines(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2)
-abline(h = 0, lty = 3, col = "red")
+abline(h = 0, lty = 3, col = "red") # symmetrical for empirical
+abline(h = 1, lty = 2, col = "darkred") # symmetrical for SST
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
 
 # plot empirical tau vs predicted tau
 plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l",
      ylim = c(1, 20), col = "goldenrod", lwd = 2,
     xlab = "year", ylab = "kurtosis")
+lines(model_pred_param2$mean_tau_hat ~ model_pred_param2$year, type = "l", col = "steelblue", lwd = 2) # mean only
+lines(model_pred_param3$mean_tau_hat ~ model_pred_param3$year, type = "l", col = "chocolate", lwd = 2) # no skew
+lines(model_pred_param4$mean_tau_hat ~ model_pred_param4$year, type = "l", col = "darkolivegreen", lwd = 2) # no kurt
 lines(summary$kurt ~ summary$year, col = "azure4", lwd = 2, type = "l", lty = 2)
 abline(h = 3, lty = 3, col = "red") # normal tails
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
 
 
 ## PLOT comparison per month 
 # plot empirical mean vs predicted mean
-plot(model_pred_param$mean_mu_hat ~ model_pred_param$month, type = "l", 
-     ylim = c(4,8), col = "goldenrod", lwd = 1,
+plot(month_moments$mean ~ month_moments$month_lab, type = "l", 
+     ylim = c(4,8), col = "azure4", lwd = 1,
      xlab = "month", ylab = "mean")
-lines(month_moments$mean ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+lines(model_pred_param2$mean_mu_hat ~ model_pred_param2$month, type = "l", col = "steelblue", lwd = 2) # mean only
+lines(model_pred_param3$mean_mu_hat ~ model_pred_param3$month, type = "l", col = "chocolate", lwd = 2) # no skew
+lines(model_pred_param4$mean_mu_hat ~ model_pred_param4$month, type = "l", col = "darkolivegreen", lwd = 2) # no kurt
+lines(model_pred_param$mean_mu_hat ~ model_pred_param$month, col = "goldenrod", lwd = 2)
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "black" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
 
 # plot empirical sigma vs predicted sigma
-plot(model_pred_param$mean_sigma_hat ~ model_pred_param$month, type = "l", 
-     ylim = c(0,16), col = "goldenrod", lwd = 1,
+plot(month_moments$var ~ month_moments$month_lab, type = "l", 
+     ylim = c(0,16), col = "azure4", lwd = 1,
      xlab = "month", ylab = "variance")
-lines(month_moments$var ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+lines(model_pred_param2$mean_sigma_hat ~ model_pred_param2$month, type = "l", col = "steelblue", lwd = 2) # mean only
+lines(model_pred_param3$mean_sigma_hat ~ model_pred_param3$month, type = "l", col = "chocolate", lwd = 2) # no skew
+lines(model_pred_param4$mean_sigma_hat ~ model_pred_param4$month, type = "l", col = "darkolivegreen", lwd = 2) # no kurt
+lines(model_pred_param$mean_sigma_hat ~ model_pred_param$month, col = "goldenrod", lwd = 2)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "black" ),  lty = c(1,1,1,1,1), cex = 0.4, bty = "n")
 
 # plot empirical skew vs predicted skew
-plot(model_pred_param$mean_nu_hat ~ model_pred_param$month, type = "l", 
-     ylim = c(0, 4), col = "goldenrod", lwd = 1,
-     xlab = "month", ylab = "skew")
-lines(month_moments$skew ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+plot(month_moments$skew ~ month_moments$month_lab, type = "l", 
+     ylim = c(0,4), col = "azure4", lwd = 1,
+     xlab = "month", ylab = "skewness")
+lines(model_pred_param2$mean_nu_hat ~ model_pred_param2$month, type = "l", col = "steelblue", lwd = 2) # mean only
+lines(model_pred_param3$mean_nu_hat ~ model_pred_param3$month, type = "l", col = "chocolate", lwd = 2) # no skew
+lines(model_pred_param4$mean_nu_hat ~ model_pred_param4$month, type = "l", col = "darkolivegreen", lwd = 2) # no kurt
+lines(model_pred_param$mean_nu_hat ~ model_pred_param$month, col = "goldenrod", lwd = 2)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "black" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+abline(h = 0, lty = 3, col = "red") # symmetrical for empirical
+abline(h = 1, lty = 2, col = "darkred") # symmetrical for SST
 
 # plot empirical tau vs predicted tau
-plot(model_pred_param$mean_tau_hat ~ model_pred_param$month, type = "l",
-ylim = c(1, 12), col = "goldenrod", lwd = 1,
-xlab = "month", ylab = "kurtosis")
-lines(month_moments$kurt ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+plot(month_moments$kurt ~ month_moments$month_lab, type = "l", 
+     ylim = c(1,15), col = "azure4", lwd = 1,
+     xlab = "month", ylab = "kurtosis")
+lines(model_pred_param2$mean_tau_hat ~ model_pred_param2$month, type = "l", col = "steelblue", lwd = 2) # mean only
+lines(model_pred_param3$mean_tau_hat ~ model_pred_param3$month, type = "l", col = "chocolate", lwd = 2) # no skew
+lines(model_pred_param4$mean_tau_hat ~ model_pred_param4$month, type = "l", col = "darkolivegreen", lwd = 2) # no kurt
+lines(model_pred_param$mean_tau_hat ~ model_pred_param$month, col = "goldenrod", lwd = 2)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "black" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
 abline(h = 3, lty = 3, col = "red") # normal tails
 
 
 ################################################## Moment bucket 
+library(gamlss.ggplots)
 # intercept model 
 moment_bucket(amSSTm1) + 
   theme_bw() + 
@@ -3800,13 +3884,13 @@ moment_bucket(amSSTm1) +
   theme(legend.position = "none")
 
 # mean only 
-moment_bucket(amSSTm2) + 
+moment_bucket(poly_am_param_year_month_meanonly) + 
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
 
 # mean, sigma and nu changing through time
-moment_bucket(amSSTm3) + 
+moment_bucket(poly_am_param_year_month) + 
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
