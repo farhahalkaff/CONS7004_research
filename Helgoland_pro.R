@@ -3533,25 +3533,25 @@ AIC(NET_am_param_year_month)
 
 # make sigma or skew or tau constant at a time 
 poly_am_param_year_month_meanonly <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, 
-                                          family = SST(), data = Ammonium,
+                                          family = JSU(), data = Ammonium,
                                           mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
                                           method = mixed(5,200),
                                           control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 poly_am_param_year_month_noskew <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ 1, tau.fo = ~ year, 
-                                   family = SST(), data = Ammonium,
+                                   family = JSU(), data = Ammonium,
                                    mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
                                    method = mixed(5,200),
                                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
 poly_am_param_year_month_nokurt <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ 1, 
-                                          family = SST(), data = Ammonium,
+                                          family = JSU(), data = Ammonium,
                                           mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
                                           method = mixed(5,200),
                                           control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-AIC(poly_am_param_year_month)
+AIC(JSU_poly_am_param_year_month)
 AIC(poly_am_param_year_month_meanonly) # holy moly its so bad
 AIC(poly_am_param_year_month_noskew) # does even worse
 AIC(poly_am_param_year_month_nokurt) # does worse 
@@ -3765,7 +3765,7 @@ best_model_param <- function(model, data){
   
 }
 
-model_pred_param <- best_model_param(poly_am_param_year_month, Ammonium)
+model_pred_param <- best_model_param(JSU_poly_am_param_year_month, Ammonium)
 print(model_pred_param, n=33)
 print(model_pred_param)
 model_pred_param2 <- best_model_param(poly_am_param_year_month_meanonly, Ammonium)
@@ -3800,7 +3800,7 @@ legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", 
 
 # plot empirical skew vs predicted skew
 plot(model_pred_param$mean_nu_hat ~ model_pred_param$year, type = "l", 
-     ylim = c(-0.3, 4), col = "goldenrod", lwd = 2,
+     ylim = c(-0.1, 6), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "skewness")
 lines(model_pred_param2$mean_nu_hat ~ model_pred_param2$year, type = "l", col = "steelblue", lwd = 2) # mean only
 lines(model_pred_param3$mean_nu_hat ~ model_pred_param3$year, type = "l", col = "chocolate", lwd = 2) # no skew
@@ -3808,7 +3808,7 @@ lines(model_pred_param4$mean_nu_hat ~ model_pred_param4$year, type = "l", col = 
 lines(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2)
 abline(h = 0, lty = 3, col = "red") # symmetrical for empirical
 abline(h = 1, lty = 2, col = "darkred") # symmetrical for SST
-legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
        col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
 
 
@@ -3851,7 +3851,7 @@ legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", 
 
 # plot empirical skew vs predicted skew
 plot(month_moments$skew ~ month_moments$month_lab, type = "l", 
-     ylim = c(0,4), col = "azure4", lwd = 1,
+     ylim = c(-0.1,15), col = "azure4", lwd = 1,
      xlab = "month", ylab = "skewness")
 lines(model_pred_param2$mean_nu_hat ~ model_pred_param2$month, type = "l", col = "steelblue", lwd = 2) # mean only
 lines(model_pred_param3$mean_nu_hat ~ model_pred_param3$month, type = "l", col = "chocolate", lwd = 2) # no skew
@@ -3874,9 +3874,34 @@ legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", 
        col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "black" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
 abline(h = 3, lty = 3, col = "red") # normal tails
 
+################################################## Worm plot 
+
+# JSU FAMILY
+resid_wp(JSU_poly_am_param_year_month) # slight s-shape = kurtosis not fitted properly
+resid_wp(poly_am_param_year_month_meanonly) # s-shape = kurtosis not fitted properly
+resid_wp(poly_am_param_year_month_noskew) # slight s-shape = kurtosis not fitted properly
+resid_wp(poly_am_param_year_month_nokurt) # s-shape = kurtosis not fitted properly
+
+#SST FAMILY 
+resid_wp(poly_am_param_year_month) # slight s-shape = kurtosis not fitted properly
+resid_wp(poly_am_param_year_month_meanonly) # s-shape = kurtosis not fitted properly
+resid_wp(poly_am_param_year_month_noskew) # slight s-shape = kurtosis not fitted properly
+resid_wp(poly_am_param_year_month_nokurt) 
+
 
 ################################################## Moment bucket 
 library(gamlss.ggplots)
+
+moment_bucket(JSU_poly_am_param_year_month, poly_am_param_year_month_meanonly, 
+              poly_am_param_year_month_noskew,poly_am_param_year_month_nokurt, cex_text = 2) +
+  theme_bw() + 
+  theme(legend.position = "none") 
+
+# JSU vs SST
+moment_bucket(JSU_poly_am_param_year_month, poly_am_param_year_month, cex_text = 2) +
+  theme_bw() + 
+  theme(legend.position = "none") 
+
 # intercept model 
 moment_bucket(amSSTm1) + 
   theme_bw() + 
@@ -3884,18 +3909,19 @@ moment_bucket(amSSTm1) +
   theme(legend.position = "none")
 
 # mean only 
-moment_bucket(poly_am_param_year_month_meanonly) + 
+moment_bucket(poly_am_param_year_month_nokurt) + 
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
 
 # mean, sigma and nu changing through time
-moment_bucket(poly_am_param_year_month) + 
+moment_bucket(JSU_poly_am_param_year_month) + 
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
 
 ###################################################################
+
 
 
 #======================
