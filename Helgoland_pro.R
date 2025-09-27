@@ -4112,14 +4112,16 @@ library(dplyr)
 library(purrr)
 library(moments)
 
+# create function
 simulate_moments <- function(model, data, draws_per_obs) {
 fam <- model$family[1]
 rfun <- get(paste0("r", fam))   
 
-# Pull fitted params per row, attach year
+# pull fitted params per row, attach year
 par_df <- tibble(
-  Date  = Ammonium$Date,
-  year  = Ammonium$year,
+  Date  = data$Date,
+  year  = data$year,
+  month = data$month,
   mu    = fitted(model, "mu"),
   sigma = fitted(model, "sigma"), 
   nu = fitted(model, "nu"),
@@ -4146,14 +4148,34 @@ sim_year <- par_df %>%
     )
   }) %>% ungroup()
 
-return(sim_year)
+#simulate per month using its parameters
+sim_month <- par_df %>%
+  group_by(month) %>%
+  group_modify(function(data, key){
+    sims <- pmap(data %>% select(mu, sigma, nu, tau),
+                 function(mu, sigma, nu, tau){
+                   rfun(draws_per_obs, mu, sigma, nu, tau)
+                 })
+    x <- unlist(sims, use.names = FALSE)
+    tibble(
+      n_sim = length(x),
+      mean  = mean(x),
+      var   = var(x),
+      skew  = skewness(x),
+      kurt  = kurtosis(x)
+    )
+  }) %>% ungroup()
+
+#return(sim_year)
+return(sim_month)
 }
 
 set.seed(123)
-sim_JSU_best_am <- simulate_moments(JSU_poly_am_param_year_month, Phosphate, 200) # JSU fam best model poly
-sim_SST_best_am <- simulate_moments(poly_am_param_year_month, Phosphate, 200) # SST fam best model poly
-sim_JSU_noskew_am <- simulate_moments(poly_am_param_year_month_noskew, Phosphate, 200) # JSU fam no skew poly
-
+sim_JSU_best_am <- simulate_moments(JSU_poly_am_param_year_month, Ammonium, 200) # JSU fam best model poly
+sim_SST_best_am <- simulate_moments(poly_am_param_year_month, Ammonium, 200) # SST fam best model poly
+sim_JSU_noskew_am <- simulate_moments(poly_am_param_year_month_noskew, Ammonium, 200) # JSU fam no skew poly
+sim_JSU_nokurt_am <- simulate_moments(poly_am_param_year_month_nokurt, Ammonium, 200)
+sim_JSU_meanonly_am <- simulate_moments(poly_am_param_year_month_meanonly, Ammonium, 200)
 
 # compare empirical and simulated 
 # mean 
@@ -4161,31 +4183,103 @@ plot(summary$mean ~ summary$year, type = "l", lty = 2,
      ylim = c(0,13), col = "azure4", lwd = 2,
      xlab = "year", ylab = "mean")
 lines(sim_JSU_best_am$mean ~ sim_JSU_best_am$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
-lines(sim_SST_best_am$mean ~ sim_SST_best_am$year, col = "steelblue", lwd = 2) # poly best model SST fam
-lines(sim_JSU_noskew_am$mean ~ sim_JSU_noskew_am$year, col = "chocolate", lwd = 2) # poly best model SST fam
+lines(sim_JSU_meanonly_am$mean ~ sim_JSU_meanonly_am$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_am$mean ~ sim_JSU_noskew_am$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_am$mean ~ sim_JSU_nokurt_am$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_SST_best_am$mean ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+legend("topright", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
 
 # variance 
 plot(summary$var ~ summary$year, type = "l", lty = 2,
      ylim = c(1,22), col = "azure4", lwd = 2,
      xlab = "year", ylab = "variance")
 lines(sim_JSU_best_am$var ~ sim_JSU_best_am$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
-lines(sim_SST_best_am$var ~ sim_SST_best_am$year, col = "steelblue", lwd = 2) # poly best model SST fam
+lines(sim_JSU_meanonly_am$var ~ sim_JSU_meanonly_am$year, col = "steelblue", lwd = 2) #  poly mean only
 lines(sim_JSU_noskew_am$var ~ sim_JSU_noskew_am$year, col = "chocolate", lwd = 2) # poly best model SST fam
+lines(sim_JSU_nokurt_am$var ~ sim_JSU_nokurt_am$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_SST_best_am$var ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+legend("topright", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+
 
 # skewness 
 plot(summary$skew ~ summary$year, type = "l", lty = 2,
      ylim = c(-1,3.5), col = "azure4", lwd = 2,
      xlab = "year", ylab = "skewness")
 lines(sim_JSU_best_am$skew ~ sim_JSU_best_am$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
-lines(sim_SST_best_am$skew ~ sim_SST_best_am$year, col = "steelblue", lwd = 2) # poly best model SST fam
+lines(sim_JSU_meanonly_am$skew ~ sim_JSU_meanonly_am$year, col = "steelblue", lwd = 2) # poly mean only
 lines(sim_JSU_noskew_am$skew ~ sim_JSU_noskew_am$year, col = "chocolate", lwd = 2) # poly best model SST fam
+lines(sim_JSU_nokurt_am$skew ~ sim_JSU_nokurt_am$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_SST_best_am$skew ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+abline(h = 0, col = "red", lty = 2) # symmetrical 
+legend("topleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
 
 # kurtosis 
 plot(summary$kurt ~ summary$year, type = "l", lty = 2,
      ylim = c(1,30), col = "azure4", lwd = 2,
      xlab = "year", ylab = "kurtosis")
 lines(sim_JSU_best_am$kurt ~ sim_JSU_best_am$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
-lines(sim_SST_best_am$kurt ~ sim_SST_best_am$year, col = "steelblue", lwd = 2) # poly best model SST fam
+lines(sim_JSU_meanonly_am$kurt ~ sim_JSU_meanonly_am$year, col = "steelblue", lwd = 2) # poly mean only
 lines(sim_JSU_noskew_am$kurt ~ sim_JSU_noskew_am$year, col = "chocolate", lwd = 2) # poly best model SST fam
+lines(sim_JSU_nokurt_am$kurt ~ sim_JSU_nokurt_am$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_SST_best_am$kurt ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+abline(h = 3, col = "red", lty = 2) # normal tails
+legend("topleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+
+
+# per month 
+# mean
+plot(month_moments$mean ~ month_moments$month_lab, lty = 1,
+     ylim = c(4,8), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "mean")
+lines(sim_JSU_best_am$mean ~ sim_JSU_best_am$month, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_am$mean ~ sim_JSU_meanonly_am$month, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_am$mean ~ sim_JSU_noskew_am$month, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_am$mean ~ sim_JSU_nokurt_am$month, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_SST_best_am$mean ~ sim_SST_best_am$month, col = "brown4", lwd = 2) #SST fam
+legend("topleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+
+# variance 
+plot(month_moments$var ~ month_moments$month_lab, lty = 1,
+     ylim = c(6,16), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "variance")
+lines(sim_JSU_best_am$var ~ sim_JSU_best_am$month, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_am$var ~ sim_JSU_meanonly_am$month, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_am$var ~ sim_JSU_noskew_am$month, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_am$var ~ sim_JSU_nokurt_am$month, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_SST_best_am$var ~ sim_SST_best_am$month, col = "brown4", lwd = 2) #SST fam
+legend("bottomleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+
+# skewness
+plot(month_moments$skew ~ month_moments$month_lab, lty = 1,
+     ylim = c(0,4), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "skewness")
+lines(sim_JSU_best_am$skew ~ sim_JSU_best_am$month, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_am$skew ~ sim_JSU_meanonly_am$month, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_am$skew ~ sim_JSU_noskew_am$month, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_am$skew ~ sim_JSU_nokurt_am$month, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_SST_best_am$skew ~ sim_SST_best_am$month, col = "brown4", lwd = 2) #SST fam
+legend("topright", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+
+# kurtosis
+plot(month_moments$kurt ~ month_moments$month_lab, lty = 1,
+     ylim = c(2,12), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "kurtosis")
+lines(sim_JSU_best_am$kurt ~ sim_JSU_best_am$month, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_am$kurt ~ sim_JSU_meanonly_am$month, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_am$kurt ~ sim_JSU_noskew_am$month, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_am$kurt ~ sim_JSU_nokurt_am$month, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_SST_best_am$kurt ~ sim_SST_best_am$month, col = "brown4", lwd = 2) #SST fam
+legend("topright", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+abline(h = 3, col = "red", lty = 2)
+
+
 
 
