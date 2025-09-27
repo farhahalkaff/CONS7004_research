@@ -4283,3 +4283,70 @@ abline(h = 3, col = "red", lty = 2)
 
 
 
+#### simulate new data from model 
+
+# first get predicted param from best JSU model 
+Ammonium$mu_hat <- fitted(JSU_poly_am_param_year_month, what = "mu")
+Ammonium$sigma_hat <- fitted(JSU_poly_am_param_year_month, what = "sigma")
+Ammonium$nu_hat <- fitted(JSU_poly_am_param_year_month, what = "nu")
+Ammonium$tau_hat <- fitted(JSU_poly_am_param_year_month, what = "tau")
+
+# get the predicted param for best model 
+mu_hat <- fitted(JSU_poly_am_param_year_month, what = "mu")
+sigma_hat <- fitted(JSU_poly_am_param_year_month, what = "sigma")
+nu_hat <- fitted(JSU_poly_am_param_year_month, what = "nu")
+tau_hat <- fitted(JSU_poly_am_param_year_month, what = "tau")
+
+# get the predicted param for best model 
+mu_hat <- fitted(JSU_poly_am_param_year_month, what = "mu")
+sigma_hat <- fitted(JSU_poly_am_param_year_month, what = "sigma")
+nu_hat <- fitted(JSU_poly_am_param_year_month, what = "nu")
+tau_hat <- fitted(JSU_poly_am_param_year_month, what = "tau")
+
+
+am_sim <- function() {
+  map_dbl(1:nrow(Ammonium), ~ rJSU(1, mu_hat[.x], sigma_hat[.x], nu_hat[.x], tau_hat[.x]))
+  
+  # bounded by 0
+  #am_sim <- pmax(0, am_sim)
+  }
+
+set.seed(42)
+n_reps <- 20
+replicates <- replicate(n_reps, am_sim(), simplify = FALSE)
+
+# put replicated sim in df
+am_sim_df <- tibble::tibble(
+  sim_id = rep(1:n_reps, each = nrow(Ammonium)),
+  value = unlist(replicates)
+)
+
+am_sim_df
+
+obs_df <- tibble::tibble(
+  sim_id = "Observed",
+  value = Ammonium$Ammonium
+)
+
+# overlay sim and data densities
+ggplot() +
+  geom_density(data = am_sim_df, aes(x = value, group = sim_id),
+               color = "azure4") +
+  geom_density(data = obs_df, aes(x = value, group = sim_id),
+               color = "darkred", size = 1) +
+  xlim(0, max(Ammonium$Ammonium)) +
+  theme_minimal()
+
+
+
+
+summary(am_sim)
+summary(Ammonium$Ammonium)
+length(am_sim)
+length(Ammonium$Ammonium)
+
+hist(Ammonium$Ammonium)
+lines(density(am_sim), col = "blue")
+hist(am_sim)
+lines(density(Ammonium$Ammonium), col = "blue")
+
