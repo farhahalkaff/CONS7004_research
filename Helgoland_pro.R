@@ -3691,10 +3691,11 @@ ggplot(Ammonium, aes(x = Date, y = Ammonium)) +
   geom_abline(intercept = am_param_date$mu.coefficients[1], slope = am_param_date$mu.coefficients[2], 
               color = "goldenrod", linewidth = 1) + # mean, sigma and nu as function of time
   geom_line(aes(y = mu_hat), color = "darkolivegreen", linewidth = 1) +
-  geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed" ,color = "darkred") +
-  geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed" ,color = "darkred") +
-  geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed" ,color = "darkred") +
+  #geom_vline(xintercept = as.Date("1963-09-23"), linetype = "dashed" ,color = "darkred") +
+  #geom_vline(xintercept = as.Date("1980-09-23"), linetype = "dashed" ,color = "darkred") +
+  #geom_vline(xintercept = as.Date("1994-04-13"), linetype = "dashed" ,color = "darkred") +
   geom_hline(yintercept = 5.8704, linetype = "dashed", color = "black") +
+  geom_hline(yintercept = quantile(Ammonium$Ammonium, 0.95, na.rm = TRUE), color = "red") +
   labs(x = "Time", y = "Ammonium (µmol/l)") +
   theme_minimal()
 
@@ -4297,23 +4298,42 @@ sigma_hat <- fitted(JSU_poly_am_param_year_month, what = "sigma")
 nu_hat <- fitted(JSU_poly_am_param_year_month, what = "nu")
 tau_hat <- fitted(JSU_poly_am_param_year_month, what = "tau")
 
-# get the predicted param for best model 
-mu_hat <- fitted(JSU_poly_am_param_year_month, what = "mu")
-sigma_hat <- fitted(JSU_poly_am_param_year_month, what = "sigma")
-nu_hat <- fitted(JSU_poly_am_param_year_month, what = "nu")
-tau_hat <- fitted(JSU_poly_am_param_year_month, what = "tau")
+# get the predicted param for best model for SST 
+mu_hat_SST <- fitted(poly_am_param_year_month, what = "mu")
+sigma_hat_SST <- fitted(poly_am_param_year_month, what = "sigma")
+nu_hat_SST <- fitted(poly_am_param_year_month, what = "nu")
+tau_hat_SST <- fitted(poly_am_param_year_month, what = "tau")
+
+# get the predicted param for mean only
+mu_hat_mean<- fitted(poly_am_param_year_month_meanonly, what = "mu")
+sigma_hat_mean <- fitted(poly_am_param_year_month_meanonly, what = "sigma")
+nu_hat_mean <- fitted(poly_am_param_year_month_meanonly, what = "nu")
+tau_hat_mean <- fitted(poly_am_param_year_month_meanonly, what = "tau")
 
 
+# create function for JSU 
 am_sim <- function() {
   map_dbl(1:nrow(Ammonium), ~ rJSU(1, mu_hat[.x], sigma_hat[.x], nu_hat[.x], tau_hat[.x]))
-  
-  # bounded by 0
-  #am_sim <- pmax(0, am_sim)
   }
+
+# create function for SST
+am_sim_mean <- function() {
+  map_dbl(1:nrow(Ammonium), ~ rJSU(1, mu_hat_mean[.x], sigma_hat_mean[.x], nu_hat_mean[.x], tau_hat_mean[.x]))
+}
+
 
 set.seed(42)
 n_reps <- 20
+# JSU
 replicates <- replicate(n_reps, am_sim(), simplify = FALSE)
+# SST
+replicates_SST <- replicate(n_reps, am_sim_SST(), simplify = FALSE)
+
+# get the actually data density
+obs_df <- tibble::tibble(
+  sim_id = "Observed",
+  value = Ammonium$Ammonium
+)
 
 # put replicated sim in df
 am_sim_df <- tibble::tibble(
@@ -4321,17 +4341,18 @@ am_sim_df <- tibble::tibble(
   value = unlist(replicates)
 )
 
-am_sim_df
-
-obs_df <- tibble::tibble(
-  sim_id = "Observed",
-  value = Ammonium$Ammonium
+# put replicated sim in df for mean only
+am_sim_df_mean <- tibble::tibble(
+  sim_id = rep(1:n_reps, each = nrow(Ammonium)),
+  value = unlist(replicates_SST)
 )
+
+
 
 # overlay sim and data densities
 ggplot() +
   geom_density(data = am_sim_df, aes(x = value, group = sim_id),
-               color = "azure4") +
+               color = "azure4") + # JSU
   geom_density(data = obs_df, aes(x = value, group = sim_id),
                color = "darkred", size = 1) +
   xlim(0, max(Ammonium$Ammonium)) +
@@ -4340,13 +4361,189 @@ ggplot() +
 
 
 
-summary(am_sim)
-summary(Ammonium$Ammonium)
-length(am_sim)
-length(Ammonium$Ammonium)
 
-hist(Ammonium$Ammonium)
-lines(density(am_sim), col = "blue")
-hist(am_sim)
-lines(density(Ammonium$Ammonium), col = "blue")
+## Threshold exceedence 
+
+# threhold above 95th percentile 
+threshold <- quantile(Ammonium$Ammonium, 0.95, na.rm = TRUE)
+
+obs_exceed <- Ammonium %>% 
+  mutate(year = lubridate::year(Date),
+         exceed = Ammonium > threshold) %>% 
+  group_by(year) %>% 
+  summarise(obs_count = sum(exceed, na.rm = TRUE),
+            .groups = "drop")
+
+# simulate for JSU
+am_sim <- function() {
+  map_dbl(1:nrow(Ammonium),
+        ~ rJSU(1, mu_hat[.x], sigma_hat[.x], nu_hat[.x], tau_hat[.x]))
+}
+
+# for SST
+am_sim_SST <- function() {
+  map_dbl(1:nrow(Ammonium),
+        ~ rSST(1, mu_hat_SST[.x], sigma_hat_SST[.x], nu_hat_SST[.x], tau_hat_SST[.x]))
+}
+
+# for mean(time) JSU
+am_sim_meanonly <- function() {
+  map_dbl(1:nrow(Ammonium),
+          ~ rJSU(1, mu_hat_mean[.x], sigma_hat_mean[.x], nu_hat_mean[.x], tau_hat_mean[.x]))
+}
+
+
+n_reps <- 100
+set.seed(42)
+# JSU
+replicates <- replicate(n_reps, am_sim(), simplify = FALSE)
+# SST
+replicates_SST <- replicate(n_reps, am_sim_SST(), simplify = FALSE)
+# mean only
+replicates_meanonly <- replicate(n_reps, am_sim_meanonly(), simplify = FALSE)
+
+
+# for JSU
+am_sim_exceed <- purrr::imap_dfr(replicates, function(am_sim, rep_id){
+  tibble(Date = Ammonium$Date, value = am_sim) %>% 
+    mutate(year = lubridate::year(Date),
+           exceed = value > threshold) %>% 
+    group_by(year) %>% 
+    summarise(sim_count = sum(exceed),
+              .groups = "drop") %>% 
+    mutate(rep = rep_id)
+})
+
+# for SST
+am_sim_exceed_SST <- purrr::imap_dfr(replicates_SST, function(am_sim_SST, rep_id){
+  tibble(Date = Ammonium$Date, value = am_sim_SST) %>% 
+    mutate(year = lubridate::year(Date),
+           exceed = value > threshold) %>% 
+    group_by(year) %>% 
+    summarise(sim_count = sum(exceed),
+              .groups = "drop") %>% 
+    mutate(rep = rep_id)
+})
+
+# for mean only
+am_sim_exceed_meanonly <- purrr::imap_dfr(replicates_meanonly, function(am_sim_meanonly, rep_id){
+  tibble(Date = Ammonium$Date, value = am_sim_meanonly) %>% 
+    mutate(year = lubridate::year(Date),
+           exceed = value > threshold) %>% 
+    group_by(year) %>% 
+    summarise(sim_count = sum(exceed),
+              .groups = "drop") %>% 
+    mutate(rep = rep_id)
+})
+
+
+# plot observed vs simualted 
+ggplot() +
+  geom_line(data = am_sim_exceed, aes(x = year, y = sim_count, group = rep),
+            color = "azure4") +
+  #geom_line(data = am_sim_exceed_SST, aes(x = year, y = sim_count, group = rep),
+            #color = "lightgrey") +
+  #geom_line(data = am_sim_exceed_meanonly, aes(x = year, y = sim_count, group = rep),
+            #color = "lightgrey") +
+  geom_line(data = obs_exceed, aes(x = year, y = obs_count),
+            color =  "darkred") +
+  theme_minimal()
+# DAYUM my model is underestimating extremes 
+
+
+
+############### STATIC RQ1 ################
+
+am_static_moments <- Ammonium %>% 
+  summarise(
+    mean = mean(Ammonium, na.rm = TRUE),
+    var = var(Ammonium, na.rm = TRUE),
+    skew = skewness(Ammonium, na.rm = TRUE),
+    kurt = kurtosis(Ammonium, na.rm = TRUE)
+  )
+
+### Compare static models of different family distribution ###
+
+## Two parameter distribution =======
+# normal distribution
+am_static_NO <- gamlss(Ammonium ~ 1, family = NO(), data = Ammonium)
+
+## Three parameter distribution =======
+# SN1 (models skewness)
+am_static_SN1 <- gamlss(Ammonium ~ 1, family= SN1(), data = Ammonium)
+
+# TF2 (models leptokurtic)
+am_static_TF2 <- gamlss(Ammonium ~ 1, family = TF2(), data = Ammonium)
+
+# GT (models both leptokurtic and platykurtic)
+am_static_GT <-gamlss(Ammonium ~ 1, family = GT(), data = Ammonium,
+                      mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                      method = mixed(10,200),
+                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+## Four parameter distribution =======
+# JSU(models leptokurtic)
+am_static_JSU <- gamlss(Ammonium ~ 1, family = JSU(), data = Ammonium,
+                        mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# SHASHo (models both leptokurtic and platykurtic)
+am_static_SHASHo <- gamlss(Ammonium ~ 1, family = SHASHo(), data = Ammonium,
+                        mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+# look at AIC for all of em
+AIC(am_static_NO) # 5
+AIC(am_static_SN1) # 6
+AIC(am_static_TF2) # 4
+AIC(am_static_GT) # 3
+AIC(am_static_JSU) # 2
+AIC(am_static_SHASHo) # 1
+
+
+## now compare density plots
+
+models <- list(NO = am_static_NO, SN1 = am_static_SN1, TF2 = am_static_TF2, GT = am_static_GT, 
+               JSU = am_static_JSU, SHASHo = am_static_SHASHo)
+
+models <- list(NO = am_static_NO, SN1 = am_static_SN1, GT = am_static_GT, SHASHo = am_static_SHASHo)
+
+# Function to simulate from a fitted gamlss model
+sim_from_model <- function(model, n = 1000) {
+  fam <- family(model)[[1]]   # distribution family object
+  rfun <- get(paste0("r", fam)) 
+  mu    <- fitted(model, "mu")[1]
+  sigma <- fitted(model, "sigma")[1]
+  nu    <- tryCatch(fitted(model, "nu")[1], error = function(e) NULL)
+  tau   <- tryCatch(fitted(model, "tau")[1], error = function(e) NULL)
+  
+  # match args by what the family uses
+  args <- list(n = n, mu = mu, sigma = sigma)
+  if (!is.null(nu))  args$nu  <- nu
+  if (!is.null(tau)) args$tau <- tau
+  
+  tibble(value = do.call(rfun, args))
+}
+
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models), function(name) {
+    sim_from_model(models[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+
+# Plot overlapping densities
+ggplot() +
+  geom_density(data = Ammonium, aes(x = Ammonium), size = 1) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_vline(xintercept = mean(Ammonium$Ammonium), linetype = "dashed", color = "grey") +
+  xlim(0, max(Ammonium$Ammonium)) +
+  theme_minimal()
+
 
