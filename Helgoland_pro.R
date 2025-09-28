@@ -1396,6 +1396,7 @@ SST_poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.f
                                    method = mixed(10,200),
                                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 
+
 AIC(SHASHo_poly_ph_param_year_month)
 AIC(NET_poly_ph_param_year_month)
 AIC(SEP3_poly_ph_param_year_month)
@@ -1606,6 +1607,40 @@ poly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = 
                                    method = mixed(10,200),
                                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 
+poly_ph_param_year_month_meanonly <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, 
+                                   family = JSU(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(5,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+poly_ph_param_year_month_noskew <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ 1, tau.fo = ~ year + month, 
+                                   family = JSU(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+poly_ph_param_year_month_nokurt <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ 1, 
+                                   family = JSU(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+
+AIC(poly_ph_param_year_month)
+AIC(poly_ph_param_year_month_meanonly) # sigma, nu, tau ~ 1
+AIC(poly_ph_param_year_month_noskew) # nu ~ 1
+AIC(poly_ph_param_year_month_nokurt) # tau ~ 1
+
+## lemme do poly for variance and skew
+polypoly_ph_param_year_month <- gamlss(Phosphate ~ poly(year,2) + month, sigma.fo = ~ poly(year,2) + month, nu.fo = ~ poly(year,2) + month, tau.fo = ~ year + month, 
+                                   family = JSU(), data = Phosphate,
+                                   #mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(polypoly_ph_param_year_month)
+
 # create function to get predicted param from model
 best_model_param <- function(model, data){
   
@@ -1638,6 +1673,12 @@ best_model_param <- function(model, data){
 }
 
 model_pred_param <- best_model_param(poly_ph_param_year_month, Phosphate)
+model_pred_param2 <- best_model_param(poly_ph_param_year_month_meanonly, Phosphate)
+model_pred_param3 <- best_model_param(poly_ph_param_year_month_noskew, Phosphate)
+model_pred_param4 <- best_model_param(poly_ph_param_year_month_nokurt, Phosphate)
+model_pred_param5 <- best_model_param(polypoly_ph_param_year_month, Phosphate)
+
+
 print(model_pred_param$by_year, n=33)
 print(model_pred_param$by_month)
 
@@ -1646,28 +1687,53 @@ print(model_pred_param$by_month)
 
 # plot empirical mean vs predicted mean
 plot(model_pred_param$mean_mu_hat ~ model_pred_param$year, type = "l", 
-     ylim = c(0,1), col = "goldenrod", lwd = 2,
+     ylim = c(0.4,1), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "mean")
+lines(model_pred_param2$mean_mu_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2)
+lines(model_pred_param3$mean_mu_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2)
+lines(model_pred_param4$mean_mu_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2)
+lines(model_pred_param5$mean_mu_hat ~ model_pred_param5$year, col = "brown", lwd = 2)
 lines(summary$mean ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
 
 # plot empirical sigma vs predicted sigma
 plot(model_pred_param$mean_sigma_hat ~ model_pred_param$year, type = "l", 
      ylim = c(0,0.5), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "variance")
+lines(model_pred_param2$mean_sigma_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2)
+lines(model_pred_param3$mean_sigma_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2)
+lines(model_pred_param4$mean_sigma_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2)
+lines(model_pred_param5$mean_sigma_hat ~ model_pred_param5$year, col = "brown", lwd = 2)
 lines(summary$var ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
 
 # plot empirical skew vs predicted skew
 plot(model_pred_param$mean_nu_hat ~ model_pred_param$year, type = "l", 
     ylim = c(-0.4, 7), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "skewness")
+lines(model_pred_param2$mean_nu_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2)
+lines(model_pred_param3$mean_nu_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2)
+lines(model_pred_param4$mean_nu_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2)
+lines(model_pred_param5$mean_nu_hat ~ model_pred_param5$year, col = "brown", lwd = 2)
 lines(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
 abline(h = 0, lty = 3, col = "red")
 
 # plot empirical tau vs predicted tau
 plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l", 
      ylim = c(1, 7), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "kurtosis")
+lines(model_pred_param2$mean_tau_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2)
+lines(model_pred_param3$mean_tau_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2)
+lines(model_pred_param4$mean_tau_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2)
+lines(model_pred_param5$mean_tau_hat ~ model_pred_param5$year, col = "brown", lwd = 2)
 lines(summary$kurt ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 3, lty = 3, col = "red")
 
 
 ## PLOT comparison per month 
@@ -1696,6 +1762,70 @@ plot(model_pred_param$mean_tau_hat ~ model_pred_param$month, type = "l",
      xlab = "month", ylab = "kurtosis")
 lines(month_moments$kurt ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
 
+
+### SIMULATION ###
+
+set.seed(123)
+sim_JSU_best_ph <- simulate_moments(poly_ph_param_year_month, Phosphate, 200) # JSU fam best model poly
+sim_JSU_meanonly_ph <- simulate_moments(poly_ph_param_year_month_meanonly, Phosphate, 200)
+sim_JSU_noskew_ph <- simulate_moments(poly_ph_param_year_month_noskew, Phosphate, 200) # JSU fam no skew poly
+sim_JSU_nokurt_ph <- simulate_moments(poly_ph_param_year_month_nokurt, Phosphate, 200)
+sim_JSU_best_poly_ph <- simulate_moments(polypoly_ph_param_year_month, Phosphate, 200) # JSU fam best model poly
+
+
+# compare empirical and simulated 
+# mean 
+plot(summary$mean ~ summary$year, type = "l", lty = 2,
+     ylim = c(0.4,1), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "mean")
+lines(sim_JSU_best_ph$mean ~ sim_JSU_best_ph$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_ph$mean ~ sim_JSU_meanonly_ph$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_ph$mean ~ sim_JSU_noskew_ph$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_ph$mean ~ sim_JSU_nokurt_ph$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_JSU_best_poly_ph$mean ~ sim_JSU_best_poly_ph$year, col = "brown", lwd = 2) # poly JSU no kurt
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
+# variance 
+plot(summary$var ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,0.3), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "variance")
+lines(sim_JSU_best_ph$var ~ sim_JSU_best_ph$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_ph$var ~ sim_JSU_meanonly_ph$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_ph$var ~ sim_JSU_noskew_ph$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_ph$var ~ sim_JSU_nokurt_ph$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_JSU_best_poly_ph$var ~ sim_JSU_best_poly_ph$year, col = "brown", lwd = 2) # poly JSU no kurt
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
+
+# skewness 
+plot(summary$skew ~ summary$year, type = "l", lty = 2,
+     ylim = c(-0.8,1.5), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "skewness")
+lines(sim_JSU_best_ph$skew ~ sim_JSU_best_ph$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_ph$skew ~ sim_JSU_meanonly_ph$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_ph$skew ~ sim_JSU_noskew_ph$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_ph$skew ~ sim_JSU_nokurt_ph$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_JSU_best_poly_ph$skew ~ sim_JSU_best_poly_ph$year, col = "brown", lwd = 2) # poly JSU no kurt
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 0, col = "red", lty = 3)
+
+# kurtosis 
+plot(summary$kurt ~ summary$year, type = "l", lty = 2,
+     ylim = c(1,7), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "kurtosis")
+lines(sim_JSU_best_ph$kurt ~ sim_JSU_best_ph$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_ph$kurt ~ sim_JSU_meanonly_ph$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_ph$kurt ~ sim_JSU_noskew_ph$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_ph$kurt ~ sim_JSU_nokurt_ph$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+lines(sim_JSU_best_poly_ph$kurt ~ sim_JSU_best_poly_ph$year, col = "brown", lwd = 2) # poly JSU no kurt
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 3, col = "red", lty = 3)
+
+
 ################################################## Moment bucket 
 # intercept model 
 moment_bucket(phJSUm1) + 
@@ -1716,11 +1846,16 @@ moment_bucket(phJSUm3) +
   theme(legend.position = "none")
 
 # mean, sigma and nu changing through time
-moment_bucket(phJSUpolym1) + 
+moment_bucket(m5) + 
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
 
+m1 <- poly_ph_param_year_month
+m2 <- poly_ph_param_year_month_meanonly
+m3 <- poly_ph_param_year_month_noskew
+m4 <- poly_ph_param_year_month_nokurt
+m5 <- polypoly_ph_param_year_month
 ###################################################################
 
 
@@ -2318,6 +2453,31 @@ poly_ni_param_year_month <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ 
                                    method = mixed(10,200),
                                    control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 
+poly_ni_param_year_month_meanonly <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, 
+                                   family = SST(), data = Nitrite,
+                                   mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+poly_ni_param_year_month_noskew <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ 1, tau.fo = ~ year, 
+                                   family = SST(), data = Nitrite,
+                                   mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                                   method = mixed(10,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+poly_ni_param_year_month_nokurt <- gamlss(Nitrite ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ 1, 
+                                   family = SST(), data = Nitrite,
+                                   mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                                   method = mixed(5,200),
+                                   control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+AIC(poly_ni_param_year_month)
+AIC(poly_ni_param_year_month_meanonly) # sigma, nu, tau ~ 1
+AIC(poly_ni_param_year_month_noskew) # nu ~ 1
+AIC(poly_ni_param_year_month_nokurt) # tau ~ 1
+
+
 # create function to get predicted param from model
 best_model_param <- function(model, data){
   
@@ -2350,6 +2510,10 @@ best_model_param <- function(model, data){
 }
 
 model_pred_param <- best_model_param(poly_ni_param_year_month, Nitrite)
+model_pred_param2 <- best_model_param(poly_ni_param_year_month_meanonly, Nitrite)
+model_pred_param3 <- best_model_param(poly_ni_param_year_month_noskew, Nitrite)
+model_pred_param4 <- best_model_param(poly_ni_param_year_month_nokurt, Nitrite)
+
 print(model_pred_param, n=33)
 print(model_pred_param$by_month)
 
@@ -2360,26 +2524,48 @@ print(model_pred_param$by_month)
 plot(model_pred_param$mean_mu_hat ~ model_pred_param$year, type = "l", 
      ylim = c(0,1.5), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "mean")
+lines(model_pred_param2$mean_mu_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2) # mean only 
+lines(model_pred_param3$mean_mu_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2) # mean only 
+lines(model_pred_param4$mean_mu_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2) # mean only 
 lines(summary$mean ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
 
 # plot empirical sigma vs predicted sigma
 plot(model_pred_param$mean_sigma_hat ~ model_pred_param$year, type = "l", 
      ylim = c(0,1), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "variance")
+lines(model_pred_param2$mean_sigma_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2) # mean only 
+lines(model_pred_param3$mean_sigma_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2) # mean only 
+lines(model_pred_param4$mean_sigma_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2) # mean only 
 lines(summary$var ~ summary$year, col = "azure4", lwd = 2, lty = 2)
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
 
 # plot empirical skew vs predicted skew
 plot(model_pred_param$mean_nu_hat ~ model_pred_param$year, type = "l", 
      ylim = c(0, 5), col = "goldenrod", lwd = 2,
      xlab = "year", ylab = "skewness")
+lines(model_pred_param2$mean_nu_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2) # mean only 
+lines(model_pred_param3$mean_nu_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2) # mean only 
+lines(model_pred_param4$mean_nu_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2) # mean only 
 lines(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2)
-abline(h = 0, lty = 3, col = "red")
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 0, lty = 3, col = "red") # symmetrical for empirical 
+abline(h = 1, lty = 3, col = "darkred") # symmetrical for SST fam
+
 
 # plot empirical tau vs predicted tau
-#plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l", 
-     #ylim = c(1, 7), col = "goldenrod", lwd = 2,
-     #xlab = "year", ylab = "kurtosis")
-plot(summary$kurt ~ summary$year, col = "azure4", lwd = 2, type = "l", lty = 2)
+plot(model_pred_param$mean_tau_hat ~ model_pred_param$year, type = "l", 
+     ylim = c(1, 26), col = "goldenrod", lwd = 2,
+     xlab = "year", ylab = "kurtosis")
+lines(model_pred_param2$mean_tau_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2) # mean only 
+lines(model_pred_param3$mean_tau_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2) # mean only 
+lines(model_pred_param4$mean_tau_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2) # mean only 
+lines(summary$kurt ~ summary$year, col = "azure4", lwd = 2, lty = 2)
 abline(h = 3, lty = 3, col = "red") # normal tails
 
 
@@ -2409,6 +2595,65 @@ lines(month_moments$skew ~ month_moments$month_lab, col = "azure4", lwd = 2, lty
 plot(month_moments$kurt ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2, type = "l")
 abline(h = 3, lty = 3, col = "red") # normal tails
 
+
+
+### SIMULATION ###
+
+set.seed(123)
+sim_SST_best_nii <- simulate_moments(poly_ni_param_year_month, Nitrite, 200) # JSU fam best model poly
+sim_SST_meanonly_nii <- simulate_moments(poly_ni_param_year_month_meanonly, Nitrite, 200)
+sim_SST_noskew_nii <- simulate_moments(poly_ni_param_year_month_noskew, Nitrite, 200) # JSU fam no skew poly
+sim_SST_nokurt_nii <- simulate_moments(poly_ni_param_year_month_nokurt, Nitrite, 200)
+
+# compare empirical and simulated 
+# mean 
+plot(summary$mean ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,1.5), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "mean")
+lines(sim_SST_best_nii$mean ~ sim_SST_best_nii$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_SST_meanonly_nii$mean ~ sim_SST_meanonly_nii$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_SST_noskew_nii$mean ~ sim_SST_noskew_nii$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_SST_nokurt_nii$mean ~ sim_SST_nokurt_nii$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
+# variance 
+plot(summary$var ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,1), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "variance")
+lines(sim_SST_best_nii$var ~ sim_SST_best_nii$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_SST_meanonly_nii$var ~ sim_SST_meanonly_nii$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_SST_noskew_nii$var ~ sim_SST_noskew_nii$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_SST_nokurt_nii$var ~ sim_SST_nokurt_nii$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
+
+# skewness 
+plot(summary$skew ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,8), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "skewness")
+lines(sim_SST_best_nii$skew ~ sim_SST_best_nii$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_SST_meanonly_nii$skew ~ sim_SST_meanonly_nii$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_SST_noskew_nii$skew ~ sim_SST_noskew_nii$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_SST_nokurt_nii$skew ~ sim_SST_nokurt_nii$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 0, col = "red", lty = 3)
+
+# kurtosis 
+plot(summary$kurt ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,25), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "kurtosis")
+lines(sim_SST_best_nii$kurt ~ sim_SST_best_nii$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_SST_meanonly_nii$kurt ~ sim_SST_meanonly_nii$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_SST_noskew_nii$kurt ~ sim_SST_noskew_nii$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_SST_nokurt_nii$kurt ~ sim_SST_nokurt_nii$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 3, col = "red", lty = 3)
+
+
 ################################################## Moment bucket 
 # intercept model 
 moment_bucket(niiSSTm1) + 
@@ -2423,10 +2668,15 @@ moment_bucket(niiSSTm2) +
   theme(legend.position = "none")
 
 # mean, sigma and nu changing through time
-moment_bucket(niiSSTm3) + 
+moment_bucket(m1, m2, m3, m4) + 
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
+
+m1 <- poly_ni_param_year_month
+m2 <- poly_ni_param_year_month_meanonly
+m3 <- poly_ni_param_year_month_noskew
+m4 <- poly_ni_param_year_month_nokurt
 
 ###################################################################
 
@@ -3539,9 +3789,9 @@ poly_si_param_year_month_nokurt <- gamlss(Silicate ~ poly(year,2) + month, sigma
 
 
 AIC(poly_si_param_year_month)
-AIC(poly_si_param_year_month_meanonly)
-AIC(poly_si_param_year_month_noskew)
-AIC(poly_si_param_year_month_nokurt)
+AIC(poly_si_param_year_month_meanonly) # sigma, nu, tau ~ 1
+AIC(poly_si_param_year_month_noskew) # nu ~ 1
+AIC(poly_si_param_year_month_nokurt) # tau ~ 1
 
 
 # create function to get predicted param from model
@@ -3570,8 +3820,8 @@ best_model_param <- function(model, data){
               mean_tau_hat = mean(tau_hat, na.rm = TRUE))
   
   #return(list(by_year = average_by_year, by_month = average_by_month))
-  #return(average_by_year)
-  return(average_by_month)
+  return(average_by_year)
+  #return(average_by_month)
   
 }
 
@@ -3684,6 +3934,67 @@ legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", 
        col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,1), cex = 0.5, bty = "n")
 
 
+### SIMULATION ###
+
+set.seed(123)
+sim_JSU_best_si <- simulate_moments(poly_si_param_year_month, Silicate, 200) # JSU fam best model poly
+sim_JSU_meanonly_si <- simulate_moments(poly_si_param_year_month_meanonly, Silicate, 200)
+sim_JSU_noskew_si <- simulate_moments(poly_si_param_year_month_noskew, Silicate, 200) # JSU fam no skew poly
+sim_JSU_nokurt_si <- simulate_moments(poly_si_param_year_month_nokurt, Silicate, 200)
+
+# compare empirical and simulated 
+# mean 
+plot(summary$mean ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,18), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "mean")
+lines(sim_JSU_best_si$mean ~ sim_JSU_best_si$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_si$mean ~ sim_JSU_meanonly_si$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_JSU_noskew_si$mean ~ sim_JSU_noskew_si$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_JSU_nokurt_si$mean ~ sim_JSU_nokurt_si$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+#lines(sim_SST_best_am$mean ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+legend("topleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+
+# variance 
+plot(summary$var ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,68), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "variance")
+lines(sim_JSU_best_si$var ~ sim_JSU_best_si$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_si$var ~ sim_JSU_meanonly_si$year, col = "steelblue", lwd = 2) #  poly mean only
+lines(sim_JSU_noskew_si$var ~ sim_JSU_noskew_si$year, col = "chocolate", lwd = 2) # poly best model SST fam
+lines(sim_JSU_nokurt_si$var ~ sim_JSU_nokurt_si$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+#lines(sim_SST_best_am$var ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+legend("bottomleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+
+
+# skewness 
+plot(summary$skew ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,18), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "skewness")
+lines(sim_JSU_best_si$skew ~ sim_JSU_best_si$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_si$skew ~ sim_JSU_meanonly_si$year, col = "steelblue", lwd = 2) # poly mean only
+lines(sim_JSU_noskew_si$skew ~ sim_JSU_noskew_si$year, col = "chocolate", lwd = 2) # poly best model SST fam
+lines(sim_JSU_nokurt_si$skew ~ sim_JSU_nokurt_si$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+#lines(sim_SST_best_am$skew ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+abline(h = 0, col = "red", lty = 2) # symmetrical 
+legend("topleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+
+# kurtosis 
+plot(summary$kurt ~ summary$year, type = "l", lty = 2,
+     ylim = c(1,100), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "kurtosis")
+lines(sim_JSU_best_si$kurt ~ sim_JSU_best_si$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_JSU_meanonly_si$kurt ~ sim_JSU_meanonly_si$year, col = "steelblue", lwd = 2) # poly mean only
+lines(sim_JSU_noskew_si$kurt ~ sim_JSU_noskew_si$year, col = "chocolate", lwd = 2) # poly best model SST fam
+lines(sim_JSU_nokurt_si$kurt ~ sim_JSU_nokurt_si$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+#lines(sim_SST_best_am$kurt ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+abline(h = 3, col = "red", lty = 2) # normal tails
+legend("topleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
+
+
 ################################################## Moment bucket 
 # intercept model 
 moment_bucket(siJSUm1) + 
@@ -3698,10 +4009,16 @@ moment_bucket(siJSUm2) +
   theme(legend.position = "none")
 
 # mean, sigma and nu changing through time
-moment_bucket(poly_si_param_year_month_nokurt) + 
+moment_bucket(m1, m2, m3, m4) + 
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
+
+
+m1 <- poly_si_param_year_month
+m2 <- poly_si_param_year_month_meanonly
+m3 <- poly_si_param_year_month_noskew
+m4 <- poly_si_param_year_month_nokurt
 
 
 # centile 
@@ -4162,9 +4479,9 @@ poly_am_param_year_month_nokurt <- gamlss(Ammonium ~ poly(year,2) + month, sigma
                                           control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 AIC(JSU_poly_am_param_year_month)
-AIC(poly_am_param_year_month_meanonly) # holy moly its so bad
-AIC(poly_am_param_year_month_noskew) # does even worse
-AIC(poly_am_param_year_month_nokurt) # does worse 
+AIC(poly_am_param_year_month_meanonly) # sigma, nu and tau ~ 1
+AIC(poly_am_param_year_month_noskew) # nu ~ 1
+AIC(poly_am_param_year_month_nokurt) # tau ~ 1
 
 #=========================================================================================
 
@@ -4689,8 +5006,8 @@ sim_month <- par_df %>%
     )
   }) %>% ungroup()
 
-#return(sim_year)
-return(sim_month)
+return(sim_year)
+#return(sim_month)
 }
 
 set.seed(123)
@@ -4709,7 +5026,7 @@ lines(sim_JSU_best_am$mean ~ sim_JSU_best_am$year, col = "goldenrod", lwd = 2) #
 lines(sim_JSU_meanonly_am$mean ~ sim_JSU_meanonly_am$year, col = "steelblue", lwd = 2) # poly JSU mean only
 lines(sim_JSU_noskew_am$mean ~ sim_JSU_noskew_am$year, col = "chocolate", lwd = 2) # poly JSU no skew
 lines(sim_JSU_nokurt_am$mean ~ sim_JSU_nokurt_am$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
-lines(sim_SST_best_am$mean ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+#lines(sim_SST_best_am$mean ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
 legend("topright", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
        col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
 
@@ -4721,33 +5038,33 @@ lines(sim_JSU_best_am$var ~ sim_JSU_best_am$year, col = "goldenrod", lwd = 2) # 
 lines(sim_JSU_meanonly_am$var ~ sim_JSU_meanonly_am$year, col = "steelblue", lwd = 2) #  poly mean only
 lines(sim_JSU_noskew_am$var ~ sim_JSU_noskew_am$year, col = "chocolate", lwd = 2) # poly best model SST fam
 lines(sim_JSU_nokurt_am$var ~ sim_JSU_nokurt_am$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
-lines(sim_SST_best_am$var ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+#lines(sim_SST_best_am$var ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
 legend("topright", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
        col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
 
 
 # skewness 
 plot(summary$skew ~ summary$year, type = "l", lty = 2,
-     ylim = c(-1,3.5), col = "azure4", lwd = 2,
+     ylim = c(-0.4,4), col = "azure4", lwd = 2,
      xlab = "year", ylab = "skewness")
 lines(sim_JSU_best_am$skew ~ sim_JSU_best_am$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
 lines(sim_JSU_meanonly_am$skew ~ sim_JSU_meanonly_am$year, col = "steelblue", lwd = 2) # poly mean only
 lines(sim_JSU_noskew_am$skew ~ sim_JSU_noskew_am$year, col = "chocolate", lwd = 2) # poly best model SST fam
 lines(sim_JSU_nokurt_am$skew ~ sim_JSU_nokurt_am$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
-lines(sim_SST_best_am$skew ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+#lines(sim_SST_best_am$skew ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
 abline(h = 0, col = "red", lty = 2) # symmetrical 
 legend("topleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
        col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
 
 # kurtosis 
 plot(summary$kurt ~ summary$year, type = "l", lty = 2,
-     ylim = c(1,30), col = "azure4", lwd = 2,
+     ylim = c(1,25), col = "azure4", lwd = 2,
      xlab = "year", ylab = "kurtosis")
 lines(sim_JSU_best_am$kurt ~ sim_JSU_best_am$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
 lines(sim_JSU_meanonly_am$kurt ~ sim_JSU_meanonly_am$year, col = "steelblue", lwd = 2) # poly mean only
 lines(sim_JSU_noskew_am$kurt ~ sim_JSU_noskew_am$year, col = "chocolate", lwd = 2) # poly best model SST fam
 lines(sim_JSU_nokurt_am$kurt ~ sim_JSU_nokurt_am$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
-lines(sim_SST_best_am$kurt ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
+#lines(sim_SST_best_am$kurt ~ sim_SST_best_am$year, col = "brown4", lwd = 2) #SST fam
 abline(h = 3, col = "red", lty = 2) # normal tails
 legend("topleft", legend = c("all param(time)", "mean only", "constant skew", "constant kurtosis", "SST fam; all param(time)"), 
        col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "brown4" ),  lty = c(1,1,1,1,1), cex = 0.6, bty = "n")
@@ -5025,7 +5342,6 @@ AIC(am_static_GT) # 3
 AIC(am_static_JSU) # 2
 AIC(am_static_SHASHo) # 1
 
-
 ## now compare density plots
 
 models <- list(NO = am_static_NO, SN1 = am_static_SN1, TF2 = am_static_TF2, GT = am_static_GT, 
@@ -5074,5 +5390,26 @@ moment_bucket(am_static_NO, am_static_SN1, am_static_GT, am_static_SHASHo) +
   theme_bw() + 
   ggtitle("(c)") +
   theme(legend.position = "none")
+
+
+moment_bucket(m1, m2, m3, m4) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+
+m1 <- JSU_poly_am_param_year_month
+m2 <- poly_am_param_year_month_meanonly
+m3 <- poly_am_param_year_month_noskew
+m4 <- poly_am_param_year_month_nokurt
+
+######### PHYTOPLANKTON ##########
+
+
+
+
+
+
+
 
 

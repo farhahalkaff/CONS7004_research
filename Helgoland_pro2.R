@@ -294,6 +294,30 @@ AIC(SHASHo_poly_param_year_month) # tis is better
 AIC(NET_poly_param_year_month)
 
 
+
+## add year to tau then compare other families 
+tau_param_year_month <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year,
+                               family = SST(), data = Nitrate,
+                               mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                               method = mixed(10,200),
+                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+JSU_tau_param_year_month <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year,
+                               family = JSU(), data = Nitrate,
+                               mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                               method = mixed(10,200),
+                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+SHASHo_tau_param_year_month <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year,
+                               family = SHASHo(), data = Nitrate,
+                               mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                               method = mixed(10,200),
+                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+AIC(tau_param_year_month)
+AIC(JSU_tau_param_year_month)
+AIC(SHASHo_tau_param_year_month)
+
 #============================================================================================
 # predict mu based on seasonaility model
 Nitrate$mu_hat <- fitted(niSSTm3_sea, what = "mu")
@@ -673,11 +697,35 @@ month_moments <- Nitrate %>%
 month_moments
 
 # compare the param with the predicted param of the best model 
-poly_param_year_month <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month,
-                                family = SST(), data = Nitrate,
+poly_param_year_month <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year,
+                                family = SHASHo(), data = Nitrate,
                                 mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
                                 method = mixed(10,200),
                                 control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+poly_param_year_month_meanonly <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1,
+                                family = SHASHo(), data = Nitrate,
+                                mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                method = mixed(10,200),
+                                control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+poly_param_year_month_noskew <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ 1, tau.fo = ~ year,
+                                family = SHASHo(), data = Nitrate,
+                                mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                method = mixed(10,200),
+                                control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+poly_param_year_month_nokurt <- gamlss(Nitrate ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ 1,
+                                family = SHASHo(), data = Nitrate,
+                                mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                                method = mixed(10,200),
+                                control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+AIC(poly_param_year_month)
+AIC(poly_param_year_month_meanonly) # sigma, nu, tau ~ 1
+AIC(poly_param_year_month_noskew) # nu ~ 1
+AIC(poly_param_year_month_nokurt) # tau ~ 1
 
 # create function to get predicted param from model
 best_model_param <- function(model, data){
@@ -704,14 +752,161 @@ best_model_param <- function(model, data){
               mean_nu_hat = mean(nu_hat, na.rm = TRUE),
               mean_tau_hat = mean(tau_hat, na.rm = TRUE))
   
-  return(list(by_year = average_by_year, by_month = average_by_month))
+  #return(list(by_year = average_by_year, by_month = average_by_month))
+  #return(average_by_year)
+  return(average_by_month)
   
 }
 
 model_pred_param <- best_model_param(poly_param_year_month, Nitrate)
-print(model_pred_param$by_year, n=33)
+model_pred_param2 <- best_model_param(poly_param_year_month_meanonly, Nitrate)
+model_pred_param3 <- best_model_param(poly_param_year_month_noskew, Nitrate)
+model_pred_param4 <- best_model_param(poly_param_year_month_nokurt, Nitrate)
+
+print(model_pred_param, n=33)
 print(model_pred_param$by_month)
 
+## PLOT comparison per year 
+
+# plot empirical mean vs predicted mean
+plot(summary$mean ~ summary$year, col = "azure4", lwd = 2, lty = 2, type = "l",
+     xlab = "year", ylab = "mean", ylim = c(-2,42))
+lines(model_pred_param$mean_mu_hat ~ model_pred_param$year, col = "goldenrod", lwd = 2, lty = 1)
+lines(model_pred_param2$mean_mu_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2, lty = 1)
+lines(model_pred_param3$mean_mu_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2, lty = 1)
+lines(model_pred_param4$mean_mu_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2, lty = 1)
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 0, col = "red", lty = 3)
+
+# plot empirical sigma vs predicted sigma
+plot(summary$var ~ summary$year, col = "azure4", lwd = 2, lty = 2, type = "l",
+     xlab = "year", ylab = "variance")
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$year, col = "goldenrod", lwd = 2, type = "l", 
+     ylim = c(1,15), xlab = "year", ylab = "variance")
+lines(model_pred_param2$mean_sigma_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2, lty = 1)
+lines(model_pred_param3$mean_sigma_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2, lty = 1)
+lines(model_pred_param4$mean_sigma_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2, lty = 1)
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
+# plot empirical skew vs predicted skew
+plot(summary$skew ~ summary$year, col = "azure4", lwd = 2, lty = 2, type = "l",ylim= c(0,4),
+     xlab = "year", ylab = "skewness")
+lines(model_pred_param$mean_nu_hat ~ model_pred_param$year, col = "goldenrod", lwd = 2, lty = 1)
+lines(model_pred_param2$mean_nu_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2, lty = 1)
+lines(model_pred_param3$mean_nu_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2, lty = 1)
+lines(model_pred_param4$mean_nu_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2, lty = 1)
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 0, lty = 3, col = "red") # symmetrical line for empirical estimate
+
+# plot empirical tau vs predicted tau
+plot(summary$kurt ~ summary$year, col = "azure4", lwd = 2, lty = 2, type = "l",
+     xlab = "year", ylab = "kurtosis", ylim= c(0,10))
+lines(model_pred_param$mean_tau_hat ~ model_pred_param$year, col = "goldenrod", lwd = 2, lty = 1)
+lines(model_pred_param2$mean_tau_hat ~ model_pred_param2$year, col = "steelblue", lwd = 2, lty = 1)
+lines(model_pred_param3$mean_tau_hat ~ model_pred_param3$year, col = "chocolate", lwd = 2, lty = 1)
+lines(model_pred_param4$mean_tau_hat ~ model_pred_param4$year, col = "darkolivegreen", lwd = 2, lty = 1)
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 3, lty = 3, col = "red") # normal tails for empirical
+
+
+## PLOT comparison per month 
+# plot empirical mean vs predicted mean
+plot(model_pred_param$mean_mu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(6,30), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "mean")
+lines(month_moments$mean ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical sigma vs predicted sigma
+plot(model_pred_param$mean_sigma_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0,200), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "variance")
+lines(month_moments$var ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical skew vs predicted skew
+plot(model_pred_param$mean_nu_hat ~ model_pred_param$month, type = "l", 
+     ylim = c(0, 10), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "skew")
+lines(month_moments$skew ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2)
+
+# plot empirical tau vs predicted tau
+plot(model_pred_param$mean_tau_hat ~ model_pred_param$month, type = "l",
+     ylim = c(1, 20), col = "goldenrod", lwd = 1,
+     xlab = "month", ylab = "kurtosis")
+lines(month_moments$kurt ~ month_moments$month_lab, col = "azure4", lwd = 2, lty = 2, type = "l")
+abline(h = 3, lty = 3, col = "red") # normal tails
+
+
+set.seed(123)
+sim_SHASHo_best_ni <- simulate_moments(poly_param_year_month, Nitrate, 200) # JSU fam best model poly
+sim_SHASHo_meanonly_ni <- simulate_moments(poly_param_year_month_meanonly, Nitrate, 200)
+sim_SHASHo_noskew_ni <- simulate_moments(poly_param_year_month_noskew, Nitrate, 200) # JSU fam no skew poly
+sim_SHASHo_nokurt_ni <- simulate_moments(poly_param_year_month_nokurt, Nitrate, 200)
+
+
+# compare empirical and simulated 
+# mean 
+plot(summary$mean ~ summary$year, type = "l", lty = 2,
+     ylim = c(-2,42), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "mean")
+lines(sim_SHASHo_best_ni$mean ~ sim_SHASHo_best_ni$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_SHASHo_meanonly_ni$mean ~ sim_SHASHo_meanonly_ni$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_SHASHo_noskew_ni$mean ~ sim_SHASHo_noskew_ni$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_SHASHo_nokurt_ni$mean ~ sim_SHASHo_nokurt_ni$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
+# variance 
+plot(summary$var ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,1000), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "variance")
+lines(sim_SHASHo_best_ni$var ~ sim_SHASHo_best_ni$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_SHASHo_meanonly_ni$var ~ sim_SHASHo_meanonly_ni$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_SHASHo_noskew_ni$var ~ sim_SHASHo_noskew_ni$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_SHASHo_nokurt_ni$var ~ sim_SHASHo_nokurt_ni$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+legend("topleft", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+
+
+# skewness 
+plot(summary$skew ~ summary$year, type = "l", lty = 2,
+     ylim = c(0,3), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "skewness")
+lines(sim_SHASHo_best_ni$skew ~ sim_SHASHo_best_ni$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_SHASHo_meanonly_ni$skew ~ sim_SHASHo_meanonly_ni$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_SHASHo_noskew_ni$skew ~ sim_SHASHo_noskew_ni$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_SHASHo_nokurt_ni$skew ~ sim_SHASHo_nokurt_ni$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 0, col = "red", lty = 3)
+
+# kurtosis 
+plot(summary$kurt ~ summary$year, type = "l", lty = 2,
+     ylim = c(1,10), col = "azure4", lwd = 2,
+     xlab = "year", ylab = "kurtosis")
+lines(sim_SHASHo_best_ni$kurt ~ sim_SHASHo_best_ni$year, col = "goldenrod", lwd = 2) # poly best model JSU fam
+lines(sim_SHASHo_meanonly_ni$kurt ~ sim_SHASHo_meanonly_ni$year, col = "steelblue", lwd = 2) # poly JSU mean only
+lines(sim_SHASHo_noskew_ni$kurt ~ sim_SHASHo_noskew_ni$year, col = "chocolate", lwd = 2) # poly JSU no skew
+lines(sim_SHASHo_nokurt_ni$kurt ~ sim_SHASHo_nokurt_ni$year, col = "darkolivegreen", lwd = 2) # poly JSU no kurt
+legend("topright", legend = c("all param(time)", "mean(time)", "constant skew", "constant kurtosis", "empirical estimate"), 
+       col = c("goldenrod", "steelblue", "chocolate", "darkolivegreen", "azure4" ),  lty = c(1,1,1,1,2), cex = 0.6, bty = "n")
+abline(h = 3, col = "red", lty = 3)
+
+
+# moment bucket 
+
+m1 <- poly_param_year_month
+m2 <- poly_param_year_month_meanonly
+m3 <- poly_param_year_month_noskew
+m4 <- poly_param_year_month_nokurt
+
+moment_bucket(m1, m2, m3, m4) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
 #============================================================================================
 
 #PCA 
