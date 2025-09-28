@@ -1022,6 +1022,111 @@ plot_mvgam_series(data = NM$data_train,
 
 ##################################################################################
 
+############### STATIC RQ1 ################
+
+Nitrate_static_moments <- Nitrate %>% 
+  summarise(
+    mean = mean(Nitrate, na.rm = TRUE),
+    var = var(Nitrate, na.rm = TRUE),
+    skew = skewness(Nitrate, na.rm = TRUE),
+    kurt = kurtosis(Nitrate, na.rm = TRUE)
+  )
+
+### Compare static models of different family distribution ###
+
+## Two parameter distribution =======
+# normal distribution
+ni_static_NO <- gamlss(Nitrate ~ 1, family = NO(), data = Nitrate)
+
+## Three parameter distribution =======
+# SN1 (models skewness)
+ni_static_SN1 <- gamlss(Nitrate ~ 1, family= SN1(), data = Nitrate)
+
+# TF2 (models leptokurtic)
+ni_static_TF2 <- gamlss(Nitrate ~ 1, family = TF2(), data = Nitrate,
+                        mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# GT (models both leptokurtic and platykurtic)
+ni_static_GT <-gamlss(Nitrate ~ 1, family = GT(), data = Nitrate,
+                      mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                      method = mixed(10,200),
+                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+## Four parameter distribution =======
+# SST(models leptokurtic)
+ni_static_SST <- gamlss(Nitrate ~ 1, family = SST(), data = Nitrate,
+                        mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# SHASHo (models both leptokurtic and platykurtic)
+ni_static_SHASHo <- gamlss(Nitrate ~ 1, family = SHASHo(), data = Nitrate,
+                           mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+# look at AIC for all of em
+AIC(ni_static_NO) # 5
+AIC(ni_static_SN1) # 6
+AIC(ni_static_TF2) # 4
+AIC(ni_static_GT) # 3
+AIC(ni_static_SST) # 1
+AIC(ni_static_SHASHo) # 2
+
+
+## now compare density plots
+
+models <- list(NO = ni_static_NO, SN1 = ni_static_SN1, TF2 = ni_static_TF2, GT = ni_static_GT, 
+               SST = ni_static_SST, SHASHo = ni_static_SHASHo)
+
+models <- list(NO = ni_static_NO, SN1 = ni_static_SN1, GT = ni_static_GT, SST = ni_static_SST)
+
+# Function to simulate from a fitted gamlss model
+sim_from_model <- function(model, n = 1000) {
+  fam <- family(model)[[1]]   # distribution family object
+  rfun <- get(paste0("r", fam)) 
+  mu    <- fitted(model, "mu")[1]
+  sigma <- fitted(model, "sigma")[1]
+  nu    <- tryCatch(fitted(model, "nu")[1], error = function(e) NULL)
+  tau   <- tryCatch(fitted(model, "tau")[1], error = function(e) NULL)
+  
+  # match args by what the family uses
+  args <- list(n = n, mu = mu, sigma = sigma)
+  if (!is.null(nu))  args$nu  <- nu
+  if (!is.null(tau)) args$tau <- tau
+  
+  tibble(value = do.call(rfun, args))
+}
+
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models), function(name) {
+    sim_from_model(models[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+
+# Plot overlapping densities
+ggplot() +
+  geom_density(data = Nitrate, aes(x = Nitrate), size = 1) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_vline(xintercept = mean(Nitrate$Nitrate), linetype = "dashed", color = "grey") +
+  xlim(0, max(Nitrate$Nitrate)) +
+  theme_minimal()
+
+
+
+# check moment bucket 
+moment_bucket(ni_static_NO, ni_static_SN1, ni_static_GT, ni_static_SST) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
 
 
 
@@ -1697,6 +1802,115 @@ ggplot(Phosphate %>% filter(year %in% years_to_plot),
   labs(x = "Day of Year", y = "Phosphate (µmol/l)", colour = "Year") +
   theme_classic()
 
+
+
+############### STATIC RQ1 ################
+
+Phosphate_static_moments <- Phosphate %>% 
+  summarise(
+    mean = mean(Phosphate, na.rm = TRUE),
+    var = var(Phosphate, na.rm = TRUE),
+    skew = skewness(Phosphate, na.rm = TRUE),
+    kurt = kurtosis(Phosphate, na.rm = TRUE)
+  )
+
+### Compare static models of different family distribution ###
+
+## Two parameter distribution =======
+# normal distribution
+ph_static_NO <- gamlss(Phosphate ~ 1, family = NO(), data = Phosphate)
+
+## Three parameter distribution =======
+# SN1 (models skewness)
+ph_static_SN1 <- gamlss(Phosphate ~ 1, family= SN1(), data = Phosphate)
+
+# TF2 (models leptokurtic)
+ph_static_TF2 <- gamlss(Phosphate ~ 1, family = TF2(), data = Phosphate,
+                             mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# GT (models both leptokurtic and platykurtic)
+ph_static_GT <-gamlss(Phosphate ~ 1, family = GT(), data = Phosphate,
+                           mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+## Four parameter distribution =======
+# JSU (models leptokurtic)
+ph_static_JSU <- gamlss(Phosphate ~ 1, family = JSU(), data = Phosphate,
+                             mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# SHASHo (models both leptokurtic and platykurtic)
+ph_static_SHASHo <- gamlss(Phosphate ~ 1, family = SHASHo(), data = Phosphate,
+                                mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                                method = mixed(10,200),
+                                control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+# look at AIC for all of em
+AIC(ph_static_NO) # 5
+AIC(ph_static_SN1) # 6
+AIC(ph_static_TF2) # 4
+AIC(ph_static_GT) # 3
+AIC(ph_static_JSU) # 2
+AIC(ph_static_SHASHo) # 1
+
+
+## now compare density plots
+
+models <- list(NO = ph_static_NO, SN1 = ph_static_SN1, TF2 = ph_static_TF2, GT = ph_static_GT, 
+               JSU = ph_static_JSU, SHASHo = ph_static_SHASHo)
+
+models <- list(NO = ph_static_NO, SN1 = ph_static_SN1, GT = ph_static_GT, SHASHo = ph_static_SHASHo)
+
+# Function to simulate from a fitted gamlss model
+sim_from_model <- function(model, n = 1000) {
+  fam <- family(model)[[1]]   # distribution family object
+  rfun <- get(paste0("r", fam)) 
+  mu    <- fitted(model, "mu")[1]
+  sigma <- fitted(model, "sigma")[1]
+  nu    <- tryCatch(fitted(model, "nu")[1], error = function(e) NULL)
+  tau   <- tryCatch(fitted(model, "tau")[1], error = function(e) NULL)
+  
+  # match args by what the family uses
+  args <- list(n = n, mu = mu, sigma = sigma)
+  if (!is.null(nu))  args$nu  <- nu
+  if (!is.null(tau)) args$tau <- tau
+  
+  tibble(value = do.call(rfun, args))
+}
+
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models), function(name) {
+    sim_from_model(models[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+
+# Plot overlapping densities
+ggplot() +
+  geom_density(data = Phosphate, aes(x = Phosphate), size = 1) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_vline(xintercept = mean(Phosphate$Phosphate), linetype = "dashed", color = "grey") +
+  xlim(0, max(Phosphate$Phosphate)) +
+  theme_minimal()
+
+
+
+# check moment bucket 
+moment_bucket(ph_static_NO, ph_static_SN1, ph_static_GT, ph_static_SHASHo) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
+
+
 ####################################################
 ### Nitrite and fit models of different families ###
 ####################################################
@@ -2342,6 +2556,110 @@ ggplot(Nitrite %>% filter(year %in% years_to_plot),
 
 
 
+############### STATIC RQ1 ################
+
+Nitrite_static_moments <- Nitrite %>% 
+  summarise(
+    mean = mean(Nitrite, na.rm = TRUE),
+    var = var(Nitrite, na.rm = TRUE),
+    skew = skewness(Nitrite, na.rm = TRUE),
+    kurt = kurtosis(Nitrite, na.rm = TRUE)
+  )
+
+### Compare static models of different family distribution ###
+
+## Two parameter distribution =======
+# normal distribution
+Nitrite_static_NO <- gamlss(Nitrite ~ 1, family = NO(), data = Nitrite)
+
+## Three parameter distribution =======
+# SN1 (models skewness)
+Nitrite_static_SN1 <- gamlss(Nitrite ~ 1, family= SN1(), data = Nitrite)
+
+# TF2 (models leptokurtic)
+Nitrite_static_TF2 <- gamlss(Nitrite ~ 1, family = TF2(), data = Nitrite,
+                             mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# GT (models both leptokurtic and platykurtic)
+Nitrite_static_GT <-gamlss(Nitrite ~ 1, family = GT(), data = Nitrite,
+                       mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                       method = mixed(10,200),
+                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+## Four parameter distribution =======
+# SST (models leptokurtic)
+Nitrite_static_SST <- gamlss(Nitrite ~ 1, family = SST(), data = Nitrite,
+                        mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# SHASHo (models both leptokurtic and platykurtic)
+Nitrite_static_SHASHo <- gamlss(Nitrite ~ 1, family = SHASHo(), data = Nitrite,
+                           mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+# look at AIC for all of em
+AIC(Nitrite_static_NO) # 5
+AIC(Nitrite_static_SN1) # 6
+AIC(Nitrite_static_TF2) # 4
+AIC(Nitrite_static_GT) # 3
+AIC(Nitrite_static_SST) # 1
+AIC(Nitrite_static_SHASHo) # 2
+
+
+## now compare density plots
+
+models <- list(NO = Nitrite_static_NO, SN1 = Nitrite_static_SN1, TF2 = Nitrite_static_TF2, GT = Nitrite_static_GT, 
+               SST = Nitrite_static_SST, SHASHo = Nitrite_static_SHASHo)
+
+models <- list(NO = Nitrite_static_NO, SN1 = Nitrite_static_SN1, GT = Nitrite_static_GT, SST = Nitrite_static_SST)
+
+# Function to simulate from a fitted gamlss model
+sim_from_model <- function(model, n = 1000) {
+  fam <- family(model)[[1]]   # distribution family object
+  rfun <- get(paste0("r", fam)) 
+  mu    <- fitted(model, "mu")[1]
+  sigma <- fitted(model, "sigma")[1]
+  nu    <- tryCatch(fitted(model, "nu")[1], error = function(e) NULL)
+  tau   <- tryCatch(fitted(model, "tau")[1], error = function(e) NULL)
+  
+  # match args by what the family uses
+  args <- list(n = n, mu = mu, sigma = sigma)
+  if (!is.null(nu))  args$nu  <- nu
+  if (!is.null(tau)) args$tau <- tau
+  
+  tibble(value = do.call(rfun, args))
+}
+
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models), function(name) {
+    sim_from_model(models[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+
+# Plot overlapping densities
+ggplot() +
+  geom_density(data = Nitrite, aes(x = Nitrite), size = 1) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_vline(xintercept = mean(Nitrite$Nitrite), linetype = "dashed", color = "grey") +
+  xlim(0, max(Nitrite$Nitrite)) +
+  theme_minimal()
+
+
+# check moment bucket 
+moment_bucket(Nitrite_static_NO, Nitrite_static_SN1, Nitrite_static_GT, Nitrite_static_SST) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
 
 
 ################################################
@@ -2650,6 +2968,107 @@ ggplot(DIN %>% filter(year %in% years_to_plot),
   labs(x = "Day of Year", y = "DIN (µmol/l)", colour = "Year") +
   theme_classic()
 
+
+############### STATIC RQ1 ################
+
+DIN_static_moments <- DIN %>% 
+  summarise(
+    mean = mean(DIN, na.rm = TRUE),
+    var = var(DIN, na.rm = TRUE),
+    skew = skewness(DIN, na.rm = TRUE),
+    kurt = kurtosis(DIN, na.rm = TRUE)
+  )
+
+### Compare static models of different family distribution ###
+
+## Two parameter distribution =======
+# normal distribution
+DIN_static_NO <- gamlss(DIN ~ 1, family = NO(), data = DIN)
+
+## Three parameter distribution =======
+# SN1 (models skewness)
+DIN_static_SN1 <- gamlss(DIN ~ 1, family= SN1(), data = DIN)
+
+# TF2 (models leptokurtic)
+DIN_static_TF2 <- gamlss(DIN ~ 1, family = TF2(), data = DIN)
+
+# GT (models both leptokurtic and platykurtic)
+DIN_static_GT <-gamlss(DIN ~ 1, family = GT(), data = DIN,
+                      mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                      method = mixed(10,200),
+                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+## Four parameter distribution =======
+# SST (models leptokurtic)
+DIN_static_SST <- gamlss(DIN ~ 1, family = SST(), data = DIN,
+                        mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# SHASHo (models both leptokurtic and platykurtic)
+DIN_static_SHASHo <- gamlss(DIN ~ 1, family = SHASHo(), data = DIN,
+                           mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+# look at AIC for all of em
+AIC(DIN_static_NO) # 5
+AIC(DIN_static_SN1) # 6
+AIC(DIN_static_TF2) # 4
+AIC(DIN_static_GT) # 3
+AIC(DIN_static_SST) # 2
+AIC(DIN_static_SHASHo) # 1
+
+
+## now compare density plots
+
+models <- list(NO = si_static_NO, SN1 = si_static_SN1, TF2 = si_static_TF2, GT = si_static_GT, 
+               JSU = si_static_JSU, SHASHo = si_static_SHASHo)
+
+models <- list(NO = DIN_static_NO, SN1 = DIN_static_SN1, GT = DIN_static_GT, SHASHo = DIN_static_SHASHo)
+
+# Function to simulate from a fitted gamlss model
+sim_from_model <- function(model, n = 1000) {
+  fam <- family(model)[[1]]   # distribution family object
+  rfun <- get(paste0("r", fam)) 
+  mu    <- fitted(model, "mu")[1]
+  sigma <- fitted(model, "sigma")[1]
+  nu    <- tryCatch(fitted(model, "nu")[1], error = function(e) NULL)
+  tau   <- tryCatch(fitted(model, "tau")[1], error = function(e) NULL)
+  
+  # match args by what the family uses
+  args <- list(n = n, mu = mu, sigma = sigma)
+  if (!is.null(nu))  args$nu  <- nu
+  if (!is.null(tau)) args$tau <- tau
+  
+  tibble(value = do.call(rfun, args))
+}
+
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models), function(name) {
+    sim_from_model(models[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+
+# Plot overlapping densities
+ggplot() +
+  geom_density(data = DIN, aes(x = DIN), size = 1) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_vline(xintercept = mean(DIN$DIN), linetype = "dashed", color = "grey") +
+  xlim(0, max(DIN$DIN)) +
+  theme_minimal()
+
+
+# check moment bucket 
+moment_bucket(DIN_static_NO, DIN_static_SN1, DIN_static_GT, DIN_static_SHASHo) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
 
 
 
@@ -3376,6 +3795,109 @@ ggplot(Silicate %>% filter(year %in% years_to_plot),
   annotate("text", x = 315, y = 40, label = "Fall", size = 4) +
   labs(x = "Day of Year", y = "Silicate (µmol/l)", colour = "Year") +
   theme_classic()
+
+
+############### STATIC RQ1 ################
+
+si_static_moments <- Silicate %>% 
+  summarise(
+    mean = mean(Silicate, na.rm = TRUE),
+    var = var(Silicate, na.rm = TRUE),
+    skew = skewness(Silicate, na.rm = TRUE),
+    kurt = kurtosis(Silicate, na.rm = TRUE)
+  )
+
+### Compare static models of different family distribution ###
+
+## Two parameter distribution =======
+# normal distribution
+si_static_NO <- gamlss(Silicate ~ 1, family = NO(), data = Silicate)
+
+## Three parameter distribution =======
+# SN1 (models skewness)
+si_static_SN1 <- gamlss(Silicate ~ 1, family= SN1(), data = Silicate)
+
+# TF2 (models leptokurtic)
+si_static_TF2 <- gamlss(Silicate ~ 1, family = TF2(), data = Silicate)
+
+# GT (models both leptokurtic and platykurtic)
+si_static_GT <-gamlss(Silicate ~ 1, family = GT(), data = Silicate,
+                      mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                      method = mixed(10,200),
+                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+## Four parameter distribution =======
+# JSU(models leptokurtic)
+si_static_JSU <- gamlss(Silicate ~ 1, family = JSU(), data = Silicate,
+                        mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+# SHASHo (models both leptokurtic and platykurtic)
+si_static_SHASHo <- gamlss(Silicate ~ 1, family = SHASHo(), data = Silicate,
+                           mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+# look at AIC for all of em
+AIC(si_static_NO) # 5
+AIC(si_static_SN1) # 6
+AIC(si_static_TF2) # 4
+AIC(si_static_GT) # 3
+AIC(si_static_JSU) # 2
+AIC(si_static_SHASHo) # 1
+
+
+## now compare density plots
+
+models <- list(NO = si_static_NO, SN1 = si_static_SN1, TF2 = si_static_TF2, GT = si_static_GT, 
+               JSU = si_static_JSU, SHASHo = si_static_SHASHo)
+
+models <- list(NO = si_static_NO, SN1 = si_static_SN1, GT = si_static_GT, SHASHo = si_static_SHASHo)
+
+# Function to simulate from a fitted gamlss model
+sim_from_model <- function(model, n = 1000) {
+  fam <- family(model)[[1]]   # distribution family object
+  rfun <- get(paste0("r", fam)) 
+  mu    <- fitted(model, "mu")[1]
+  sigma <- fitted(model, "sigma")[1]
+  nu    <- tryCatch(fitted(model, "nu")[1], error = function(e) NULL)
+  tau   <- tryCatch(fitted(model, "tau")[1], error = function(e) NULL)
+  
+  # match args by what the family uses
+  args <- list(n = n, mu = mu, sigma = sigma)
+  if (!is.null(nu))  args$nu  <- nu
+  if (!is.null(tau)) args$tau <- tau
+  
+  tibble(value = do.call(rfun, args))
+}
+
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models), function(name) {
+    sim_from_model(models[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+
+# Plot overlapping densities
+ggplot() +
+  geom_density(data = Silicate, aes(x = Silicate), size = 1) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_vline(xintercept = mean(Silicate$Silicate), linetype = "dashed", color = "grey") +
+  xlim(0, max(Silicate$Silicate)) +
+  theme_minimal()
+
+
+# check moment bucket 
+moment_bucket(si_static_NO, si_static_SN1, si_static_GT, si_static_SHASHo) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+
 
 
 #####################################################
@@ -4545,5 +5067,12 @@ ggplot() +
   geom_vline(xintercept = mean(Ammonium$Ammonium), linetype = "dashed", color = "grey") +
   xlim(0, max(Ammonium$Ammonium)) +
   theme_minimal()
+
+
+# check moment bucket 
+moment_bucket(am_static_NO, am_static_SN1, am_static_GT, am_static_SHASHo) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
 
 
