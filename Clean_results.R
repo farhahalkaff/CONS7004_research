@@ -16,6 +16,8 @@ library(patchwork)
 library(lubridate)
 library(tidyr)
 library(gamlss)
+library(gamlss.dist)
+library(gamlss.ggplots)
 library(modeest)
 library(e1071)
 library(mvgam)           # Fit, interrogate and forecast DGAMs
@@ -1008,11 +1010,12 @@ sim_from_model <- function(model, n = 1000) {
 }
 
 
+model_color1 <- c(exGAUS = "deepskyblue", RG = "darkolivegreen3", SEP2 = "darkorange")
 # Nitrate best models for each n-parameter distribution
 models_ni <- list(SEP2 = ni_static_SEP2, exGAUS = ni_static_exGAUS, RG = ni_static_RG)
 # Simulate and bind results
 set.seed(123)
-sims <- bind_rows(
+sims1 <- bind_rows(
   lapply(names(models_ni), function(name) {
     sim_from_model(models_ni[[name]], n = 2000) %>%
       mutate(model = name)
@@ -1021,21 +1024,22 @@ sims <- bind_rows(
 )
 # Plot overlapping densities
 # Nitrate
-ggplot(Nitrate, aes(x = Nitrate)) +
-  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 10) + 
+pl1 <- ggplot(Nitrate, aes(x = Nitrate)) +
   xlab("Nitrate (µmol/l)") + 
   ylab("Density") +
   xlim(x = c(0,150)) +
-  geom_density(data = sims, aes(x = value, color = model)) +
-  geom_density(colour = "black", alpha = 0.5) +
+  scale_color_manual(values = model_color1, name = "models") +
+  geom_density(data = sims1, aes(x = value, color = model), size = 1) +
+  geom_density(colour = "black", alpha = 0.5, size = 1) +
   theme_bw() 
 
 
+model_color2 <- c(exGAUS = "deepskyblue", RG = "darkolivegreen3", JSU = "darkorange")
 # Nitrite best models for each n-parameter distribution
 models_nii <- list(JSU = nii_static_JSU, exGAUS = nii_static_exGAUS, RG = nii_static_RG)
 # Simulate and bind results
 set.seed(123)
-sims <- bind_rows(
+sims2 <- bind_rows(
   lapply(names(models_nii), function(name) {
     sim_from_model(models_nii[[name]], n = 2000) %>%
       mutate(model = name)
@@ -1043,13 +1047,13 @@ sims <- bind_rows(
   .id = "model_id"
 )
 # Plot overlapping densities
-ggplot(Nitrite, aes(x = Nitrite)) +
-  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 0.5) + 
+pl2 <- ggplot(Nitrite, aes(x = Nitrite)) +
   xlab("Nitrite (µmol/l)") + 
   ylab("Density") +
   xlim(x = c(0,5)) +
-  geom_density(data = sims, aes(x = value, color = model)) +
-  geom_density(colour = "black", alpha = 0.5) +
+  scale_color_manual(values = model_color2, name = "model_nii") +
+  geom_density(data = sims2, aes(x = value, color = model), size = 1) +
+  geom_density(colour = "black", alpha = 0.5, size = 1) +
   theme_bw() 
 
 
@@ -1057,7 +1061,7 @@ ggplot(Nitrite, aes(x = Nitrite)) +
 models_am <- list(SEP2 = am_static_SEP2, exGAUS = am_static_exGAUS, RG = am_static_RG)
 # Simulate and bind results
 set.seed(123)
-sims <- bind_rows(
+sims3 <- bind_rows(
   lapply(names(models_am), function(name) {
     sim_from_model(models_am[[name]], n = 2000) %>%
       mutate(model = name)
@@ -1065,13 +1069,13 @@ sims <- bind_rows(
   .id = "model_id"
 )
 # Plot overlapping densities
-ggplot(Ammonium, aes(x = Ammonium)) +
-  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 2) + 
+pl3 <-ggplot(Ammonium, aes(x = Ammonium)) +
   xlab("Ammonium (µmol/l)") + 
   ylab("Density") +
   xlim(x = c(0,35)) +
-  geom_density(data = sims, aes(x = value, color = model)) +
-  geom_density(colour = "black", alpha = 0.5) +
+  scale_color_manual(values = model_color1, name = "models") +
+  geom_density(data = sims3, aes(x = value, color = model), size = 1) +
+  geom_density(colour = "black", alpha = 0.5, size =  1) +
   theme_bw() 
 
 
@@ -1079,7 +1083,7 @@ ggplot(Ammonium, aes(x = Ammonium)) +
 models_DIN <- list(JSU = DIN_static_JSU, exGAUS = DIN_static_exGAUS, RG = DIN_static_RG)
 # Simulate and bind results
 set.seed(123)
-sims <- bind_rows(
+sims4 <- bind_rows(
   lapply(names(models_DIN), function(name) {
     sim_from_model(models_DIN[[name]], n = 2000) %>%
       mutate(model = name)
@@ -1087,13 +1091,13 @@ sims <- bind_rows(
   .id = "model_id"
 )
 # Plot overlapping densities
-ggplot(DIN, aes(x = DIN)) +
-  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 10) + 
+pl4 <- ggplot(DIN, aes(x = DIN)) +
   xlab("DIN (µmol/l)") + 
   ylab("Density") +
   xlim(x = c(0,150)) +
-  geom_density(data = sims, aes(x = value, color = model)) +
-  geom_density(colour = "black", alpha = 0.5) +
+  scale_color_manual(values = model_color2, name = "model") +
+  geom_density(data = sims4, aes(x = value, color = model), size = 1) +
+  geom_density(colour = "black", alpha = 0.5, size = 1) +
   theme_bw() 
 
 
@@ -1101,7 +1105,7 @@ ggplot(DIN, aes(x = DIN)) +
 models_si <- list(SEP2 = si_static_SEP2, exGAUS = si_static_exGAUS, RG = si_static_RG)
 # Simulate and bind results
 set.seed(123)
-sims <- bind_rows(
+sims5 <- bind_rows(
   lapply(names(models_si), function(name) {
     sim_from_model(models_si[[name]], n = 2000) %>%
       mutate(model = name)
@@ -1109,21 +1113,22 @@ sims <- bind_rows(
   .id = "model_id"
 )
 # Plot overlapping densities
-ggplot(Silicate, aes(x = Silicate)) +
-  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 5) + 
+pl5 <- ggplot(Silicate, aes(x = Silicate)) +
   xlab("Silicate (µmol/l)") + 
   ylab("Density") +
   xlim(x = c(0,40)) +
-  geom_density(data = sims, aes(x = value, color = model)) +
-  geom_density(colour = "black", alpha = 0.5) +
+  scale_color_manual(values = model_color1, name = "models") +
+  geom_density(data = sims5, aes(x = value, color = model), size = 1) +
+  geom_density(colour = "black", alpha = 0.5, size = 1) +
   theme_bw() 
 
 
+model_color3 <- c(NO = "deepskyblue", PE = "darkolivegreen3", SEP4 = "darkorange")
 # Phosphate best models for each n-parameter distribution
 models_ph <- list(SEP4 = ph_static_SEP4, PE = ph_static_PE, NO = ph_static_NO)
 # Simulate and bind results
 set.seed(123)
-sims <- bind_rows(
+sims6 <- bind_rows(
   lapply(names(models_ph), function(name) {
     sim_from_model(models_ph[[name]], n = 2000) %>%
       mutate(model = name)
@@ -1131,14 +1136,53 @@ sims <- bind_rows(
   .id = "model_id"
 )
 # Plot overlapping densities
-ggplot(Phosphate, aes(x = Phosphate)) +
-  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 0.2) + 
+pl6 <- ggplot(Phosphate, aes(x = Phosphate)) +
   xlab("Phosphate (µmol/l)") + 
   ylab("Density") +
   xlim(x = c(0,2.5)) +
-  geom_density(data = sims, aes(x = value, color = model)) +
-  geom_density(colour = "black", alpha = 0.5) +
+  scale_color_manual(values = model_color3, name = "models") +
+  geom_density(data = sims6, aes(x = value, color = model), size = 1) +
+  geom_density(colour = "black", alpha = 0.5, size = 1) +
   theme_bw() 
+
+# combineation
+pl1 + pl2 + pl3 + pl4 + pl5 + pl6
+
+
+#######################
+#### MOMENT BUCKET ####
+#######################
+
+# Nitrate 
+moment_bucket(ni_static_SEP2, ni_static_exGAUS, ni_static_RG) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+# Nitrite 
+moment_bucket(nii_static_JSU, nii_static_exGAUS, nii_static_RG) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+# Ammonium 
+moment_bucket(am_static_SEP2, am_static_exGAUS, am_static_RG) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+# DIN 
+moment_bucket(DIN_static_JSU, DIN_static_exGAUS, DIN_static_RG) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+# Silicate 
+moment_bucket(si_static_SEP2, si_static_exGAUS, si_static_RG) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
+# Phosphate 
+moment_bucket(ph_static_SEP4, ph_static_PE, ph_static_NO) + 
+  theme_bw() + 
+  ggtitle("(c)") +
+  theme(legend.position = "none")
 
 
 
