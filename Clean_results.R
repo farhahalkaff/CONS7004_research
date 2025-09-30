@@ -24,6 +24,7 @@ library(gratia)          # Graceful plotting of smooth terms
 library(marginaleffects) # Interrogating regression models
 library(janitor)         # Creating clean, tidy variable names
 library(cowplot)
+library(patchwork)
 
 df <- files %>%
   lapply(read.csv) %>%
@@ -302,7 +303,7 @@ pAIC_1 <- ggplot(ni_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = p
   geom_point(size = 3, alpha = 0.7) +
   scale_color_manual(values = custom_colors, name = "param") +
   labs(x = "AIC", y = "Intercept models (Nitrate)") +
-  theme_minimal() +
+  theme_bw() +
   theme(
     axis.text.y = element_text(size = 8),
     panel.grid.major.y = element_line(color = "grey90"),
@@ -433,12 +434,555 @@ pAIC_2 <- ggplot(nii_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = 
   geom_point(size = 3, alpha = 0.7) +
   scale_color_manual(values = custom_colors, name = "param") +
   labs(x = "AIC", y = "Intercept models (Nitrite)") +
-  theme_minimal() +
+  theme_bw() +
   theme(
     axis.text.y = element_text(size = 8),
     panel.grid.major.y = element_line(color = "grey90"),
     legend.position = "none"
   )
+
+
+#### AMMONIUM #### ========================================================================================
+
+# NO
+am_static_NO <- gamlss(Ammonium ~ 1, family = NO(), data = Ammonium) # two-parameter
+# NO2
+am_static_NO2 <- gamlss(Ammonium ~ 1, family = NO2(), data = Ammonium)
+# GU
+am_static_GU <- gamlss(Ammonium ~ 1, family = GU(), data = Ammonium)
+# LO
+am_static_LO <- gamlss(Ammonium ~ 1, family = LO(), data = Ammonium)
+# RG
+am_static_RG <- gamlss(Ammonium ~ 1, family = RG(), data = Ammonium)
+# exGAUS
+am_static_exGAUS <- gamlss(Ammonium ~ 1, family = exGAUS(), data = Ammonium,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # three-parameter
+# NOF
+am_static_NOF <- gamlss(Ammonium ~ 1, family = NOF(), data = Ammonium)
+# PE
+am_static_PE <- gamlss(Ammonium ~ 1, family = PE(), data = Ammonium,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# PE2
+am_static_PE2 <- gamlss(Ammonium ~ 1, family = PE2(), data = Ammonium, 
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SN1
+am_static_SN1 <- gamlss(Ammonium ~ 1, family = SN1(), data = Ammonium)
+# TF
+am_static_TF <- gamlss(Ammonium ~ 1, family = TF(), data = Ammonium)
+# TF2
+am_static_TF2 <- gamlss(Ammonium ~ 1, family = TF2(), data = Ammonium,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# GT
+am_static_GT <- gamlss(Ammonium ~ 1, family = GT(), data = Ammonium, 
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # four-parameter
+# JSU
+am_static_JSU <- gamlss(Ammonium ~ 1, family = JSU(), data = Ammonium, 
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# JSUo
+am_static_JSUo <- gamlss(Ammonium ~ 1, family = JSUo(), data = Ammonium,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# NET
+am_static_NET <- gamlss(Ammonium ~ 1, family = NET(), data = Ammonium)
+# SHASH
+am_static_SHASH <- gamlss(Ammonium ~ 1, family = SHASH(), data = Ammonium,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo
+am_static_SHASHo <- gamlss(Ammonium ~ 1, family = SHASHo(), data = Ammonium,
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo2
+am_static_SHASHo2 <- gamlss(Ammonium ~ 1, family = SHASHo2(), data = Ammonium,
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP2
+am_static_SEP2 <- gamlss(Ammonium ~ 1, family = SEP2(), data = Ammonium,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP3
+am_static_SEP3 <- gamlss(Ammonium ~ 1, family = SEP3(), data = Ammonium,
+                          mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SEP4
+am_static_SEP4 <- gamlss(Ammonium ~ 1, family = SEP4(), data = Ammonium,
+                         mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # convergence issue
+# ST1
+am_static_ST1 <- gamlss(Ammonium ~ 1, family = ST1(), data = Ammonium,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST2
+am_static_ST2 <- gamlss(Ammonium ~ 1, family = ST2(), data = Ammonium,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST3
+am_static_ST3 <- gamlss(Ammonium ~ 1, family = ST3(), data = Ammonium,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST4
+am_static_ST4 <- gamlss(Ammonium ~ 1, family = ST4(), data = Ammonium,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST5
+am_static_ST5 <- gamlss(Ammonium ~ 1, family = ST5(), data = Ammonium,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+
+# scale the AIC 
+am_static_AIC <- data.frame(
+  models = c("NO", "NO2", "GU", "LO", "RG",
+             "exGAUS", "NOF", "PE", "PE2", "SN1", "TF", "TF2", 
+             "GT", "JSU", "JSUo", "NET", "SHASH", "SHASHo", "SHASHo2",
+             "SEP2","SEP3", "ST1", "ST2", "ST3", "ST4", "ST5"),
+  AIC = c(GAIC(am_static_NO, k = 2),GAIC(am_static_NO2, k = 2), GAIC(am_static_GU, k = 2), GAIC(am_static_LO, k = 2), 
+          GAIC(am_static_RG, k = 2), GAIC(am_static_exGAUS, k = 2), GAIC(am_static_NOF, k = 2), GAIC(am_static_PE, k = 2), 
+          GAIC(am_static_PE2, k = 2),GAIC(am_static_SN1, k = 2), GAIC(am_static_TF, k = 2), GAIC(am_static_TF2, k = 2),
+          GAIC(am_static_GT, k = 2),GAIC(am_static_JSU, k = 2), GAIC(am_static_JSUo, k = 2), GAIC(am_static_NET, k = 2),
+          GAIC(am_static_SHASH, k = 2),GAIC(am_static_SHASHo, k = 2), GAIC(am_static_SHASHo2, k = 2), GAIC(am_static_SEP2, k = 2), 
+          GAIC(am_static_SEP3, k = 2), GAIC(am_static_ST1, k = 2),
+          GAIC(am_static_ST2, k = 2),GAIC(am_static_ST3, k = 2), GAIC(am_static_ST4, k = 2), GAIC(am_static_ST5, k = 2)),
+  param = c("2", "2", "2", "2", "2", 
+            "3","3","3","3","3","3","3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4","4")
+)
+
+
+# Plot
+pAIC_3 <- ggplot(am_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = param)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = custom_colors, name = "param") +
+  labs(x = "AIC", y = "Intercept models (Ammonium)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
+
+
+
+#### DIN #### ========================================================================================
+
+# NO
+DIN_static_NO <- gamlss(DIN ~ 1, family = NO(), data = DIN) # two-parameter
+# NO2
+DIN_static_NO2 <- gamlss(DIN ~ 1, family = NO2(), data = DIN)
+# GU
+DIN_static_GU <- gamlss(DIN ~ 1, family = GU(), data = DIN)
+# LO
+DIN_static_LO <- gamlss(DIN ~ 1, family = LO(), data = DIN)
+# RG
+DIN_static_RG <- gamlss(DIN ~ 1, family = RG(), data = DIN)
+# exGAUS
+DIN_static_exGAUS <- gamlss(DIN ~ 1, family = exGAUS(), data = DIN,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # three-parameter
+# NOF
+DIN_static_NOF <- gamlss(DIN ~ 1, family = NOF(), data = DIN)
+# PE
+DIN_static_PE <- gamlss(DIN ~ 1, family = PE(), data = DIN,
+                       method = mixed(10,200),
+                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# PE2
+DIN_static_PE2 <- gamlss(DIN ~ 1, family = PE2(), data = DIN, 
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SN1
+DIN_static_SN1 <- gamlss(DIN ~ 1, family = SN1(), data = DIN)
+# TF
+DIN_static_TF <- gamlss(DIN ~ 1, family = TF(), data = DIN)
+# TF2
+DIN_static_TF2 <- gamlss(DIN ~ 1, family = TF2(), data = DIN,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# GT
+DIN_static_GT <- gamlss(DIN ~ 1, family = GT(), data = DIN, 
+                       method = mixed(10,200),
+                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # four-parameter
+# JSU
+DIN_static_JSU <- gamlss(DIN ~ 1, family = JSU(), data = DIN, 
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# JSUo
+DIN_static_JSUo <- gamlss(DIN ~ 1, family = JSUo(), data = DIN,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# NET
+DIN_static_NET <- gamlss(DIN ~ 1, family = NET(), data = DIN)
+# SHASH
+DIN_static_SHASH <- gamlss(DIN ~ 1, family = SHASH(), data = DIN,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo
+DIN_static_SHASHo <- gamlss(DIN ~ 1, family = SHASHo(), data = DIN,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo2
+DIN_static_SHASHo2 <- gamlss(DIN ~ 1, family = SHASHo2(), data = DIN,
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP2
+DIN_static_SEP2 <- gamlss(DIN ~ 1, family = SEP2(), data = DIN,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP3
+DIN_static_SEP3 <- gamlss(DIN ~ 1, family = SEP3(), data = DIN,
+                         mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SEP4
+DIN_static_SEP4 <- gamlss(DIN ~ 1, family = SEP4(), data = DIN,
+                         mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                         method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SST
+DIN_static_SST <- gamlss(DIN ~ 1, family = SST(), data = DIN,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST1
+DIN_static_ST1 <- gamlss(DIN ~ 1, family = ST1(), data = DIN,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST2
+DIN_static_ST2 <- gamlss(DIN ~ 1, family = ST2(), data = DIN,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST3
+DIN_static_ST3 <- gamlss(DIN ~ 1, family = ST3(), data = DIN,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST4
+DIN_static_ST4 <- gamlss(DIN ~ 1, family = ST4(), data = DIN,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST5
+DIN_static_ST5 <- gamlss(DIN ~ 1, family = ST5(), data = DIN,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+
+# scale the AIC 
+DIN_static_AIC <- data.frame(
+  models = c("NO", "NO2", "GU", "LO", "RG",
+             "exGAUS", "NOF", "PE", "PE2", "SN1", "TF", "TF2", 
+             "GT", "JSU", "JSUo", "NET", "SHASH", "SHASHo", "SHASHo2",
+             "SEP2","SEP3","SEP4" ,"SST", "ST1", "ST2", "ST3", "ST4", "ST5"),
+  AIC = c(GAIC(DIN_static_NO, k = 2),GAIC(DIN_static_NO2, k = 2), GAIC(DIN_static_GU, k = 2), GAIC(DIN_static_LO, k = 2), 
+          GAIC(DIN_static_RG, k = 2), GAIC(DIN_static_exGAUS, k = 2), GAIC(DIN_static_NOF, k = 2), GAIC(DIN_static_PE, k = 2), 
+          GAIC(DIN_static_PE2, k = 2),GAIC(DIN_static_SN1, k = 2), GAIC(DIN_static_TF, k = 2), GAIC(DIN_static_TF2, k = 2),
+          GAIC(DIN_static_GT, k = 2),GAIC(DIN_static_JSU, k = 2), GAIC(DIN_static_JSUo, k = 2), GAIC(DIN_static_NET, k = 2),
+          GAIC(DIN_static_SHASH, k = 2),GAIC(DIN_static_SHASHo, k = 2), GAIC(DIN_static_SHASHo2, k = 2), GAIC(DIN_static_SEP2, k = 2), 
+          GAIC(DIN_static_SEP3, k = 2), GAIC(DIN_static_SEP4, k = 2), GAIC(DIN_static_SST, k = 2), GAIC(DIN_static_ST1, k = 2),
+          GAIC(DIN_static_ST2, k = 2),GAIC(DIN_static_ST3, k = 2), GAIC(DIN_static_ST4, k = 2), GAIC(DIN_static_ST5, k = 2)),
+  param = c("2", "2", "2", "2", "2", 
+            "3","3","3","3","3","3","3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4","4", "4", "4")
+)
+
+
+# Plot
+pAIC_4 <- ggplot(DIN_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = param)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = custom_colors, name = "param") +
+  labs(x = "AIC", y = "Intercept models (DIN)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
+
+
+
+#### SILICATE #### ========================================================================================
+
+# NO
+si_static_NO <- gamlss(Silicate ~ 1, family = NO(), data = Silicate) # two-parameter
+# NO2
+si_static_NO2 <- gamlss(Silicate ~ 1, family = NO2(), data = Silicate)
+# GU
+si_static_GU <- gamlss(Silicate ~ 1, family = GU(), data = Silicate)
+# LO
+si_static_LO <- gamlss(Silicate ~ 1, family = LO(), data = Silicate)
+# RG
+si_static_RG <- gamlss(Silicate ~ 1, family = RG(), data = Silicate)
+# exGAUS
+si_static_exGAUS <- gamlss(Silicate ~ 1, family = exGAUS(), data = Silicate,
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # three-parameter
+# NOF
+si_static_NOF <- gamlss(Silicate ~ 1, family = NOF(), data = Silicate)
+# PE
+si_static_PE <- gamlss(Silicate ~ 1, family = PE(), data = Silicate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# PE2
+si_static_PE2 <- gamlss(Silicate ~ 1, family = PE2(), data = Silicate, 
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SN1
+si_static_SN1 <- gamlss(Silicate ~ 1, family = SN1(), data = Silicate)
+# TF
+si_static_TF <- gamlss(Silicate ~ 1, family = TF(), data = Silicate)
+# TF2
+si_static_TF2 <- gamlss(Silicate ~ 1, family = TF2(), data = Silicate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# GT
+si_static_GT <- gamlss(Silicate ~ 1, family = GT(), data = Silicate, 
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # four-parameter
+# JSU
+si_static_JSU <- gamlss(Silicate ~ 1, family = JSU(), data = Silicate, 
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# JSUo
+si_static_JSUo <- gamlss(Silicate ~ 1, family = JSUo(), data = Silicate,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# NET
+si_static_NET <- gamlss(Silicate ~ 1, family = NET(), data = Silicate)
+# SHASH
+si_static_SHASH <- gamlss(Silicate ~ 1, family = SHASH(), data = Silicate,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo
+si_static_SHASHo <- gamlss(Silicate ~ 1, family = SHASHo(), data = Silicate,
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo2
+si_static_SHASHo2 <- gamlss(Silicate ~ 1, family = SHASHo2(), data = Silicate,
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP2
+si_static_SEP2 <- gamlss(Silicate ~ 1, family = SEP2(), data = Silicate,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP3
+si_static_SEP3 <- gamlss(Silicate ~ 1, family = SEP3(), data = Silicate,
+                          mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate), # convergence issue
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SEP4
+si_static_SEP4 <- gamlss(Silicate ~ 1, family = SEP4(), data = Silicate,
+                          mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SST
+si_static_SST <- gamlss(Silicate ~ 1, family = SST(), data = Silicate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # not working 
+# ST1
+si_static_ST1 <- gamlss(Silicate ~ 1, family = ST1(), data = Silicate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST2
+si_static_ST2 <- gamlss(Silicate ~ 1, family = ST2(), data = Silicate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST3
+si_static_ST3 <- gamlss(Silicate ~ 1, family = ST3(), data = Silicate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST4
+si_static_ST4 <- gamlss(Silicate ~ 1, family = ST4(), data = Silicate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST5
+si_static_ST5 <- gamlss(Silicate ~ 1, family = ST5(), data = Silicate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+# scale the AIC 
+si_static_AIC <- data.frame(
+  models = c("NO", "NO2", "GU", "LO", "RG",
+             "exGAUS", "NOF", "PE", "PE2", "SN1", "TF", "TF2", 
+             "GT", "JSU", "JSUo", "NET", "SHASH", "SHASHo", "SHASHo2",
+             "SEP2","SEP4", "ST1", "ST2", "ST3", "ST4", "ST5"),
+  AIC = c(GAIC(si_static_NO, k = 2),GAIC(si_static_NO2, k = 2), GAIC(si_static_GU, k = 2), GAIC(si_static_LO, k = 2), 
+          GAIC(si_static_RG, k = 2), GAIC(si_static_exGAUS, k = 2), GAIC(si_static_NOF, k = 2), GAIC(si_static_PE, k = 2), 
+          GAIC(si_static_PE2, k = 2),GAIC(si_static_SN1, k = 2), GAIC(si_static_TF, k = 2), GAIC(si_static_TF2, k = 2),
+          GAIC(si_static_GT, k = 2),GAIC(si_static_JSU, k = 2), GAIC(si_static_JSUo, k = 2), GAIC(si_static_NET, k = 2),
+          GAIC(si_static_SHASH, k = 2),GAIC(si_static_SHASHo, k = 2), GAIC(si_static_SHASHo2, k = 2), GAIC(si_static_SEP2, k = 2), 
+          GAIC(si_static_SEP4, k = 2), GAIC(si_static_ST1, k = 2),
+          GAIC(si_static_ST2, k = 2),GAIC(si_static_ST3, k = 2), GAIC(si_static_ST4, k = 2), GAIC(si_static_ST5, k = 2)),
+  param = c("2", "2", "2", "2", "2", 
+            "3","3","3","3","3","3","3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4","4")
+)
+
+
+# Plot
+pAIC_5 <- ggplot(si_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = param)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = custom_colors, name = "param") +
+  labs(x = "AIC", y = "Intercept models (Silicate)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
+
+
+
+#### PHOSPHATE #### ========================================================================================
+
+# NO
+ph_static_NO <- gamlss(Phosphate ~ 1, family = NO(), data = Phosphate) # two-parameter
+# NO2
+ph_static_NO2 <- gamlss(Phosphate ~ 1, family = NO2(), data = Phosphate)
+# GU
+ph_static_GU <- gamlss(Phosphate ~ 1, family = GU(), data = Phosphate)
+# LO
+ph_static_LO <- gamlss(Phosphate ~ 1, family = LO(), data = Phosphate)
+# RG
+ph_static_RG <- gamlss(Phosphate ~ 1, family = RG(), data = Phosphate)
+# exGAUS
+ph_static_exGAUS <- gamlss(Phosphate ~ 1, family = exGAUS(), data = Phosphate,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # three-parameter
+# NOF
+ph_static_NOF <- gamlss(Phosphate ~ 1, family = NOF(), data = Phosphate)
+# PE
+ph_static_PE <- gamlss(Phosphate ~ 1, family = PE(), data = Phosphate,
+                       method = mixed(10,200),
+                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# PE2
+ph_static_PE2 <- gamlss(Phosphate ~ 1, family = PE2(), data = Phosphate, 
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SN1
+ph_static_SN1 <- gamlss(Phosphate ~ 1, family = SN1(), data = Phosphate)
+# TF
+ph_static_TF <- gamlss(Phosphate ~ 1, family = TF(), data = Phosphate)
+# TF2
+ph_static_TF2 <- gamlss(Phosphate ~ 1, family = TF2(), data = Phosphate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# GT
+ph_static_GT <- gamlss(Phosphate ~ 1, family = GT(), data = Phosphate, 
+                       method = mixed(10,200),
+                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # four-parameter
+# JSU
+ph_static_JSU <- gamlss(Phosphate ~ 1, family = JSU(), data = Phosphate, 
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# JSUo
+ph_static_JSUo <- gamlss(Phosphate ~ 1, family = JSUo(), data = Phosphate,
+                         mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # convergence issue
+# NET
+ph_static_NET <- gamlss(Phosphate ~ 1, family = NET(), data = Phosphate)
+# SHASH
+ph_static_SHASH <- gamlss(Phosphate ~ 1, family = SHASH(), data = Phosphate,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo
+ph_static_SHASHo <- gamlss(Phosphate ~ 1, family = SHASHo(), data = Phosphate,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo2
+ph_static_SHASHo2 <- gamlss(Phosphate ~ 1, family = SHASHo2(), data = Phosphate,
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP2
+ph_static_SEP2 <- gamlss(Phosphate ~ 1, family = SEP2(), data = Phosphate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP3
+ph_static_SEP3 <- gamlss(Phosphate ~ 1, family = SEP3(), data = Phosphate,
+                         mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate), 
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SEP4
+ph_static_SEP4 <- gamlss(Phosphate ~ 1, family = SEP4(), data = Phosphate,
+                         mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SST
+ph_static_SST <- gamlss(Phosphate ~ 1, family = SST(), data = Phosphate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # not working 
+# ST1
+ph_static_ST1 <- gamlss(Phosphate ~ 1, family = ST1(), data = Phosphate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST2
+ph_static_ST2 <- gamlss(Phosphate ~ 1, family = ST2(), data = Phosphate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST3
+ph_static_ST3 <- gamlss(Phosphate ~ 1, family = ST3(), data = Phosphate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST4
+ph_static_ST4 <- gamlss(Phosphate ~ 1, family = ST4(), data = Phosphate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST5
+ph_static_ST5 <- gamlss(Phosphate ~ 1, family = ST5(), data = Phosphate,
+                        mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # convergence issue
+
+
+# scale the AIC 
+ph_static_AIC <- data.frame(
+  models = c("NO", "NO2", "GU", "LO", "RG",
+             "exGAUS", "NOF", "PE", "PE2", "SN1", "TF", "TF2", 
+             "GT", "JSU", "NET", "SHASH", "SHASHo", "SHASHo2",
+             "SEP2","SEP3","SEP4", "ST1", "ST2", "ST3", "ST4"),
+  AIC = c(GAIC(ph_static_NO, k = 2),GAIC(ph_static_NO2, k = 2), GAIC(ph_static_GU, k = 2), GAIC(ph_static_LO, k = 2), 
+          GAIC(ph_static_RG, k = 2), GAIC(ph_static_exGAUS, k = 2), GAIC(ph_static_NOF, k = 2), GAIC(ph_static_PE, k = 2), 
+          GAIC(ph_static_PE2, k = 2),GAIC(ph_static_SN1, k = 2), GAIC(ph_static_TF, k = 2), GAIC(ph_static_TF2, k = 2),
+          GAIC(ph_static_GT, k = 2),GAIC(ph_static_JSU, k = 2), GAIC(ph_static_NET, k = 2),
+          GAIC(ph_static_SHASH, k = 2),GAIC(ph_static_SHASHo, k = 2), GAIC(ph_static_SHASHo2, k = 2), GAIC(ph_static_SEP2, k = 2), 
+          GAIC(ph_static_SEP3, k = 2), GAIC(ph_static_SEP4, k = 2), GAIC(ph_static_ST1, k = 2),
+          GAIC(ph_static_ST2, k = 2),GAIC(ph_static_ST3, k = 2), GAIC(ph_static_ST4, k = 2)),
+  param = c("2", "2", "2", "2", "2", 
+            "3","3","3","3","3","3","3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4")
+)
+
+
+# Plot
+pAIC_6 <- ggplot(ph_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = param)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = custom_colors, name = "param") +
+  labs(x = "AIC", y = "Intercept models (Phosphate)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
+
+# all AIC plots together
+pAIC_1 + pAIC_2 + pAIC_3 + pAIC_4 + pAIC_5 + pAIC_6 
+
+
+#############################################################################################
+
+# Combine the plots the three plots together for each nutrient
+# Nitrate
+(p <- (pp1 | (p1 / pAIC_1)) + 
+    plot_layout(widths = c(3, 1)))   
+
 
 
 
