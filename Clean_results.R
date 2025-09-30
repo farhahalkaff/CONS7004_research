@@ -984,5 +984,163 @@ pAIC_1 + pAIC_2 + pAIC_3 + pAIC_4 + pAIC_5 + pAIC_6
     plot_layout(widths = c(3, 1)))   
 
 
+#############################################################################################
+
+#####################################################
+######## OVERLAP MODEL PDF WITH DATA HIST ###########
+#####################################################
+
+# Function to simulate from a fitted gamlss model
+sim_from_model <- function(model, n = 1000) {
+  fam <- family(model)[[1]]   # distribution family object
+  rfun <- get(paste0("r", fam)) 
+  mu    <- predict(model, "mu", type = "response")[1]
+  sigma <- fitted(model, "sigma", type = "response")[1]
+  nu    <- tryCatch(predict(model, "nu", type = "response")[1], error = function(e) NULL)
+  tau   <- tryCatch(predict(model, "tau", type = "response")[1], error = function(e) NULL)
+  
+  # match args by what the family uses
+  args <- list(n = n, mu = mu, sigma = sigma)
+  if (!is.null(nu))  args$nu  <- nu
+  if (!is.null(tau)) args$tau <- tau
+  
+  tibble(value = do.call(rfun, args))
+}
+
+
+# Nitrate best models for each n-parameter distribution
+models_ni <- list(SEP2 = ni_static_SEP2, exGAUS = ni_static_exGAUS, RG = ni_static_RG)
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models_ni), function(name) {
+    sim_from_model(models_ni[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+# Plot overlapping densities
+# Nitrate
+ggplot(Nitrate, aes(x = Nitrate)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 10) + 
+  xlab("Nitrate (µmol/l)") + 
+  ylab("Density") +
+  xlim(x = c(0,150)) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_density(colour = "black", alpha = 0.5) +
+  theme_bw() 
+
+
+# Nitrite best models for each n-parameter distribution
+models_nii <- list(JSU = nii_static_JSU, exGAUS = nii_static_exGAUS, RG = nii_static_RG)
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models_nii), function(name) {
+    sim_from_model(models_nii[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+# Plot overlapping densities
+ggplot(Nitrite, aes(x = Nitrite)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 0.5) + 
+  xlab("Nitrite (µmol/l)") + 
+  ylab("Density") +
+  xlim(x = c(0,5)) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_density(colour = "black", alpha = 0.5) +
+  theme_bw() 
+
+
+# Ammonium best models for each n-parameter distribution
+models_am <- list(SEP2 = am_static_SEP2, exGAUS = am_static_exGAUS, RG = am_static_RG)
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models_am), function(name) {
+    sim_from_model(models_am[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+# Plot overlapping densities
+ggplot(Ammonium, aes(x = Ammonium)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 2) + 
+  xlab("Ammonium (µmol/l)") + 
+  ylab("Density") +
+  xlim(x = c(0,35)) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_density(colour = "black", alpha = 0.5) +
+  theme_bw() 
+
+
+# DIN best models for each n-parameter distribution
+models_DIN <- list(JSU = DIN_static_JSU, exGAUS = DIN_static_exGAUS, RG = DIN_static_RG)
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models_DIN), function(name) {
+    sim_from_model(models_DIN[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+# Plot overlapping densities
+ggplot(DIN, aes(x = DIN)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 10) + 
+  xlab("DIN (µmol/l)") + 
+  ylab("Density") +
+  xlim(x = c(0,150)) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_density(colour = "black", alpha = 0.5) +
+  theme_bw() 
+
+
+# Silicate best models for each n-parameter distribution
+models_si <- list(SEP2 = si_static_SEP2, exGAUS = si_static_exGAUS, RG = si_static_RG)
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models_si), function(name) {
+    sim_from_model(models_si[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+# Plot overlapping densities
+ggplot(Silicate, aes(x = Silicate)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 5) + 
+  xlab("Silicate (µmol/l)") + 
+  ylab("Density") +
+  xlim(x = c(0,40)) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_density(colour = "black", alpha = 0.5) +
+  theme_bw() 
+
+
+# Phosphate best models for each n-parameter distribution
+models_ph <- list(SEP4 = ph_static_SEP4, PE = ph_static_PE, NO = ph_static_NO)
+# Simulate and bind results
+set.seed(123)
+sims <- bind_rows(
+  lapply(names(models_ph), function(name) {
+    sim_from_model(models_ph[[name]], n = 2000) %>%
+      mutate(model = name)
+  }),
+  .id = "model_id"
+)
+# Plot overlapping densities
+ggplot(Phosphate, aes(x = Phosphate)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 0.2) + 
+  xlab("Phosphate (µmol/l)") + 
+  ylab("Density") +
+  xlim(x = c(0,2.5)) +
+  geom_density(data = sims, aes(x = value, color = model)) +
+  geom_density(colour = "black", alpha = 0.5) +
+  theme_bw() 
+
+
+
 
 
