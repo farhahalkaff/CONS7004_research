@@ -1979,14 +1979,431 @@ sim3a_pAIC_1a <- ggplot(sim3a_static_AIC, aes(x = AIC, y = reorder(models, AIC),
     legend.position = "none"
   )
 
+# compare plots
 sim2_pAIC_1a + sim3_pAIC_1a + sim3a_pAIC_1a
 
 
 
 
+## SIM 4: symmetrical, leptokurtotic, var(time) --> SST() ===============================================================
+
+set.seed(123)
+t <- 6000
+t_index <- seq_len(t)
+n <- 360 # 25 years
+month <- rep(1:12, times = t/12)
+seasonal_effect <- sin(2 * pi * month / 12) * 5 # Example sinusoidal seasonality
+trend <- 0.0025 * (1:t)
+
+
+beta_mu <- 0.001
+beta_sigma <- 0.0015  
+
+
+# changes with time
+mu_t <- 10   + beta_mu * t_index
+sigma_t <- pmax(0, 2 + beta_sigma * t_index)
+
+
+# # observation randomly taken from normal distribution 
+y4 <- rSST(t, mu = mu_t, sigma = sigma_t, nu = 1, tau = 4)
+y4 <- trend + seasonal_effect + y4
+
+# create dataset
+dat4 <- data.frame(
+  t = t_index,
+  month = factor(month),
+  y = y4,
+  sd_true = sigma_t,
+  mu_true = mu_t,
+  nu_true = 1,
+  tau_true = 4,
+  dist = "SST"
+)
+
+# plot them to see
+ggplot(dat4, aes(x = t)) +
+  geom_line(aes(y = y), color = "darkred", linewidth = 0.8) +
+  labs(x = "Time", y = "Value") +
+  theme_minimal(base_size = 14) 
+
+
+# look at density plot
+ggplot(dat4, aes(x = y)) +
+  geom_density()
+
+# histogram and non-parametric density estimate
+sim4_p1 <- ggplot(dat4, aes(x = y)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 2) + 
+  xlab("value") + 
+  ylab("Density") +
+  xlim(x = c(0,40)) +
+  geom_density(colour = "black", fill = "grey", alpha = 0.5) +
+  theme_bw() 
+
+
+### fit models of different family distribution ###
+
+# NO
+sim4_static_NO <- gamlss(y ~ 1, family = NO(), data = dat4) # two-parameter
+# NO2
+sim4_static_NO2 <- gamlss(y ~ 1, family = NO2(), data = dat4)
+# GU
+sim4_static_GU <- gamlss(y ~ 1, family = GU(), data = dat4) # error
+# LO
+sim4_static_LO <- gamlss(y ~ 1, family = LO(), data = dat4)
+# RG
+sim4_static_RG <- gamlss(y ~ 1, family = RG(), data = dat4)
+# exGAUS
+sim4_static_exGAUS <- gamlss(y ~ 1, family = exGAUS(), data = dat4, 
+                              method = mixed(10,200),
+                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # three-parameter
+# NOF
+sim4_static_NOF <- gamlss(y ~ 1, family = NOF(), data = dat4)
+# PE
+sim4_static_PE <- gamlss(y ~ 1, family = PE(), data = dat4,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# PE2
+sim4_static_PE2 <- gamlss(y ~ 1, family = PE2(), data = dat4, 
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SN1
+sim4_static_SN1 <- gamlss(y ~ 1, family = SN1(), data = dat4) 
+# SN2
+sim4_static_SN2 <- gamlss(y ~ 1, family = SN2(), data = dat4,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# TF
+sim4_static_TF <- gamlss(y ~ 1, family = TF(), data = dat4)
+# TF2
+sim4_static_TF2 <- gamlss(y ~ 1, family = TF2(), data = dat4,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# GT
+sim4_static_GT <- gamlss(y ~ 1, family = GT(), data = dat4, 
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # four-parameter
+# JSU
+sim4_static_JSU <- gamlss(y ~ 1, family = JSU(), data = dat4, 
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# JSUo
+sim4_static_JSUo <- gamlss(y ~ 1, family = JSUo(), data = dat4,
+                            mu.start = mean(dat4$y), sigma.start = sd(dat4$y),
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# NET
+sim4_static_NET <- gamlss(y ~ 1, family = NET(), data = dat4)
+# SHASH
+sim4_static_SHASH <- gamlss(y ~ 1, family = SHASH(), data = dat4,
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo
+sim4_static_SHASHo <- gamlss(y ~ 1, family = SHASHo(), data = dat4,
+                              method = mixed(10,200),
+                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo2
+sim4_static_SHASHo2 <- gamlss(y ~ 1, family = SHASHo2(), data = dat4,
+                               method = mixed(10,200),
+                               control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP2
+sim4_static_SEP2 <- gamlss(y ~ 1, family = SEP2(), data = dat4, 
+                            u.start = mean(dat4$y), sigma.start = sd(dat4$y),
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP3
+sim4_static_SEP3 <- gamlss(y ~ 1, family = SEP3(), data = dat4,
+                            mu.start = mean(dat4$y), sigma.start = sd(dat4$y), 
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SEP4
+sim4_static_SEP4 <- gamlss(y ~ 1, family = SEP4(), data = dat4,  
+                            mu.start = mean(dat4$y), sigma.start = sd(dat4$y),
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SST
+sim4_static_SST <- gamlss(y ~ 1, family = SST(), data = dat4, 
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))  
+# ST1
+sim4_static_ST1 <- gamlss(y ~ 1, family = ST1(), data = dat4,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST2
+sim4_static_ST2 <- gamlss(y ~ 1, family = ST2(), data = dat4,
+                           mu.start = mean(dat4$y), sigma.start = sd(dat4$y),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST3
+sim4_static_ST3 <- gamlss(y ~ 1, family = ST3(), data = dat4,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST4
+sim4_static_ST4 <- gamlss(y ~ 1, family = ST4(), data = dat4,
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST5
+sim4_static_ST5 <- gamlss(y ~ 1, family = ST5(), data = dat4,
+                           mu.start = mean(dat4$y), sigma.start = sd(dat4$y),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 
 
 
+# scale the AIC 
+sim4_static_AIC <- data.frame(
+  models = c("NO", "NO2", "LO", "RG",
+             "exGAUS","NOF", "PE", "PE2","SN1", "SN2", "TF", "TF2", 
+             "GT", "JSU", "JSUo", "NET", "SHASH", "SHASHo", "SHASHo2",
+             "SEP2","SEP3","SEP4","SST", "ST1", "ST2", "ST3", "ST4", "ST5"),
+  AIC = c(GAIC(sim4_static_NO, k = 2),GAIC(sim4_static_NO2, k = 2), GAIC(sim4_static_LO, k = 2), 
+          GAIC(sim4_static_RG, k = 2), GAIC(sim4_static_exGAUS, k = 2), GAIC(sim4_static_NOF, k = 2), GAIC(sim4_static_PE, k = 2), 
+          GAIC(sim4_static_PE2, k = 2),GAIC(sim4_static_SN1, k = 2),GAIC(sim4_static_SN2, k = 2),GAIC(sim4_static_TF, k = 2), GAIC(sim4_static_TF2, k = 2),
+          GAIC(sim4_static_GT, k = 2),GAIC(sim4_static_JSU, k = 2), GAIC(sim4_static_JSUo, k = 2), GAIC(sim4_static_NET, k = 2),
+          GAIC(sim4_static_SHASH, k = 2),GAIC(sim4_static_SHASHo, k = 2), GAIC(sim4_static_SHASHo2, k = 2),  
+          GAIC(sim4_static_SEP2, k = 2),GAIC(sim4_static_SEP3, k = 2),GAIC(sim4_static_SEP4, k = 2),GAIC(sim4_static_SST, k = 2),GAIC(sim4_static_ST1, k = 2),
+          GAIC(sim4_static_ST2, k = 2),GAIC(sim4_static_ST3, k = 2), GAIC(sim4_static_ST4, k = 2), GAIC(sim4_static_ST5, k = 2)),
+  param = c("2", "2", "2", "2",  
+            "3","3","3","3","3","3", "3", "3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4", "4", "4","4"),
+  skewness = c("sym", "sym", "sym", "+ve", 
+               "+ve","sym", "sym", "sym","both" ,"both","sym", "sym",
+               "sym", "both", "both", "sym", "both", "both", "both",
+               "both","both","both","both","both","both", "both", "both", "both"),
+  kurtosis = c("meso", "meso", "lepto", "lepto",
+               "lepto","meso", "both", "both", "lepto", "lepto","lepto", "lepto",
+               "both", "lepto", "lepto", "lepto", "both", "both", "both",
+               "both" ,"both","both","lepto","lepto", "lepto", "lepto", "lepto", "lepto")
+)
+
+# plot colored by skewness and shape by kurtosis 
+skew_color <- c("sym" = "blue4", "both" = "black", "+ve" = "gray48", "-ve" = "grey88")
+
+sim4_pAIC_1a <- ggplot(sim4_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = skewness, shape = kurtosis)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = skew_color, name = "param") +
+  scale_shape_manual(values = c("lepto" = 19, "both" = 15, "meso" = 17)) +
+  labs(title = "lepto,sym,var(time); SST()",x = "AIC", y = "value") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
+
+
+
+## SIM 4a: symmetrical, meso to leptokurtotic, var(time) --> SST() ===============================================================
+
+set.seed(123)
+t <- 6000
+t_index <- seq_len(t)
+n <- 360 # 25 years
+month <- rep(1:12, times = t/12)
+seasonal_effect <- sin(2 * pi * month / 12) * 5 # Example sinusoidal seasonality
+trend <- 0.0025 * (1:t)
+
+
+beta_mu <- 0.001
+beta_sigma <- 0.0015  
+beta_tau   <- -0.0025    
+
+# changes with time
+mu_t <- 10   + beta_mu * t_index
+sigma_t <- pmax(0, 2 + beta_sigma * t_index)
+tau_t   <- 18   + beta_tau * t_index
+
+# # observation randomly taken from normal distribution 
+y4a <- rSST(t, mu = mu_t, sigma = sigma_t, nu = 1, tau = tau_t)
+y4a <- trend + seasonal_effect + y4a
+
+# create dataset
+dat4a <- data.frame(
+  t = t_index,
+  month = factor(month),
+  y = y4a,
+  sd_true = sigma_t,
+  mu_true = mu_t,
+  nu_true = 1,
+  tau_true = tau_t,
+  dist = "SST"
+)
+
+# plot them to see
+ggplot(dat4a, aes(x = t)) +
+  geom_line(aes(y = y), color = "darkred", linewidth = 0.8) +
+  labs(x = "Time", y = "Value") +
+  theme_minimal(base_size = 14) 
+
+
+# look at density plot
+ggplot(dat4a, aes(x = y)) +
+  geom_density()
+
+# histogram and non-parametric density estimate
+sim4a_p1 <- ggplot(dat4a, aes(x = y)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 2) + 
+  xlab("value") + 
+  ylab("Density") +
+  xlim(x = c(0,40)) +
+  geom_density(colour = "black", fill = "grey", alpha = 0.5) +
+  theme_bw() 
+
+
+### fit models of different family distribution ###
+
+# NO
+sim4a_static_NO <- gamlss(y ~ 1, family = NO(), data = dat4a) # two-parameter
+# NO2
+sim4a_static_NO2 <- gamlss(y ~ 1, family = NO2(), data = dat4a)
+# GU
+sim4a_static_GU <- gamlss(y ~ 1, family = GU(), data = dat4a) # error
+# LO
+sim4a_static_LO <- gamlss(y ~ 1, family = LO(), data = dat4a)
+# RG
+sim4a_static_RG <- gamlss(y ~ 1, family = RG(), data = dat4a)
+# exGAUS
+sim4a_static_exGAUS <- gamlss(y ~ 1, family = exGAUS(), data = dat4a, 
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # three-parameter
+# NOF
+sim4a_static_NOF <- gamlss(y ~ 1, family = NOF(), data = dat4a)
+# PE
+sim4a_static_PE <- gamlss(y ~ 1, family = PE(), data = dat4a,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# PE2
+sim4a_static_PE2 <- gamlss(y ~ 1, family = PE2(), data = dat4a, 
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SN1
+sim4a_static_SN1 <- gamlss(y ~ 1, family = SN1(), data = dat4a) 
+# SN2
+sim4a_static_SN2 <- gamlss(y ~ 1, family = SN2(), data = dat4a,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# TF
+sim4a_static_TF <- gamlss(y ~ 1, family = TF(), data = dat4a)
+# TF2
+sim4a_static_TF2 <- gamlss(y ~ 1, family = TF2(), data = dat4a,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# GT
+sim4a_static_GT <- gamlss(y ~ 1, family = GT(), data = dat4a, 
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # four-parameter
+# JSU
+sim4a_static_JSU <- gamlss(y ~ 1, family = JSU(), data = dat4a, 
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# JSUo
+sim4a_static_JSUo <- gamlss(y ~ 1, family = JSUo(), data = dat4a,
+                           mu.start = mean(dat4a$y), sigma.start = sd(dat4a$y),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# NET
+sim4a_static_NET <- gamlss(y ~ 1, family = NET(), data = dat4a)
+# SHASH
+sim4a_static_SHASH <- gamlss(y ~ 1, family = SHASH(), data = dat4a,
+                            method = mixed(10,200),
+                            control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo
+sim4a_static_SHASHo <- gamlss(y ~ 1, family = SHASHo(), data = dat4a,
+                             method = mixed(10,200),
+                             control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SHASHo2
+sim4a_static_SHASHo2 <- gamlss(y ~ 1, family = SHASHo2(), data = dat4a,
+                              method = mixed(10,200),
+                              control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP2
+sim4a_static_SEP2 <- gamlss(y ~ 1, family = SEP2(), data = dat4a, 
+                           u.start = mean(dat4a$y), sigma.start = sd(dat4a$y),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP3
+sim4a_static_SEP3 <- gamlss(y ~ 1, family = SEP3(), data = dat4a,
+                           mu.start = mean(dat4a$y), sigma.start = sd(dat4a$y), 
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SEP4
+sim4a_static_SEP4 <- gamlss(y ~ 1, family = SEP4(), data = dat4a,  
+                           mu.start = mean(dat4a$y), sigma.start = sd(dat4a$y),
+                           method = mixed(10,200),
+                           control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
+# SST
+sim4a_static_SST <- gamlss(y ~ 1, family = SST(), data = dat4a, 
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))  
+# ST1
+sim4a_static_ST1 <- gamlss(y ~ 1, family = ST1(), data = dat4a,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST2
+sim4a_static_ST2 <- gamlss(y ~ 1, family = ST2(), data = dat4a,
+                          mu.start = mean(dat4a$y), sigma.start = sd(dat4a$y),
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST3
+sim4a_static_ST3 <- gamlss(y ~ 1, family = ST3(), data = dat4a,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST4
+sim4a_static_ST4 <- gamlss(y ~ 1, family = ST4(), data = dat4a,
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST5
+sim4a_static_ST5 <- gamlss(y ~ 1, family = ST5(), data = dat4a,
+                          mu.start = mean(dat4a$y), sigma.start = sd(dat4a$y),
+                          method = mixed(10,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+
+# scale the AIC 
+sim4a_static_AIC <- data.frame(
+  models = c("NO", "NO2","GU" ,"LO", "RG",
+             "exGAUS","NOF", "PE", "PE2","SN1", "SN2", "TF", "TF2", 
+             "GT", "JSU", "JSUo", "NET", "SHASH", "SHASHo", "SHASHo2",
+             "SEP2","SEP3","SEP4","SST", "ST1", "ST2", "ST3", "ST4", "ST5"),
+  AIC = c(GAIC(sim4a_static_NO, k = 2),GAIC(sim4a_static_NO2, k = 2), GAIC(sim4a_static_GU, k = 2),GAIC(sim4a_static_LO, k = 2), 
+          GAIC(sim4a_static_RG, k = 2), GAIC(sim4a_static_exGAUS, k = 2), GAIC(sim4a_static_NOF, k = 2), GAIC(sim4a_static_PE, k = 2), 
+          GAIC(sim4a_static_PE2, k = 2),GAIC(sim4a_static_SN1, k = 2),GAIC(sim4a_static_SN2, k = 2),GAIC(sim4a_static_TF, k = 2), GAIC(sim4a_static_TF2, k = 2),
+          GAIC(sim4a_static_GT, k = 2),GAIC(sim4a_static_JSU, k = 2), GAIC(sim4a_static_JSUo, k = 2), GAIC(sim4a_static_NET, k = 2),
+          GAIC(sim4a_static_SHASH, k = 2),GAIC(sim4a_static_SHASHo, k = 2), GAIC(sim4a_static_SHASHo2, k = 2),  
+          GAIC(sim4a_static_SEP2, k = 2),GAIC(sim4a_static_SEP3, k = 2),GAIC(sim4a_static_SEP4, k = 2),GAIC(sim4a_static_SST, k = 2),GAIC(sim4a_static_ST1, k = 2),
+          GAIC(sim4a_static_ST2, k = 2),GAIC(sim4a_static_ST3, k = 2), GAIC(sim4a_static_ST4, k = 2), GAIC(sim4a_static_ST5, k = 2)),
+  param = c("2", "2", "2", "2", "2", 
+            "3","3","3","3","3","3", "3", "3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4", "4", "4","4"),
+  skewness = c("sym", "sym", "-ve","sym", "+ve", 
+               "+ve","sym", "sym", "sym","both" ,"both","sym", "sym",
+               "sym", "both", "both", "sym", "both", "both", "both",
+               "both","both","both","both","both","both", "both", "both", "both"),
+  kurtosis = c("meso", "meso", "lepto","lepto", "lepto",
+               "lepto","meso", "both", "both", "lepto", "lepto","lepto", "lepto",
+               "both", "lepto", "lepto", "lepto", "both", "both", "both",
+               "both" ,"both","both","lepto","lepto", "lepto", "lepto", "lepto", "lepto")
+)
+
+# plot colored by skewness and shape by kurtosis 
+skew_color <- c("sym" = "blue4", "both" = "black", "+ve" = "gray48", "-ve" = "grey88")
+
+sim4a_pAIC_1a <- ggplot(sim4a_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = skewness, shape = kurtosis)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = skew_color, name = "param") +
+  scale_shape_manual(values = c("lepto" = 19, "both" = 15, "meso" = 17)) +
+  labs(title = "meso to lepto,sym,var(time); SST()",x = "AIC", y = "value") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
+
+
+# compare plots
+sim1_pAIC_1a + sim4_pAIC_1a + sim4a_pAIC_1a
 
 
 ## SIM 2: symmetrical and leptokurtic --> TF2() =============================================================================
