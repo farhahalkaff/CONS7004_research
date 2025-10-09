@@ -201,7 +201,7 @@ sim6_pAIC_1a <- ggplot(sim6_static_AIC, aes(x = AIC, y = reorder(models, AIC), c
   geom_point(size = 3, alpha = 0.7) +
   scale_color_manual(values = skew_color, name = "param") +
   scale_shape_manual(values = c("lepto" = 19, "both" = 15, "meso" = 17)) +
-  labs(x = "AIC", y = "value") +
+  labs(x = "AIC", y = "models") +
   theme_bw() +
   theme(
     axis.text.y = element_text(size = 8),
@@ -209,7 +209,7 @@ sim6_pAIC_1a <- ggplot(sim6_static_AIC, aes(x = AIC, y = reorder(models, AIC), c
     legend.position = "none"
   )
 
-
+sim6_pAIC_1a + sim7_pAIC_1a + sim8_pAIC_1a + sim9_pAIC_1a
 # param recovery ------------------------------------------------------------------
 param_table6 <- data.frame(
   models = c("true","NO", "SEP3"),
@@ -270,10 +270,13 @@ table6 <- ggtexttable(param_table6, rows = NULL, theme = ttheme("light", base_si
 table6 <- table_cell_bg(table6, row = 2, column = 1:5, linewidth = 5,
                      fill="grey", color = "grey")
 # combeanation
-sim6_pAIC_1a  +  sim6_p1 / table6
+sim6_plots <- (sim6_pAIC_1a  +  sim6_p1 / table6)
 
 
 
+## AWESOME!  as expected, a model using a normal distirbution does best when the data is simulated to be 
+## symmetrical and normal tails. Since, a flexible family disitrbution did not win here, tells us that
+## our data cannot be assumed with normal distirbution, and is infact skewed and heavy tailed (for now)
 
 
 ##### SIM 7: simple, +ve skew, meso --> SST() ==================================================================
@@ -508,7 +511,7 @@ table7 <- ggtexttable(param_table7, rows = NULL, theme = ttheme("light", base_si
 table7 <- table_cell_bg(table7, row = 2, column = 1:5, linewidth = 5,
                         fill="grey", color = "grey")
 # combeanation
-sim7_pAIC_1a  +  sim7_p1 / table7
+sim7_plots <- (sim7_pAIC_1a  +  sim7_p1 / table7)
 
 
 
@@ -745,7 +748,7 @@ table8 <- ggtexttable(param_table8, rows = NULL, theme = ttheme("light", base_si
 table8 <- table_cell_bg(table8, row = 2, column = 1:5, linewidth = 5,
                         fill="grey", color = "grey")
 # combeanation
-sim8_pAIC_1a  +  sim8_p1 / table8
+sim8_plots <- (sim8_pAIC_1a  +  sim8_p1 / table8)
 
 
 
@@ -985,6 +988,10 @@ table9 <- ggtexttable(param_table9, rows = NULL, theme = ttheme("light", base_si
 table9 <- table_cell_bg(table9, row = 2, column = 1:5, linewidth = 5,
                         fill="grey", color = "grey")
 # combeanation
-sim9_pAIC_1a  +  sim9_p1 / table9
+sim9_plots <- (sim9_pAIC_1a  +  sim9_p1 / table9)
 
-?SST
+
+
+
+
+

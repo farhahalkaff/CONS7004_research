@@ -208,6 +208,11 @@ ni_static_PE2 <- gamlss(Nitrate ~ 1, family = PE2(), data = Nitrate,
                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # SN1
 ni_static_SN1 <- gamlss(Nitrate ~ 1, family = SN1(), data = Nitrate)
+# SN2
+ni_static_SN2 <- gamlss(Nitrate ~ 1, family = SN2(), data = Nitrate, # convergence issue
+                        mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                        method = mixed(15,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.001, trace = FALSE))
 # TF
 ni_static_TF <- gamlss(Nitrate ~ 1, family = TF(), data = Nitrate)
 # TF2
@@ -293,12 +298,19 @@ ni_static_AIC <- data.frame(
           GAIC(ni_static_ST2, k = 2),GAIC(ni_static_ST3, k = 2), GAIC(ni_static_ST4, k = 2), GAIC(ni_static_ST5, k = 2)),
   param = c("2", "2", "2", "2", "2", 
             "3","3","3","3","3","3","3",
-            "4","4","4","4","4","4","4","4","4","4","4","4","4","4")
+            "4","4","4","4","4","4","4","4","4","4","4","4","4","4"),
+  skewness = c("sym", "sym", "-ve", "sym", "+ve", 
+               "+ve", "sym", "sym", "sym", "both", "sym", "sym",
+               "sym", "both", "both", "sym", "both", "both", "both",
+               "both", "both", "both", "both", "both", "both", "both"),
+  kurtosis = c("meso", "meso", "meso", "lepto", "lepto",
+               "lepto", "meso", "both", "both", "meso", "lepto", "lepto",
+               "both", "lepto", "lepto", "lepto", "both", "both", "both",
+               "both", "lepto", "lepto", "lepto", "lepto", "lepto", "lepto")
   )
 
 
-# Plot
-
+# Plot colored by number of param 
 custom_colors <- c("2" = "gray88", "3" = "grey48", "4" = "black")
 
 pAIC_1 <- ggplot(ni_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = param)) +
@@ -312,7 +324,182 @@ pAIC_1 <- ggplot(ni_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = p
     legend.position = "none"
   )
 
+# plot colored by skewness and shape by kurtosis 
+skew_color <- c("sym" = "blue4", "both" = "black", "+ve" = "gray48", "-ve" = "grey88")
 
+pAIC_1a <- ggplot(ni_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = skewness, shape = kurtosis)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = skew_color, name = "param") +
+  scale_shape_manual(values = c("lepto" = 19, "both" = 15, "meso" = 17)) +
+  labs(x = "AIC", y = "Intercept models (Nitrate)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
+
+
+
+###### NITRATE (LEFT TRUNCATE) ====================================================
+library(gamlss.tr)
+gen.trun(0,"NO",type="left")
+gen.trun(0,"NO2",type="left")
+gen.trun(0,"GU",type="left")
+gen.trun(0,"LO",type="left")
+gen.trun(0,"RG",type="left")
+gen.trun(0,"exGAUS",type="left")
+gen.trun(0,"NOF",type="left")
+gen.trun(0,"PE",type="left")
+gen.trun(0,"PE2",type="left")
+gen.trun(0,"SN1",type="left")
+gen.trun(0,"SN2",type="left")
+gen.trun(0,"TF",type="left")
+gen.trun(0,"TF2",type="left")
+gen.trun(0,"GT",type="left")
+gen.trun(0,"JSU",type="left")
+gen.trun(0,"JSUo",type="left")
+gen.trun(0,"NET",type="left")
+gen.trun(0,"SHASH",type="left")
+gen.trun(0,"SHASHo",type="left")
+gen.trun(0,"SHASHo2",type="left")
+gen.trun(0,"SEP1",type="left")
+gen.trun(0,"SEP2",type="left")
+gen.trun(0,"SEP3",type="left")
+gen.trun(0,"SEP4",type="left")
+gen.trun(0,"SST",type="left")
+gen.trun(0,"ST1",type="left")
+gen.trun(0,"ST2",type="left")
+gen.trun(0,"ST3",type="left")
+gen.trun(0,"ST4",type="left")
+gen.trun(0,"ST5",type="left")
+
+
+
+
+
+# NO
+ni_static_NOtr <- gamlss(Nitrate ~ 1, family = NOtr(), data = Nitrate,
+                         mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                         method = mixed(15,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.001, trace = FALSE)) # two-parameter
+# NO2
+ni_static_NO2tr <- gamlss(Nitrate ~ 1, family = NO2tr(), data = Nitrate,
+                          mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                          method = mixed(15,200),
+                          control = gamlss.control(n.cyc = 200, c.crit = 0.001, trace = FALSE))
+# GU
+ni_static_GUtr <- gamlss(Nitrate ~ 1, family = GUtr(), data = Nitrate,
+                         mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),nu.start = 2, tau.start = 1,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = TRUE))
+# LO
+ni_static_LOtr <- gamlss(Nitrate ~ 1, family = LOtr(), data = Nitrate)
+# RG
+ni_static_RGtr <- gamlss(Nitrate ~ 1, family = RGtr(), data = Nitrate)
+# exGAUS
+ni_static_exGAUStr <- gamlss(Nitrate ~ 1, family = exGAUStr(), data = Nitrate) # three-parameter
+# NOF
+ni_static_NOFtr <- gamlss(Nitrate ~ 1, family = NOFtr(), data = Nitrate)
+# PE
+ni_static_PEtr <- gamlss(Nitrate ~ 1, family = PEtr(), data = Nitrate)
+# PE2
+ni_static_PE2tr <- gamlss(Nitrate ~ 1, family = PE2tr(), data = Nitrate, 
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SN1
+ni_static_SN1 <- gamlss(Nitrate ~ 1, family = SN1(), data = Nitrate)
+# SN2
+ni_static_SN2 <- gamlss(Nitrate ~ 1, family = SN2(), data = Nitrate, # convergence issue
+                        mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                        method = mixed(15,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.001, trace = FALSE))
+# TF
+ni_static_TF <- gamlss(Nitrate ~ 1, family = TF(), data = Nitrate)
+# TF2
+ni_static_TF2 <- gamlss(Nitrate ~ 1, family = TF2(), data = Nitrate)
+# GT
+ni_static_GT <- gamlss(Nitrate ~ 1, family = GT(), data = Nitrate, 
+                       method = mixed(10,200),
+                       control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # four-parameter
+# JSU
+ni_static_JSU <- gamlss(Nitrate ~ 1, family = JSU(), data = Nitrate, 
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# JSUo
+ni_static_JSUo <- gamlss(Nitrate ~ 1, family = JSUo(), data = Nitrate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# NET
+ni_static_NET <- gamlss(Nitrate ~ 1, family = NET(), data = Nitrate)
+# SHASH
+ni_static_SHASHtr <- gamlss(Nitrate ~ 1, family = SHASHtr(), data = Nitrate,
+                            mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate), nu.start = 2, tau.start = 1,
+                          method = mixed(10,100),
+                          control = gamlss.control(trace = TRUE, n.cyc = 200, gd.tol = 1e-4))
+# SHASHo
+ni_static_SHASHotr <- gamlss(Nitrate ~ 1, family = SHASHotr(), data = Nitrate,
+                             method = mixed(10,100),
+                           mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate), nu.start = 2, tau.start = 1,
+                           control = gamlss.control(trace = TRUE, n.cyc = 200, gd.tol = 1e-4))
+# SHASHo2
+ni_static_SHASHo2tr <- gamlss(Nitrate ~ 1, family = SHASHo2tr(), data = Nitrate,
+                            mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),nu.start = 2, tau.start = 1,
+                            method = mixed(10,100),
+                            control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = FALSE))
+# SEP1
+ni_static_SEP1tr <- gamlss(Nitrate ~ 1, family = SEP1tr(), data = Nitrate,
+                           mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),nu.start = 2, tau.start = 1,
+                           method = mixed(10,100),
+                           control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+# SEP2
+ni_static_SEP2tr <- gamlss(Nitrate ~ 1, family = SEP2tr(), data = Nitrate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# SEP3
+ni_static_SEP3tr <- gamlss(Nitrate ~ 1, family = SEP3tr(), data = Nitrate,
+                         mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate),
+                         method = mixed(10,100),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # convergence issue #
+# SEP4
+ni_static_SEP4tr <- gamlss(Nitrate ~ 1, family = SEP4tr(), data = Nitrate,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE)) 
+# SST
+ni_static_SSTtr <- gamlss(Nitrate ~ 1, family = SSTtr(), data = Nitrate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+# ST1
+ni_static_ST1tr <- gamlss(Nitrate ~ 1, family = ST1tr(), data = Nitrate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = TRUE))
+# ST2
+ni_static_ST2tr <- gamlss(Nitrate ~ 1, family = ST2tr(), data = Nitrate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST3
+ni_static_ST3tr <- gamlss(Nitrate ~ 1, family = ST3tr(), data = Nitrate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST4
+ni_static_ST4tr <- gamlss(Nitrate ~ 1, family = ST4tr(), data = Nitrate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+# ST5
+ni_static_ST5tr <- gamlss(Nitrate ~ 1, family = ST5tr(), data = Nitrate,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
+
+
+AIC(ni_static_ST5tr)
+AIC(ni_static_ST4tr)
+AIC(ni_static_ST3tr)
+AIC(ni_static_ST2tr)
+AIC(ni_static_ST1tr)
+AIC(ni_static_SSTtr)
+AIC(ni_static_SEP4tr)
+AIC(ni_static_SEP3tr)
+AIC(ni_static_SEP2tr)
 
 #### NITRITE #### ========================================================================================
 
@@ -340,6 +527,10 @@ nii_static_PE2 <- gamlss(Nitrite ~ 1, family = PE2(), data = Nitrite,
                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # SN1
 nii_static_SN1 <- gamlss(Nitrite ~ 1, family = SN1(), data = Nitrite)
+# SN2
+nii_static_SN2 <- gamlss(Nitrite ~ 1, family = SN2(), data = Nitrite,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # TF
 nii_static_TF <- gamlss(Nitrite ~ 1, family = TF(), data = Nitrite)
 # TF2
@@ -380,11 +571,11 @@ nii_static_SEP2 <- gamlss(Nitrite ~ 1, family = SEP2(), data = Nitrite,
 nii_static_SEP3 <- gamlss(Nitrite ~ 1, family = SEP3(), data = Nitrite,
                          mu.start = mean(Nitrite$Nitrite), sigma.start = sd(Nitrite$Nitrite),
                          method = mixed(10,200),
-                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # convergence issue #
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
 # SEP4
 nii_static_SEP4 <- gamlss(Nitrite ~ 1, family = SEP4(), data = Nitrite,
                          method = mixed(10,200),
-                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) # convergence issue
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE)) 
 # SST
 nii_static_SST <- gamlss(Nitrite ~ 1, family = SST(), data = Nitrite,
                         method = mixed(10,200),
@@ -415,26 +606,48 @@ nii_static_ST5 <- gamlss(Nitrite ~ 1, family = ST5(), data = Nitrite,
 # scale the AIC 
 nii_static_AIC <- data.frame(
   models = c("NO", "NO2", "GU", "LO", "RG",
-             "exGAUS", "NOF", "PE", "PE2", "SN1", "TF", "TF2", 
+             "exGAUS", "NOF", "PE", "PE2", "SN1", "SN2","TF", "TF2", 
              "GT", "JSU", "JSUo", "NET", "SHASH", "SHASHo", "SHASHo2",
              "SEP2","SEP3", "SEP4" ,"SST", "ST1", "ST2", "ST3", "ST4", "ST5"),
   AIC = c(GAIC(nii_static_NO, k = 2),GAIC(nii_static_NO2, k = 2), GAIC(nii_static_GU, k = 2), GAIC(nii_static_LO, k = 2), GAIC(nii_static_RG, k = 2),
-          GAIC(nii_static_exGAUS, k = 2), GAIC(nii_static_NOF, k = 2), GAIC(nii_static_PE, k = 2), GAIC(nii_static_PE2, k = 2),GAIC(nii_static_SN1, k = 2), GAIC(nii_static_TF, k = 2), GAIC(nii_static_TF2, k = 2),
+          GAIC(nii_static_exGAUS, k = 2), GAIC(nii_static_NOF, k = 2), GAIC(nii_static_PE, k = 2), GAIC(nii_static_PE2, k = 2),GAIC(nii_static_SN1, k = 2), 
+          GAIC(nii_static_SN2, k = 2),GAIC(nii_static_TF, k = 2), GAIC(nii_static_TF2, k = 2),
           GAIC(nii_static_GT, k = 2),GAIC(nii_static_JSU, k = 2), GAIC(nii_static_JSUo, k = 2), GAIC(nii_static_NET, k = 2),
           GAIC(nii_static_SHASH, k = 2),GAIC(nii_static_SHASHo, k = 2), GAIC(nii_static_SHASHo2, k = 2), GAIC(nii_static_SEP2, k = 2), GAIC(nii_static_SEP3, k = 2),
           GAIC(nii_static_SEP4, k = 2), GAIC(nii_static_SST, k = 2), GAIC(nii_static_ST1, k = 2),
           GAIC(nii_static_ST2, k = 2),GAIC(nii_static_ST3, k = 2), GAIC(nii_static_ST4, k = 2), GAIC(nii_static_ST5, k = 2)),
   param = c("2", "2", "2", "2", "2", 
-            "3","3","3","3","3","3","3",
-            "4","4","4","4","4","4","4","4","4","4","4","4","4","4", "4", "4")
+            "3","3","3","3","3","3","3","3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4","4", "4", "4"),
+  skewness = c("sym", "sym", "-ve", "sym", "+ve", 
+               "+ve", "sym", "sym", "sym", "both","both", "sym", "sym",
+               "sym", "both", "both", "sym", "both", "both", "both",
+               "both","both" ,"both","both", "both", "both", "both", "both", "both"),
+  kurtosis = c("meso", "meso", "meso", "lepto", "lepto",
+               "lepto", "meso", "both", "both", "meso","meso", "lepto", "lepto",
+               "both", "lepto", "lepto", "lepto", "both", "both", "both",
+               "both","both","both","lepto", "lepto", "lepto", "lepto", "lepto", "lepto")
 )
 
 
 
-# Plot
+# Plot colored with number of parameters
 pAIC_2 <- ggplot(nii_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = param)) +
   geom_point(size = 3, alpha = 0.7) +
   scale_color_manual(values = custom_colors, name = "param") +
+  labs(x = "AIC", y = "Intercept models (Nitrite)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
+
+# plot colored by skewness and shape by kurtosis 
+pAIC_2a <- ggplot(nii_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = skewness, shape = kurtosis)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = skew_color, name = "skew") +
+  scale_shape_manual(values = c("lepto" = 19, "both" = 15, "meso" = 17)) +
   labs(x = "AIC", y = "Intercept models (Nitrite)") +
   theme_bw() +
   theme(
@@ -472,6 +685,10 @@ am_static_PE2 <- gamlss(Ammonium ~ 1, family = PE2(), data = Ammonium,
                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # SN1
 am_static_SN1 <- gamlss(Ammonium ~ 1, family = SN1(), data = Ammonium)
+# SN2
+am_static_SN2 <- gamlss(Ammonium ~ 1, family = SN2(), data = Ammonium,
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # TF
 am_static_TF <- gamlss(Ammonium ~ 1, family = TF(), data = Ammonium)
 # TF2
@@ -544,19 +761,27 @@ am_static_ST5 <- gamlss(Ammonium ~ 1, family = ST5(), data = Ammonium,
 # scale the AIC 
 am_static_AIC <- data.frame(
   models = c("NO", "NO2", "GU", "LO", "RG",
-             "exGAUS", "NOF", "PE", "PE2", "SN1", "TF", "TF2", 
+             "exGAUS", "NOF", "PE", "PE2", "SN1","SN2", "TF", "TF2", 
              "GT", "JSU", "JSUo", "NET", "SHASH", "SHASHo", "SHASHo2",
              "SEP2","SEP3", "ST1", "ST2", "ST3", "ST4", "ST5"),
   AIC = c(GAIC(am_static_NO, k = 2),GAIC(am_static_NO2, k = 2), GAIC(am_static_GU, k = 2), GAIC(am_static_LO, k = 2), 
           GAIC(am_static_RG, k = 2), GAIC(am_static_exGAUS, k = 2), GAIC(am_static_NOF, k = 2), GAIC(am_static_PE, k = 2), 
-          GAIC(am_static_PE2, k = 2),GAIC(am_static_SN1, k = 2), GAIC(am_static_TF, k = 2), GAIC(am_static_TF2, k = 2),
+          GAIC(am_static_PE2, k = 2),GAIC(am_static_SN1, k = 2), GAIC(am_static_SN2, k = 2), GAIC(am_static_TF, k = 2), GAIC(am_static_TF2, k = 2),
           GAIC(am_static_GT, k = 2),GAIC(am_static_JSU, k = 2), GAIC(am_static_JSUo, k = 2), GAIC(am_static_NET, k = 2),
           GAIC(am_static_SHASH, k = 2),GAIC(am_static_SHASHo, k = 2), GAIC(am_static_SHASHo2, k = 2), GAIC(am_static_SEP2, k = 2), 
           GAIC(am_static_SEP3, k = 2), GAIC(am_static_ST1, k = 2),
           GAIC(am_static_ST2, k = 2),GAIC(am_static_ST3, k = 2), GAIC(am_static_ST4, k = 2), GAIC(am_static_ST5, k = 2)),
   param = c("2", "2", "2", "2", "2", 
-            "3","3","3","3","3","3","3",
-            "4","4","4","4","4","4","4","4","4","4","4","4","4","4")
+            "3","3","3","3","3","3","3","3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4","4"),
+  skewness = c("sym", "sym", "-ve", "sym", "+ve", 
+               "+ve", "sym", "sym", "sym", "both","both", "sym", "sym",
+               "sym", "both", "both", "sym", "both","both", "both",
+               "both","both", "both", "both", "both", "both", "both"),
+  kurtosis = c("meso", "meso", "meso", "lepto", "lepto",
+               "lepto", "meso", "both", "both", "meso", "meso","lepto", "lepto",
+               "both", "lepto", "lepto", "lepto", "both", "both", "both",
+               "both","both", "lepto", "lepto", "lepto", "lepto", "lepto")
 )
 
 
@@ -572,6 +797,18 @@ pAIC_3 <- ggplot(am_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = p
     legend.position = "none"
   )
 
+# plot colored by skewness and shape by kurtosis 
+pAIC_3a <- ggplot(am_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = skewness, shape = kurtosis)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = skew_color, name = "skew") +
+  scale_shape_manual(values = c("lepto" = 19, "both" = 15, "meso" = 17)) +
+  labs(x = "AIC", y = "Intercept models (Ammonium)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
 
 
 #### DIN #### ========================================================================================
@@ -602,6 +839,10 @@ DIN_static_PE2 <- gamlss(DIN ~ 1, family = PE2(), data = DIN,
                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # SN1
 DIN_static_SN1 <- gamlss(DIN ~ 1, family = SN1(), data = DIN)
+# SN2
+DIN_static_SN2 <- gamlss(DIN ~ 1, family = SN2(), data = DIN,
+                         method = mixed(10,200),
+                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # TF
 DIN_static_TF <- gamlss(DIN ~ 1, family = TF(), data = DIN)
 # TF2
@@ -678,19 +919,27 @@ DIN_static_ST5 <- gamlss(DIN ~ 1, family = ST5(), data = DIN,
 # scale the AIC 
 DIN_static_AIC <- data.frame(
   models = c("NO", "NO2", "GU", "LO", "RG",
-             "exGAUS", "NOF", "PE", "PE2", "SN1", "TF", "TF2", 
+             "exGAUS", "NOF", "PE", "PE2", "SN1","SN2", "TF", "TF2", 
              "GT", "JSU", "JSUo", "NET", "SHASH", "SHASHo", "SHASHo2",
              "SEP2","SEP3","SEP4" ,"SST", "ST1", "ST2", "ST3", "ST4", "ST5"),
   AIC = c(GAIC(DIN_static_NO, k = 2),GAIC(DIN_static_NO2, k = 2), GAIC(DIN_static_GU, k = 2), GAIC(DIN_static_LO, k = 2), 
           GAIC(DIN_static_RG, k = 2), GAIC(DIN_static_exGAUS, k = 2), GAIC(DIN_static_NOF, k = 2), GAIC(DIN_static_PE, k = 2), 
-          GAIC(DIN_static_PE2, k = 2),GAIC(DIN_static_SN1, k = 2), GAIC(DIN_static_TF, k = 2), GAIC(DIN_static_TF2, k = 2),
+          GAIC(DIN_static_PE2, k = 2),GAIC(DIN_static_SN1, k = 2),GAIC(DIN_static_SN2, k = 2), GAIC(DIN_static_TF, k = 2), GAIC(DIN_static_TF2, k = 2),
           GAIC(DIN_static_GT, k = 2),GAIC(DIN_static_JSU, k = 2), GAIC(DIN_static_JSUo, k = 2), GAIC(DIN_static_NET, k = 2),
           GAIC(DIN_static_SHASH, k = 2),GAIC(DIN_static_SHASHo, k = 2), GAIC(DIN_static_SHASHo2, k = 2), GAIC(DIN_static_SEP2, k = 2), 
           GAIC(DIN_static_SEP3, k = 2), GAIC(DIN_static_SEP4, k = 2), GAIC(DIN_static_SST, k = 2), GAIC(DIN_static_ST1, k = 2),
           GAIC(DIN_static_ST2, k = 2),GAIC(DIN_static_ST3, k = 2), GAIC(DIN_static_ST4, k = 2), GAIC(DIN_static_ST5, k = 2)),
   param = c("2", "2", "2", "2", "2", 
-            "3","3","3","3","3","3","3",
-            "4","4","4","4","4","4","4","4","4","4","4","4","4","4", "4", "4")
+            "3","3","3","3","3","3","3","3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4","4", "4", "4"),
+  skewness = c("sym", "sym", "-ve", "sym", "+ve", 
+               "+ve", "sym", "sym", "sym", "both", "both", "sym", "sym",
+               "sym", "both", "both", "sym", "both", "both", "both",
+               "both","both","both","both","both", "both", "both", "both", "both"),
+  kurtosis = c("meso", "meso", "meso", "lepto", "lepto",
+               "lepto", "meso", "both", "both", "meso","meso", "lepto", "lepto",
+               "both", "lepto", "lepto", "lepto", "both", "both", "both",
+               "both","both","both","lepto","lepto", "lepto", "lepto", "lepto", "lepto")
 )
 
 
@@ -706,6 +955,18 @@ pAIC_4 <- ggplot(DIN_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = 
     legend.position = "none"
   )
 
+# plot colored by skewness and shape by kurtosis 
+pAIC_4a <- ggplot(DIN_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = skewness, shape = kurtosis)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = skew_color, name = "skew") +
+  scale_shape_manual(values = c("lepto" = 19, "both" = 15, "meso" = 17)) +
+  labs(x = "AIC", y = "Intercept models (DIN)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
 
 
 #### SILICATE #### ========================================================================================
@@ -736,6 +997,11 @@ si_static_PE2 <- gamlss(Silicate ~ 1, family = PE2(), data = Silicate,
                          control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # SN1
 si_static_SN1 <- gamlss(Silicate ~ 1, family = SN1(), data = Silicate)
+# SN2
+si_static_SN2 <- gamlss(Silicate ~ 1, family = SN2(), data = Silicate, # convergence issue
+                        mu.start = mean(Silicate$Silicate), sigma.start = sd(Silicate$Silicate),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # TF
 si_static_TF <- gamlss(Silicate ~ 1, family = TF(), data = Silicate)
 # TF2
@@ -823,7 +1089,15 @@ si_static_AIC <- data.frame(
           GAIC(si_static_ST2, k = 2),GAIC(si_static_ST3, k = 2), GAIC(si_static_ST4, k = 2), GAIC(si_static_ST5, k = 2)),
   param = c("2", "2", "2", "2", "2", 
             "3","3","3","3","3","3","3",
-            "4","4","4","4","4","4","4","4","4","4","4","4","4","4")
+            "4","4","4","4","4","4","4","4","4","4","4","4","4","4"),
+  skewness = c("sym", "sym", "-ve", "sym", "+ve", 
+               "+ve", "sym", "sym", "sym", "both", "sym", "sym",
+               "sym", "both", "both", "sym", "both", "both", "both",
+               "both","both","both", "both", "both", "both", "both"),
+  kurtosis = c("meso", "meso", "meso", "lepto", "lepto",
+               "lepto", "meso", "both", "both", "meso", "lepto", "lepto",
+               "both", "lepto", "lepto", "lepto", "both", "both", "both",
+               "both","both","lepto", "lepto", "lepto", "lepto", "lepto")
 )
 
 
@@ -839,6 +1113,18 @@ pAIC_5 <- ggplot(si_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = p
     legend.position = "none"
   )
 
+# plot colored by skewness and shape by kurtosis 
+pAIC_5a <- ggplot(si_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = skewness, shape = kurtosis)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = skew_color, name = "skew") +
+  scale_shape_manual(values = c("lepto" = 19, "both" = 15, "meso" = 17)) +
+  labs(x = "AIC", y = "Intercept models (Silicate)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
 
 
 #### PHOSPHATE #### ========================================================================================
@@ -869,6 +1155,11 @@ ph_static_PE2 <- gamlss(Phosphate ~ 1, family = PE2(), data = Phosphate,
                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # SN1
 ph_static_SN1 <- gamlss(Phosphate ~ 1, family = SN1(), data = Phosphate)
+# SN2
+ph_static_SN2 <- gamlss(Phosphate ~ 1, family = SN2(), data = Phosphate,
+                        mu.start = mean(Phosphate$Phosphate), sigma.start = sd(Phosphate$Phosphate),
+                        method = mixed(10,200),
+                        control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = FALSE))
 # TF
 ph_static_TF <- gamlss(Phosphate ~ 1, family = TF(), data = Phosphate)
 # TF2
@@ -946,19 +1237,27 @@ ph_static_ST5 <- gamlss(Phosphate ~ 1, family = ST5(), data = Phosphate,
 # scale the AIC 
 ph_static_AIC <- data.frame(
   models = c("NO", "NO2", "GU", "LO", "RG",
-             "exGAUS", "NOF", "PE", "PE2", "SN1", "TF", "TF2", 
+             "exGAUS", "NOF", "PE", "PE2", "SN1","SN2", "TF", "TF2", 
              "GT", "JSU", "NET", "SHASH", "SHASHo", "SHASHo2",
              "SEP2","SEP3","SEP4", "ST1", "ST2", "ST3", "ST4"),
   AIC = c(GAIC(ph_static_NO, k = 2),GAIC(ph_static_NO2, k = 2), GAIC(ph_static_GU, k = 2), GAIC(ph_static_LO, k = 2), 
           GAIC(ph_static_RG, k = 2), GAIC(ph_static_exGAUS, k = 2), GAIC(ph_static_NOF, k = 2), GAIC(ph_static_PE, k = 2), 
-          GAIC(ph_static_PE2, k = 2),GAIC(ph_static_SN1, k = 2), GAIC(ph_static_TF, k = 2), GAIC(ph_static_TF2, k = 2),
+          GAIC(ph_static_PE2, k = 2),GAIC(ph_static_SN1, k = 2), GAIC(ph_static_SN2, k = 2),GAIC(ph_static_TF, k = 2), GAIC(ph_static_TF2, k = 2),
           GAIC(ph_static_GT, k = 2),GAIC(ph_static_JSU, k = 2), GAIC(ph_static_NET, k = 2),
           GAIC(ph_static_SHASH, k = 2),GAIC(ph_static_SHASHo, k = 2), GAIC(ph_static_SHASHo2, k = 2), GAIC(ph_static_SEP2, k = 2), 
           GAIC(ph_static_SEP3, k = 2), GAIC(ph_static_SEP4, k = 2), GAIC(ph_static_ST1, k = 2),
           GAIC(ph_static_ST2, k = 2),GAIC(ph_static_ST3, k = 2), GAIC(ph_static_ST4, k = 2)),
   param = c("2", "2", "2", "2", "2", 
-            "3","3","3","3","3","3","3",
-            "4","4","4","4","4","4","4","4","4","4","4","4","4")
+            "3","3","3","3","3","3","3","3",
+            "4","4","4","4","4","4","4","4","4","4","4","4","4"),
+  skewness = c("sym", "sym", "-ve", "sym", "+ve", 
+               "+ve", "sym", "sym", "sym", "both", "both", "sym", "sym",
+               "sym", "both", "sym", "both", "both", "both",
+               "both","both","both","both", "both", "both", "both"),
+  kurtosis = c("meso", "meso", "meso", "lepto", "lepto",
+               "lepto", "meso", "both", "both", "meso","meso", "lepto", "lepto",
+               "both", "lepto", "lepto", "both", "both", "both",
+               "both","both","both","lepto", "lepto", "lepto", "lepto")
 )
 
 
@@ -974,30 +1273,45 @@ pAIC_6 <- ggplot(ph_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = p
     legend.position = "none"
   )
 
+# plot colored by skewness and shape by kurtosis 
+pAIC_6a <- ggplot(ph_static_AIC, aes(x = AIC, y = reorder(models, AIC), color = skewness, shape = kurtosis)) +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(values = skew_color, name = "skew") +
+  scale_shape_manual(values = c("lepto" = 19, "both" = 15, "meso" = 17)) +
+  labs(x = "AIC", y = "Intercept models (Phosphate)") +
+  theme_bw() +
+  theme(
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_line(color = "grey90"),
+    legend.position = "none"
+  )
+
+
 # all AIC plots together
 pAIC_1 + pAIC_2 + pAIC_3 + pAIC_4 + pAIC_5 + pAIC_6 
+pAIC_1a + pAIC_2a + pAIC_3a + pAIC_4a + pAIC_5a + pAIC_6a 
 
-
+pAIC_1a + p1
 #############################################################################################
 
-# Combine the plots the three plots together for each nutrient
-# Nitrate
-(p <- (pp1 | (p1 / pAIC_1)) + 
-    plot_layout(widths = c(3, 1)))   
 
 
-#############################################################################################
 
 #####################################################
 ######## OVERLAP MODEL PDF WITH DATA HIST ###########
 #####################################################
+
+
+# Nitrate --------------------------------------------------------------------------
+
+ni_model_compare <- list(SEP2 = ni_static_SEP2)
 
 # Function to simulate from a fitted gamlss model
 sim_from_model <- function(model, n = 1000) {
   fam <- family(model)[[1]]   # distribution family object
   rfun <- get(paste0("r", fam)) 
   mu    <- predict(model, "mu", type = "response")[1]
-  sigma <- fitted(model, "sigma", type = "response")[1]
+  sigma <- predict(model, "sigma", type = "response")[1]
   nu    <- tryCatch(predict(model, "nu", type = "response")[1], error = function(e) NULL)
   tau   <- tryCatch(predict(model, "tau", type = "response")[1], error = function(e) NULL)
   
@@ -1009,182 +1323,160 @@ sim_from_model <- function(model, n = 1000) {
   tibble(value = do.call(rfun, args))
 }
 
-
-model_color1 <- c(exGAUS = "deepskyblue", RG = "darkolivegreen3", SEP2 = "darkorange")
-# Nitrate best models for each n-parameter distribution
-models_ni <- list(SEP2 = ni_static_SEP2, exGAUS = ni_static_exGAUS, RG = ni_static_RG)
 # Simulate and bind results
 set.seed(123)
-sims1 <- bind_rows(
-  lapply(names(models_ni), function(name) {
-    sim_from_model(models_ni[[name]], n = 2000) %>%
+ni_model_sim <- bind_rows(
+  lapply(names(ni_model_compare), function(name) {
+    sim_from_model(ni_model_compare[[name]], n = 2000) %>%
       mutate(model = name)
   }),
   .id = "model_id"
 )
-# Plot overlapping densities
-# Nitrate
-pl1 <- ggplot(Nitrate, aes(x = Nitrate)) +
-  xlab("Nitrate (µmol/l)") + 
-  ylab("Density") +
-  xlim(x = c(0,150)) +
-  scale_color_manual(values = model_color1, name = "models") +
-  geom_density(data = sims1, aes(x = value, color = model), size = 1) +
-  geom_density(colour = "black", alpha = 0.5, size = 1) +
-  theme_bw() 
+
+# histogram and non-parametric density estimate 
+ni_sim_pdf <- ggplot(Nitrate, aes(x = Nitrate)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 5) + 
+  labs(x = "Value", y = "Density") +
+  #xlim(x = c(0,100)) +
+  geom_density(colour = "black", fill = "grey", alpha = 0.5) +
+  geom_density(data = ni_model_sim, aes(x = value, color = model), linewidth = 1, color = "blue") +
+  theme_bw() +
+  theme(legend.position = "none")
 
 
-model_color2 <- c(exGAUS = "deepskyblue", RG = "darkolivegreen3", JSU = "darkorange")
-# Nitrite best models for each n-parameter distribution
-models_nii <- list(JSU = nii_static_JSU, exGAUS = nii_static_exGAUS, RG = nii_static_RG)
+
+# Nitrite --------------------------------------------------------------------------
+
+nii_model_compare <- list(JSU = nii_static_JSU)
+
 # Simulate and bind results
 set.seed(123)
-sims2 <- bind_rows(
-  lapply(names(models_nii), function(name) {
-    sim_from_model(models_nii[[name]], n = 2000) %>%
+nii_model_sim <- bind_rows(
+  lapply(names(nii_model_compare), function(name) {
+    sim_from_model(nii_model_compare[[name]], n = 2000) %>%
       mutate(model = name)
   }),
   .id = "model_id"
 )
-# Plot overlapping densities
-pl2 <- ggplot(Nitrite, aes(x = Nitrite)) +
-  xlab("Nitrite (µmol/l)") + 
-  ylab("Density") +
-  xlim(x = c(0,5)) +
-  scale_color_manual(values = model_color2, name = "model_nii") +
-  geom_density(data = sims2, aes(x = value, color = model), size = 1) +
-  geom_density(colour = "black", alpha = 0.5, size = 1) +
-  theme_bw() 
+
+# histogram and non-parametric density estimate 
+nii_sim_pdf <- ggplot(Nitrite, aes(x = Nitrite)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 0.25) + 
+  labs(x = "Value", y = "Density") +
+  #xlim(x = c(0,100)) +
+  geom_density(colour = "black", fill = "grey", alpha = 0.5) +
+  geom_density(data = nii_model_sim, aes(x = value, color = model), linewidth = 1, color = "blue") +
+  theme_bw() +
+  theme(legend.position = "none")
 
 
-# Ammonium best models for each n-parameter distribution
-models_am <- list(SEP2 = am_static_SEP2, exGAUS = am_static_exGAUS, RG = am_static_RG)
+
+# Ammonium --------------------------------------------------------------------------
+
+am_model_compare <- list(SEP2 = am_static_SEP2)
+
 # Simulate and bind results
 set.seed(123)
-sims3 <- bind_rows(
-  lapply(names(models_am), function(name) {
-    sim_from_model(models_am[[name]], n = 2000) %>%
+am_model_sim <- bind_rows(
+  lapply(names(am_model_compare), function(name) {
+    sim_from_model(am_model_compare[[name]], n = 2000) %>%
       mutate(model = name)
   }),
   .id = "model_id"
 )
-# Plot overlapping densities
-pl3 <-ggplot(Ammonium, aes(x = Ammonium)) +
-  xlab("Ammonium (µmol/l)") + 
-  ylab("Density") +
-  xlim(x = c(0,35)) +
-  scale_color_manual(values = model_color1, name = "models") +
-  geom_density(data = sims3, aes(x = value, color = model), size = 1) +
-  geom_density(colour = "black", alpha = 0.5, size =  1) +
-  theme_bw() 
+
+# histogram and non-parametric density estimate 
+am_sim_pdf <- ggplot(Ammonium, aes(x = Ammonium)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 1.5) + 
+  labs(x = "Value", y = "Density") +
+  #xlim(x = c(0,100)) +
+  geom_density(colour = "black", fill = "grey", alpha = 0.5) +
+  geom_density(data = am_model_sim, aes(x = value, color = model), linewidth = 1, color = "blue") +
+  theme_bw() +
+  theme(legend.position = "none")
 
 
-# DIN best models for each n-parameter distribution
-models_DIN <- list(JSU = DIN_static_JSU, exGAUS = DIN_static_exGAUS, RG = DIN_static_RG)
+# DIN --------------------------------------------------------------------------
+
+DIN_model_compare <- list(JSU = DIN_static_JSU)
+
 # Simulate and bind results
 set.seed(123)
-sims4 <- bind_rows(
-  lapply(names(models_DIN), function(name) {
-    sim_from_model(models_DIN[[name]], n = 2000) %>%
+DIN_model_sim <- bind_rows(
+  lapply(names(DIN_model_compare), function(name) {
+    sim_from_model(DIN_model_compare[[name]], n = 2000) %>%
       mutate(model = name)
   }),
   .id = "model_id"
 )
-# Plot overlapping densities
-pl4 <- ggplot(DIN, aes(x = DIN)) +
-  xlab("DIN (µmol/l)") + 
-  ylab("Density") +
-  xlim(x = c(0,150)) +
-  scale_color_manual(values = model_color2, name = "model") +
-  geom_density(data = sims4, aes(x = value, color = model), size = 1) +
-  geom_density(colour = "black", alpha = 0.5, size = 1) +
-  theme_bw() 
+
+# histogram and non-parametric density estimate 
+DIN_sim_pdf <- ggplot(DIN, aes(x = DIN)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 5) + 
+  labs(x = "Value", y = "Density") +
+  #xlim(x = c(0,100)) +
+  geom_density(colour = "black", fill = "grey", alpha = 0.5) +
+  geom_density(data = DIN_model_sim, aes(x = value, color = model), linewidth = 1, color = "blue") +
+  theme_bw() +
+  theme(legend.position = "none")
 
 
-# Silicate best models for each n-parameter distribution
-models_si <- list(SEP2 = si_static_SEP2, exGAUS = si_static_exGAUS, RG = si_static_RG)
+# Silicate --------------------------------------------------------------------------
+
+si_model_compare <- list(SEP2 = si_static_SEP2)
+
 # Simulate and bind results
 set.seed(123)
-sims5 <- bind_rows(
-  lapply(names(models_si), function(name) {
-    sim_from_model(models_si[[name]], n = 2000) %>%
+si_model_sim <- bind_rows(
+  lapply(names(si_model_compare), function(name) {
+    sim_from_model(si_model_compare[[name]], n = 2000) %>%
       mutate(model = name)
   }),
   .id = "model_id"
 )
-# Plot overlapping densities
-pl5 <- ggplot(Silicate, aes(x = Silicate)) +
-  xlab("Silicate (µmol/l)") + 
-  ylab("Density") +
-  xlim(x = c(0,40)) +
-  scale_color_manual(values = model_color1, name = "models") +
-  geom_density(data = sims5, aes(x = value, color = model), size = 1) +
-  geom_density(colour = "black", alpha = 0.5, size = 1) +
-  theme_bw() 
+
+# histogram and non-parametric density estimate 
+si_sim_pdf <- ggplot(Silicate, aes(x = Silicate)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 2) + 
+  labs(x = "Value", y = "Density") +
+  #xlim(x = c(0,100)) +
+  geom_density(colour = "black", fill = "grey", alpha = 0.5) +
+  geom_density(data = si_model_sim, aes(x = value, color = model), linewidth = 1, color = "blue") +
+  theme_bw() +
+  theme(legend.position = "none")
 
 
-model_color3 <- c(NO = "deepskyblue", PE = "darkolivegreen3", SEP4 = "darkorange")
-# Phosphate best models for each n-parameter distribution
-models_ph <- list(SEP4 = ph_static_SEP4, PE = ph_static_PE, NO = ph_static_NO)
+
+# Phosphate --------------------------------------------------------------------------
+
+ph_model_compare <- list(SEP4 = ph_static_SEP4)
+
 # Simulate and bind results
 set.seed(123)
-sims6 <- bind_rows(
-  lapply(names(models_ph), function(name) {
-    sim_from_model(models_ph[[name]], n = 2000) %>%
+ph_model_sim <- bind_rows(
+  lapply(names(ph_model_compare), function(name) {
+    sim_from_model(ph_model_compare[[name]], n = 2000) %>%
       mutate(model = name)
   }),
   .id = "model_id"
 )
-# Plot overlapping densities
-pl6 <- ggplot(Phosphate, aes(x = Phosphate)) +
-  xlab("Phosphate (µmol/l)") + 
-  ylab("Density") +
-  xlim(x = c(0,2.5)) +
-  scale_color_manual(values = model_color3, name = "models") +
-  geom_density(data = sims6, aes(x = value, color = model), size = 1) +
-  geom_density(colour = "black", alpha = 0.5, size = 1) +
-  theme_bw() 
 
-# combineation
-pl1 + pl2 + pl3 + pl4 + pl5 + pl6
-
-
-#######################
-#### MOMENT BUCKET ####
-#######################
-
-# Nitrate 
-moment_bucket(ni_static_SEP2, ni_static_exGAUS, ni_static_RG) + 
-  theme_bw() + 
-  ggtitle("(c)") +
-  theme(legend.position = "none")
-# Nitrite 
-moment_bucket(nii_static_JSU, nii_static_exGAUS, nii_static_RG) + 
-  theme_bw() + 
-  ggtitle("(c)") +
-  theme(legend.position = "none")
-# Ammonium 
-moment_bucket(am_static_SEP2, am_static_exGAUS, am_static_RG) + 
-  theme_bw() + 
-  ggtitle("(c)") +
-  theme(legend.position = "none")
-# DIN 
-moment_bucket(DIN_static_JSU, DIN_static_exGAUS, DIN_static_RG) + 
-  theme_bw() + 
-  ggtitle("(c)") +
-  theme(legend.position = "none")
-# Silicate 
-moment_bucket(si_static_SEP2, si_static_exGAUS, si_static_RG) + 
-  theme_bw() + 
-  ggtitle("(c)") +
-  theme(legend.position = "none")
-# Phosphate 
-moment_bucket(ph_static_SEP4, ph_static_PE, ph_static_NO) + 
-  theme_bw() + 
-  ggtitle("(c)") +
+# histogram and non-parametric density estimate 
+ph_sim_pdf <- ggplot(Phosphate, aes(x = Phosphate)) +
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", binwidth = 0.1) + 
+  labs(x = "Value", y = "Density") +
+  #xlim(x = c(0,100)) +
+  geom_density(colour = "black", fill = "grey", alpha = 0.5) +
+  geom_density(data = ph_model_sim, aes(x = value, color = model), linewidth = 1, color = "blue") +
+  theme_bw() +
   theme(legend.position = "none")
 
 
+##########################################################################################################
 
-
-
+# Combine the plots the three plots together for each nutrient
+final <- pAIC_1a + ni_sim_pdf + pAIC_2a + nii_sim_pdf + pAIC_3a + am_sim_pdf + pAIC_4a + DIN_sim_pdf + pAIC_5a + si_sim_pdf + pAIC_6a + ph_sim_pdf
+# save as pdf 
+pdf("data_plots.pdf", width = 14, height = 12)
+final
+dev.off()
