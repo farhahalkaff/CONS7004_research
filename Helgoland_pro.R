@@ -138,25 +138,33 @@ p_k <- ggplot(yearly_stats, aes(x = year)) +
 # =========================
 
 nutrients <- c("Nitrate", "Nitrite", "Silicate", "Phosphate", "DIN", "Silicate", "Ammonium") 
+nutrients <- c("Silicate") 
+
 nitrate <- "Nitrate"
 phyto_col <- "Phytopl"
 phyto_biom <- "Phytopl_C"
+other <- c("Temp", "Sal")
+Diatoms <- "Diatoms"
+Dino <- "Flag"
 
 df_year <- df %>%
   group_by(year) %>%
-  summarise(across(all_of(c(nutrients, phyto_col)), ~ mean(., na.rm = TRUE)), .groups = "drop") %>%
+  summarise(across(all_of(c(Diatoms, Dino)), ~ mean(., na.rm = TRUE)), .groups = "drop") %>%
   pivot_longer(-year, names_to = "variable", values_to = "value") %>%
   group_by(variable) %>%
   mutate(z = as.numeric(scale(value))) %>%
   ungroup()
 
+df_year$variable[df_year$variable == "Flag"] <- "Dinoflagellates"
+
 ggplot(df_year, aes(x = year, y = z, color = variable)) +
   # geom_line(linewidth = 0.7, alpha = 0.9) +
   geom_smooth(se = FALSE, method = "loess", span = 0.3, linewidth = 0.6) +
-  labs(x = "Year", y = "Standardized (z-score)",
+  labs(x = "Year", y = "Z (Abundance)",
        color = "Variable") +
-  theme_minimal()
+  theme_classic()
 
+citation("gamlss.tr")
 
 ##################################
 ### Looking at trends per year ###
@@ -4420,10 +4428,10 @@ AIC(poly_am_param_year_month) # BETTER YOOHOO
 summary(poly_am_param_year_month)
 
 # compare different families on the best model
-JSU_poly_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
+JSU_poly_am_param_year_month <- gamlss(Ammonium ~ poly(years,2) + month, sigma.fo = ~ years + month, nu.fo = ~ years + month, tau.fo = ~ years, 
                                    family = JSU(), data = Ammonium,
                                    mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
-                                   method = mixed(5,200),
+                                   method = mixed(10,200),
                                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 SHASHo_poly_am_param_year_month <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year, 
@@ -4459,20 +4467,26 @@ AIC(TF2_am_param_year_month) # not good
 
 
 # make sigma or skew or tau constant at a time 
-poly_am_param_year_month_meanonly <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, 
+JSU_poly_am_param_year_month <- gamlss(Ammonium ~ poly(years,2) + month, sigma.fo = ~ years + month, nu.fo = ~ years + month, tau.fo = ~ years, 
+                                       family = JSU(), data = Ammonium,
+                                       mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                       method = mixed(10,200),
+                                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+poly_am_param_year_month_meanonly <- gamlss(Ammonium ~ poly(years,2) + month, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, 
                                           family = JSU(), data = Ammonium,
                                           mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
                                           method = mixed(5,200),
                                           control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
-poly_am_param_year_month_noskew <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ 1, tau.fo = ~ year, 
+poly_am_param_year_month_noskew <- gamlss(Ammonium ~ poly(years,2) + month, sigma.fo = ~ years + month, nu.fo = ~ 1, tau.fo = ~ years, 
                                    family = JSU(), data = Ammonium,
                                    mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
                                    method = mixed(5,200),
                                    control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
 
 
-poly_am_param_year_month_nokurt <- gamlss(Ammonium ~ poly(year,2) + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ 1, 
+poly_am_param_year_month_nokurt <- gamlss(Ammonium ~ poly(years,2) + month, sigma.fo = ~ years + month, nu.fo = ~ years + month, tau.fo = ~ 1, 
                                           family = JSU(), data = Ammonium,
                                           mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
                                           method = mixed(5,200),
@@ -4832,6 +4846,9 @@ resid_wp(poly_am_param_year_month_noskew) # slight s-shape = kurtosis not fitted
 resid_wp(poly_am_param_year_month_nokurt) 
 
 
+bp(obj = JSU_poly_am_param_year_month, type = "centile.central")
+bp(obj = poly_am_param_year_month_noskew, type = "centile.central")
+bp(obj = poly_am_param_year_month_meanonly, type = "centile.central")
 
 ################################################## Moment bucket 
 library(gamlss.ggplots)
@@ -5353,10 +5370,10 @@ models <- list(NO = am_static_NO, SN1 = am_static_SN1, GT = am_static_GT, SHASHo
 sim_from_model <- function(model, n = 1000) {
   fam <- family(model)[[1]]   # distribution family object
   rfun <- get(paste0("r", fam)) 
-  mu    <- fitted(model, "mu")[1]
-  sigma <- fitted(model, "sigma")[1]
-  nu    <- tryCatch(fitted(model, "nu")[1], error = function(e) NULL)
-  tau   <- tryCatch(fitted(model, "tau")[1], error = function(e) NULL)
+  mu    <- predict(model, "mu", type = "response")[1]
+  sigma <- fitted(model, "sigma", type = "response")[1]
+  nu    <- tryCatch(predict(model, "nu", type = "response")[1], error = function(e) NULL)
+  tau   <- tryCatch(predict(model, "tau", type = "response")[1], error = function(e) NULL)
   
   # match args by what the family uses
   args <- list(n = n, mu = mu, sigma = sigma)
@@ -5403,13 +5420,172 @@ m2 <- poly_am_param_year_month_meanonly
 m3 <- poly_am_param_year_month_noskew
 m4 <- poly_am_param_year_month_nokurt
 
-######### PHYTOPLANKTON ##########
 
 
 
+######## PDF OF EACH YEAR #########
+
+
+library(gamlss)
+library(lubridate)
+
+Ammonium <- df %>% filter(!is.na(Ammonium)) %>% 
+    select(Date, Ammonium)
+
+# 5. Create year_value and month_value columns
+Ammonium$year_value <- as.numeric(format(as.Date(Ammonium$Date), "%Y"))
+Ammonium$month_value <- month(as.Date(Ammonium$Date))
+
+# 6. Check that columns exist
+print(names(Ammonium))
+head(Ammonium)
+
+# models
+JSU_poly_am_param_year_month <- gamlss(Ammonium ~ poly(year_value,2) + month_value, sigma.fo = ~ year_value + month_value, 
+                                       nu.fo = ~ year_value + month_value, tau.fo = ~ year_value + month_value, 
+                                       family = JSU(), data = Ammonium,
+                                       mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                       method = mixed(10,200),
+                                       control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+poly_am_param_year_month_meanonly <- gamlss(Ammonium ~ poly(year_value,2) + month_value, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1, 
+                                            family = JSU(), data = Ammonium,
+                                            mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                            method = mixed(5,200),
+                                            control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+poly_am_param_year_month_noskew <- gamlss(Ammonium ~ poly(year_value,2) + month_value, sigma.fo = ~ year_value + month_value, 
+                                          nu.fo = ~ 1, tau.fo = ~ year_value + month_value, 
+                                          family = JSU(), data = Ammonium,
+                                          mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                          method = mixed(5,200),
+                                          control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+
+poly_am_param_year_month_nokurt <- gamlss(Ammonium ~ poly(year_value,2) + month_value, sigma.fo = ~ year_value + month_value, 
+                                          nu.fo = ~ year_value + month_value, tau.fo = ~ 1, 
+                                          family = JSU(), data = Ammonium,
+                                          mu.start = mean(Ammonium$Ammonium), sigma.start = sd(Ammonium$Ammonium),
+                                          method = mixed(5,200),
+                                          control = gamlss.control(n.cyc = 400, c.crit = 0.01, trace = FALSE))
+
+AIC(JSU_poly_am_param_year_month)
+AIC(poly_am_param_year_month_meanonly) # sigma, nu and tau ~ 1
+AIC(poly_am_param_year_month_noskew) # nu ~ 1
+AIC(poly_am_param_year_month_nokurt) # tau ~ 1
+
+get_avg_params_by_year <- function(model, data, year_col = "year_value", month_col = "month_value", time_col = "Date") {
+  years <- unique(data[[year_col]])
+  result <- lapply(years, function(yr) {
+    # Subset data for the year
+    subset_data <- data[data[[year_col]] == yr, ]
+    # Prepare newdata for prediction: use all unique combinations of year and month present in that year
+    newdata <- unique(subset_data[, c(year_col, month_col)])
+    # Predict parameters for each combination
+    mu    <- predict(model, what = "mu",    newdata = newdata, type = "response")
+    sigma <- predict(model, what = "sigma", newdata = newdata, type = "response")
+    nu    <- predict(model, what = "nu",    newdata = newdata, type = "response")
+    tau   <- predict(model, what = "tau",   newdata = newdata, type = "response")
+    # Average the parameters for the year
+    avg_mu    <- mean(mu, na.rm = TRUE)
+    avg_sigma <- mean(sigma, na.rm = TRUE)
+    avg_nu    <- mean(nu, na.rm = TRUE)
+    avg_tau   <- mean(tau, na.rm = TRUE)
+    c(year = yr, mu = avg_mu, sigma = avg_sigma, nu = avg_nu, tau = avg_tau)
+  })
+  result_df <- do.call(rbind, result)
+  result_df
+}
+
+# get the average params each year for all models
+avg_params <- get_avg_params_by_year(JSU_poly_am_param_year_month, Ammonium)
+avg_params_meanonly <- get_avg_params_by_year(poly_am_param_year_month_meanonly, Ammonium)
+avg_params_noskew <- get_avg_params_by_year(poly_am_param_year_month_noskew, Ammonium)
+avg_params_nokurt <- get_avg_params_by_year(poly_am_param_year_month_nokurt, Ammonium)
+
+
+# Combined function: get average params and PDFs by year for each model
+get_avg_params_and_pdf_by_year <- function(models, data, x_grid = NULL, year_col = "year_value", month_col = "month_value") {
+  # Generate x grid if not provided
+  if (is.null(x_grid)) {
+    x_grid <- seq(min(data$Ammonium), max(data$Ammonium), length.out = 200)
+  }
+  
+  # Helper to get average params by year
+  get_avg_params_by_year <- function(model, data, year_col = "year_value", month_col = "month_value") {
+    years <- unique(data[[year_col]])
+    result <- lapply(years, function(yr) {
+      # Subset data for the year
+      subset_data <- data[data[[year_col]] == yr, ]
+      # Use all unique combinations of year and month for prediction
+      newdata <- unique(subset_data[, c(year_col, month_col)])
+      mu    <- predict(model, what = "mu",    newdata = newdata, type = "response")
+      sigma <- predict(model, what = "sigma", newdata = newdata, type = "response")
+      nu    <- predict(model, what = "nu",    newdata = newdata, type = "response")
+      tau   <- predict(model, what = "tau",   newdata = newdata, type = "response")
+      avg_mu    <- mean(mu, na.rm = TRUE)
+      avg_sigma <- mean(sigma, na.rm = TRUE)
+      avg_nu    <- mean(nu, na.rm = TRUE)
+      avg_tau   <- mean(tau, na.rm = TRUE)
+      c(year = yr, mu = avg_mu, sigma = avg_sigma, nu = avg_nu, tau = avg_tau)
+    })
+    result_df <- do.call(rbind, result)
+    result_df
+  }
+  
+  # Main loop through models
+  output <- lapply(models, function(model) {
+    avg_params <- get_avg_params_by_year(model, data, year_col, month_col)
+    pdf_by_year <- lapply(1:nrow(avg_params), function(i) {
+      yr_params <- avg_params[i, ]
+      dens <- dJSU(x_grid, 
+                   mu = as.numeric(yr_params["mu"]), 
+                   sigma = as.numeric(yr_params["sigma"]), 
+                   nu = as.numeric(yr_params["nu"]), 
+                   tau = as.numeric(yr_params["tau"]))
+      list(year = yr_params["year"], x = x_grid, density = dens)
+    })
+    list(avg_params = avg_params, pdf_by_year = pdf_by_year)
+  })
+  
+  names(output) <- names(models)
+  return(output)
+}
+
+# Usage:
+models <- list(
+  best = JSU_poly_am_param_year_month,
+  meanonly = poly_am_param_year_month_meanonly,
+  noskew = poly_am_param_year_month_noskew,
+  nokurt = poly_am_param_year_month_nokurt
+)
+result <- get_avg_params_and_pdf_by_year(models, Ammonium)
+
+# Access average params and PDFs:
+result$best$avg_params       # average parameters for best model
+result$best$pdf_by_year      # list of PDFs by year for best model
+result$meanonly$pdf_by_year  # for mean-only model, etc.
+
+
+# get pdf for empirical data
+Ammonium_1962 <- Ammonium %>%
+  filter(year(Date) == 1962)
 
 
 
+ggplot(Ammonium_1962, aes(x = Ammonium)) +
+  geom_density()
 
 
 
+# Example plot for best model, first year:
+plot(result$best$pdf_by_year[[1]]$x, result$best$pdf_by_year[[1]]$density, type = "l",
+     xlab = "Ammonium", ylab = "Density", col = "goldenrod", lwd = 2, ylim = c(0,0.2))
+lines(result$meanonly$pdf_by_year[[1]]$x, result$meanonly$pdf_by_year[[1]]$density, 
+      col = "steelblue", lwd = 2)
+lines(result$noskew$pdf_by_year[[1]]$x, result$noskew$pdf_by_year[[1]]$density, 
+      col = "chocolate", lwd = 2)
+lines(result$nokurt$pdf_by_year[[1]]$x, result$nokurt$pdf_by_year[[1]]$density, 
+      col = "darkolivegreen", lwd = 2)
+
+legend()

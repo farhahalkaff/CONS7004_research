@@ -329,14 +329,14 @@ summary(am_all_BCPE_sigmapoly)
 # Add column to combine few years together 
 DIN <- DIN %>% 
   mutate(period = case_when(
-    between(year, 1962, 1966) ~ "A",
-    between(year, 1967, 1970) ~ "B",
-    between(year, 1971, 1974) ~ "C",
-    between(year, 1975, 1978) ~ "D",
-    between(year, 1979, 1982) ~ "E",
-    between(year, 1983, 1986) ~ "F",
-    between(year, 1987, 1990) ~ "G", 
-    between(year, 1991, 1994) ~ "H"
+    between(year, 1962, 1966) ~ "1",
+    between(year, 1967, 1970) ~ "2",
+    between(year, 1971, 1974) ~ "3",
+    between(year, 1975, 1978) ~ "4",
+    between(year, 1979, 1982) ~ "5",
+    between(year, 1983, 1986) ~ "6",
+    between(year, 1987, 1990) ~ "7", 
+    between(year, 1991, 1994) ~ "8"
   ))
 
 
@@ -463,4 +463,711 @@ lines(DIN_all_BCPEo_G_pdf, type = "l", lwd = 2, col = "goldenrod")
 # plot density plots for period H ------------------------------
 plot(DIN_H_pdf, lwd = 2, lty = 2, col = "black", type = "l", ylim = c(0,0.032))
 lines(DIN_all_BCPEo_H_pdf, type = "l", lwd = 2, col = "goldenrod") 
+
+
+
+################
+
+# METHOD 1 =====
+logSurv(DIN$DIN, prob=0.90, tail="right")
+
+
+# METHOD 2 =====
+par(mfrow = c(1, 3))
+DIN_m1 <- loglogSurv1(DIN$DIN, prob=0.90, title="(a) TYPE I")
+DIN_m2 <- loglogSurv2(DIN$DIN, prob=0.90, title="(b) TYPE II")
+DIN_m3 <- loglogSurv3(DIN$DIN, prob=0.90, title="(c) TYPE III")
+par(mfrow = c(1, 1))
+
+
+# METHOD 3 ======
+
+# use some truncated family distribution 
+DIN_m4 <- fitTail(DIN$DIN, family=WEI, percentage=10)
+DIN_m5 <- fitTail(DIN$DIN, family=LOGNO, percentage=10)
+DIN_m6 <- fitTail(DIN$DIN, family=BCPE, percentage=10)
+DIN_m7 <- fitTail(DIN$DIN, family=BCPEo, percentage=10)
+DIN_m8 <- fitTail(DIN$DIN, family=BCT, percentage=10) # warning 
+DIN_m9 <- fitTail(DIN$DIN, family=BCTo, percentage=10) # warning 
+DIN_m10 <- fitTail(DIN$DIN, family=JSU, percentage=10) # warning 
+
+
+# check AIC 
+AIC(DIN_m4, DIN_m5, DIN_m6, DIN_m7, DIN_m8, DIN_m9, DIN_m10)
+## NOTE: BCPE does the best
+
+wp(DIN_m4, ylim.all = 1)
+DIN_m4_2 <- fitTailAll(DIN$DIN, family=WEI) # got like 50 warnings
+plot(DIN_m4_2)
+
+
+
+
+# 1. Total number of observations
+total_obs <- length(DIN$DIN)
+print(paste("Total observations:", total_obs))
+
+# 2. Number of observations in the top 10%
+num_top_10_percent <- ceiling(total_obs * 0.10)
+print(paste("Number of observations in the top 10%:", num_top_10_percent))
+
+
+
+
+# empirical estimate of moments
+DIN_moments_summary <- DIN %>% 
+  mutate(year = as.numeric(format(Date, "%Y"))) %>% 
+  group_by(year = floor(year/1)*1) %>% 
+  summarise(
+    mean = mean(DIN, na.rm = TRUE),
+    var = var(DIN, na.rm = TRUE),
+    skew = skewness(DIN, na.rm = TRUE),
+    kurt = kurtosis(DIN, na.rm = TRUE)
+  )
+print(DIN_moments_summary, n=33)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## adding smoothing spline
+
+
+DIN_all_BCPE_spline <- gamlss(DIN ~ cs(year) + month, sigma.fo = ~ cs(year) + month, nu.fo = ~ cs(year) + month, tau.fo = ~ cs(year) + month,
+                                family = BCPE(), data = DIN,
+                                mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                                #method = mixed(5,100),
+                                control = gamlss.control(n.cyc = 1000, c.crit = 0.01, trace = TRUE))
+
+
+DIN_all_BCPEo_spline_param <- best_model_param(DIN_all_BCPE_spline, DIN)
+
+set.seed(123)
+DIN_spline_predict <- list(
+  A = rBCPEo(656, mu = 0.5531981, sigma = 0.9942300, nu = 1.0523044, tau = 5.746193),
+  B = rBCPEo(532, mu = 0.6605832, sigma = 0.6494657, nu = 0.3551003, tau = 2.101785),
+  C = rBCPEo(562, mu = 0.7260273, sigma = 1.0089550, nu = 1.1233813, tau = 3.132722),
+  D = rBCPEo(862, mu = 0.6154539, sigma = 1.6903863, nu = 1.9191222, tau = 1.468543),
+  E = rBCPEo(959, mu = 0.8598428, sigma = 0.6254443, nu = 0.6322192, tau = 2.734192),
+  F = rBCPEo(980, mu = 0.7792452, sigma = 0.5956562, nu = 0.3224346, tau = 3.898431),
+  G = rBCPEo(973, mu = 0.6595062, sigma = 0.6746916, nu = 0.5138789, tau = 5.569839),
+  H = rBCPEo(968, mu = 0.6165068, sigma = 0.6516583, nu = 0.6742924, tau = 8.234633)
+)
+
+
+DIN_spline_predict_long <- stack(DIN_spline_predict)
+names(DIN_spline_predict_long) <- c("pred", "period")
+
+
+#### create ridge plot to compare non-parametric density plot and model's prediction
+ggplot() +
+  geom_density_ridges(data = DIN, aes(x = DIN, y = period), 
+                      color = "azure4", alpha = 0.35) +
+  geom_density_ridges(data = DIN_spline_predict_long, aes(x = pred, y = period), 
+                      color = "blue4", alpha = 0.1) +
+  theme_classic()  
+
+
+
+
+
+
+
+##### use bins in the model 
+DIN$period <- as.numeric(DIN$period)
+
+DIN_all_BCPE_bins_spline <- gamlss(DIN  ~ cs(period) + month, sigma.fo = ~ cs(period) + month, nu.fo = ~ cs(period) + month, tau.fo = ~ cs(period) + month,
+                                    family = BCPE(), data = DIN,
+                                    #mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                                    method = mixed(5,100),
+                                    control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+
+
+DIN_all_BCPE_bins_spline_noseason <- gamlss(DIN  ~ cs(period), sigma.fo = ~ cs(period), nu.fo = ~ cs(period), tau.fo = ~ cs(period),
+                                   family = BCPE(), data = DIN,
+                                   #mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                                   method = mixed(5,100),
+                                   control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+
+
+
+DIN_all_BCPE_bins_spline_param <- best_model_param(DIN_all_BCPE_bins_spline, DIN)
+DIN_all_BCPE_bins_noseason_spline_param <- best_model_param(DIN_all_BCPE_bins_spline_noseason, DIN)
+
+## with seasonality
+set.seed(123)
+DIN_all_BCPE_bins_spline_predict <- list(
+  "1" = rBCPE(656, mu = 17.16373, sigma = 0.4238357, nu = 0.5371271, tau = 2.787200),
+  "2" = rBCPE(532, mu = 16.99580, sigma = 0.4475782, nu = 0.4465462, tau = 2.235752),
+  "3" = rBCPE(562, mu = 17.09090, sigma = 0.4385957, nu = 0.3565606, tau = 1.993635),
+  "4" = rBCPE(862, mu = 18.25920, sigma = 0.3932305, nu = 0.1813605, tau = 1.895521),
+  "5" = rBCPE(959, mu = 20.18476, sigma = 0.3633727, nu = 0.1823012, tau = 1.792768),
+  "6" = rBCPE(980, mu = 23.09552, sigma = 0.3759787, nu = 0.3308157, tau = 1.951908),
+  "7" = rBCPE(973, mu = 26.43533, sigma = 0.4575213, nu = 0.3221296, tau = 2.523017),
+  "8" = rBCPE(968, mu = 28.21057, sigma = 0.6696904, nu = 0.1331123, tau = 4.439182)
+)
+
+
+DIN_all_BCPE_bins_spline_predict_long <- stack(DIN_all_BCPE_bins_spline_predict)
+names(DIN_all_BCPE_bins_spline_predict_long) <- c("pred", "period")
+DIN_all_BCPE_bins_spline_predict_long$period <- as.numeric(DIN_all_BCPE_bins_spline_predict_long$period)
+
+
+#### create ridge plot to compare non-parametric density plot and model's prediction
+ggplot() +
+  geom_density_ridges(data = DIN, aes(x = DIN, y = as.factor(period)), 
+                      color = "azure4", alpha = 0.35) +
+  geom_density_ridges(data = DIN_all_BCPE_bins_spline_predict_long, aes(x = pred, y = as.factor(period)), 
+                      color = "blue4", alpha = 0.1) +
+  labs(x = "DIN (µmol/l)", y = "Years") +
+  scale_y_discrete(labels = c("1962 - '66", "1967 - '70", "1971 - '74", "1975 - '78",
+                              "1979 - '82", "1983 - '86", "1987 - '90", "1991 - '94")) +
+  theme_classic()  
+
+
+## without seasonality
+set.seed(123)
+DIN_all_BCPE_bins_noseason_spline_predict <- list(
+  "1" = rBCPE(656, mu = 15.35985, sigma = 0.4722517, nu = -0.248743410, tau = 1.576428),
+  "2" = rBCPE(532, mu = 15.13255, sigma = 0.5348510, nu = 0.002369268, tau = 1.712444),
+  "3" = rBCPE(562, mu = 15.24094, sigma = 0.5300953, nu = 0.225169428, tau = 1.636829),
+  "4" = rBCPE(862, mu = 17.53925, sigma = 0.5012095, nu = 0.225809414, tau = 1.948899),
+  "5" = rBCPE(959, mu = 20.25049, sigma = 0.4871626, nu = 0.299247661, tau = 2.430468),
+  "6" = rBCPE(980, mu = 23.24447, sigma = 0.5015433, nu = 0.501801058, tau = 2.295098),
+  "7" = rBCPE(973, mu = 25.98744, sigma = 0.5796489, nu = 0.491649628, tau = 2.046770),
+  "8" = rBCPE(968, mu = 26.18295, sigma = 0.7839106, nu = 0.275310304, tau = 2.414724)
+)
+
+
+DIN_all_BCPE_bins_noseason_spline_predict_long <- stack(DIN_all_BCPE_bins_noseason_spline_predict)
+names(DIN_all_BCPE_bins_noseason_spline_predict_long) <- c("pred", "period")
+DIN_all_BCPE_bins_noseason_spline_predict_long$period <- as.numeric(DIN_all_BCPE_bins_noseason_spline_predict_long$period)
+
+
+#### create ridge plot to compare non-parametric density plot and model's prediction
+ggplot() +
+  geom_density_ridges(data = DIN, aes(x = DIN, y = as.factor(period)), 
+                      color = "azure4", alpha = 0.35) +
+  geom_density_ridges(data = DIN_all_BCPE_bins_noseason_spline_predict_long, aes(x = pred, y = as.factor(period)), 
+                      color = "blue4", alpha = 0.1) +
+  labs(x = "DIN (µmol/l)", y = "Years") +
+  scale_y_discrete(labels = c("1962 - '66", "1967 - '70", "1971 - '74", "1975 - '78",
+                              "1979 - '82", "1983 - '86", "1987 - '90", "1991 - '94")) +
+  theme_classic()  +
+  ggplot() +
+  geom_density_ridges(data = DIN, aes(x = DIN, y = as.factor(period)), 
+                      color = "azure4", alpha = 0.35) +
+  geom_density_ridges(data = DIN_all_BCPE_bins_spline_predict_long, aes(x = pred, y = as.factor(period)), 
+                      color = "blue4", alpha = 0.1) +
+  labs(x = "DIN (µmol/l)", y = "Years") +
+  scale_y_discrete(labels = c("1962 - '66", "1967 - '70", "1971 - '74", "1975 - '78",
+                              "1979 - '82", "1983 - '86", "1987 - '90", "1991 - '94")) +
+  theme_classic()  
+
+
+
+
+
+
+
+### bins, changing paramter time-varying 
+
+DIN_meanonly_BCPE_bins_spline <- gamlss(DIN  ~ cs(period) + month, sigma.fo = ~ 1, nu.fo = ~ 1, tau.fo = ~ 1,
+                                   family = BCPE(), data = DIN,
+                                   #mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                                   method = mixed(5,100),
+                                   control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+
+
+DIN_mean_sigma_BCPE_bins_spline <- gamlss(DIN  ~ cs(period) + month, sigma.fo = ~ cs(period) + month, nu.fo = ~ 1, tau.fo = ~ 1,
+                                        family = BCPE(), data = DIN,
+                                        #mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                                        method = mixed(5,100),
+                                        control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+
+
+DIN_nokurt_BCPE_bins_spline <- gamlss(DIN  ~ cs(period) + month, sigma.fo = ~ cs(period) + month, nu.fo = ~ cs(period) + month, tau.fo = ~ 1,
+                                          family = BCPE(), data = DIN,
+                                          #mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                                          method = mixed(5,100),
+                                          control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+
+
+DIN_noskew_BCPE_bins_spline <- gamlss(DIN  ~ cs(period) + month, sigma.fo = ~ cs(period) + month, nu.fo = ~ 1, tau.fo = ~ cs(period) + month,
+                                      family = BCPE(), data = DIN,
+                                      #mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                                      method = mixed(5,100),
+                                      control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+
+DIN_all_BCPE_bins_spline <- gamlss(DIN  ~ cs(period) + month, sigma.fo = ~ cs(period) + month, nu.fo = ~ cs(period) + month, tau.fo = ~ cs(period) + month,
+                                   family = BCPE(), data = DIN,
+                                   #mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                                   method = mixed(5,100),
+                                   control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+
+
+AIC(DIN_meanonly_BCPE_bins_spline, DIN_mean_sigma_BCPE_bins_spline,
+    DIN_nokurt_BCPE_bins_spline, DIN_noskew_BCPE_bins_spline, DIN_all_BCPE_bins_spline)
+
+##### RESULTS
+# DIN_all_BCPE_bins_spline         45428.31
+# DIN_nokurt_BCPE_bins_spline      45457.24
+# DIN_noskew_BCPE_bins_spline      45558.09
+# DIN_mean_sigma_BCPE_bins_spline  45601.53
+# DIN_meanonly_BCPE_bins_spline    46347.40
+
+
+
+
+DIN_intercept_JSU <- gamlss(DIN  ~  1,
+                                   family = JSU(), data = DIN,
+                                   #mu.start = mean(DIN$DIN), sigma.start = sd(DIN$DIN),
+                                   method = mixed(5,100),
+                                   control = gamlss.control(n.cyc = 100, c.crit = 0.01, trace = TRUE))
+
+
+moment_bucket(DIN_intercept_JSU) +
+resid_wp(DIN_intercept_JSU) + theme(plot.title = element_blank())
+
+
+
+
+
+
+
+
+## monte carlo simulation
+
+DIN_all_BCPE_bins_spline_predict <- list(
+  "1" = rBCPE(656, mu = 17.16373, sigma = 0.4238357, nu = 0.5371271, tau = 2.787200),
+  "2" = rBCPE(532, mu = 16.99580, sigma = 0.4475782, nu = 0.4465462, tau = 2.235752),
+  "3" = rBCPE(562, mu = 17.09090, sigma = 0.4385957, nu = 0.3565606, tau = 1.993635),
+  "4" = rBCPE(862, mu = 18.25920, sigma = 0.3932305, nu = 0.1813605, tau = 1.895521),
+  "5" = rBCPE(959, mu = 20.18476, sigma = 0.3633727, nu = 0.1823012, tau = 1.792768),
+  "6" = rBCPE(980, mu = 23.09552, sigma = 0.3759787, nu = 0.3308157, tau = 1.951908),
+  "7" = rBCPE(973, mu = 26.43533, sigma = 0.4575213, nu = 0.3221296, tau = 2.523017),
+  "8" = rBCPE(968, mu = 28.21057, sigma = 0.6696904, nu = 0.1331123, tau = 4.439182)
+)
+
+library(gamlss.dist)
+library(moments)
+
+############################## bin 1
+mu_DIN_bin1   <- 17.16373    
+sigma_DIN_bin1 <- 0.4238357   
+nu_DIN_bin1  <- 0.5371271   
+tau_DIN_bin1  <- 2.787200
+
+set.seed(1)
+N <- 5e5                    
+DIN_bin1_sim <- rBCPE(N, mu = mu_DIN_bin1, sigma = sigma_DIN_bin1, nu = nu_DIN_bin1, tau = tau_DIN_bin1)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin1_sim) - 3 # -0.283515
+skewness(DIN_bin1_sim) # 0.4358236
+var(DIN_bin1_sim) # 53.37748
+mean(DIN_bin1_sim) # 17.87089
+
+
+############################# bin 2
+mu_DIN_bin2   <-    16.99580 
+sigma_DIN_bin2 <-    0.4475782
+nu_DIN_bin2  <-    0.4465462
+tau_DIN_bin2  <- 2.235752
+
+set.seed(2)
+DIN_bin2_sim <- rBCPE(N, mu = mu_DIN_bin2, sigma = sigma_DIN_bin2, nu = nu_DIN_bin2, tau = tau_DIN_bin2)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin2_sim) - 3 # 0.3757609
+skewness(DIN_bin2_sim) # 0.6503901
+var(DIN_bin2_sim) # 60.25346
+mean(DIN_bin2_sim) # 17.95159
+
+
+############################# bin 3
+mu_DIN_bin3   <-     17.09090
+sigma_DIN_bin3 <-    0.4385957
+nu_DIN_bin3  <-    0.3565606
+tau_DIN_bin3  <- 1.993635
+
+set.seed(3)
+DIN_bin3_sim <- rBCPE(N, mu = mu_DIN_bin3, sigma = sigma_DIN_bin3, nu = nu_DIN_bin3, tau = tau_DIN_bin3)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin3_sim) - 3 # 1.038866
+skewness(DIN_bin3_sim) # 0.82783
+var(DIN_bin3_sim) # 60.31834
+mean(DIN_bin3_sim) # 18.14148
+
+
+############################# bin 4
+mu_DIN_bin4   <-     18.25920
+sigma_DIN_bin4 <-    0.3932305
+nu_DIN_bin4  <-    0.1813605
+tau_DIN_bin4  <- 1.895521
+
+set.seed(4)
+DIN_bin4_sim <- rBCPE(N, mu = mu_DIN_bin4, sigma = sigma_DIN_bin4, nu = nu_DIN_bin4, tau = tau_DIN_bin4)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin4_sim) - 3 # 2.00124
+skewness(DIN_bin4_sim) # 1.039221
+var(DIN_bin4_sim) # 58.97537
+mean(DIN_bin4_sim) # 19.42133
+
+
+############################# bin 5
+mu_DIN_bin5   <- 20.18476    
+sigma_DIN_bin5 <-    0.3633727
+nu_DIN_bin5  <-    0.1823012
+tau_DIN_bin5  <- 1.792768
+
+set.seed(5)
+DIN_bin5_sim <- rBCPE(N, mu = mu_DIN_bin5, sigma = sigma_DIN_bin5, nu = nu_DIN_bin5, tau = tau_DIN_bin5)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin5_sim) - 3 # 2.122309
+skewness(DIN_bin5_sim) # 1.030426
+var(DIN_bin5_sim) # 61.10735
+mean(DIN_bin5_sim) # 21.28347
+
+
+############################# bin 6
+mu_DIN_bin6   <-     23.09552
+sigma_DIN_bin6 <-    0.3759787
+nu_DIN_bin6  <-    0.3308157
+tau_DIN_bin6  <- 1.951908
+
+set.seed(6)
+DIN_bin6_sim <- rBCPE(N, mu = mu_DIN_bin6, sigma = sigma_DIN_bin6, nu = nu_DIN_bin6, tau = tau_DIN_bin6)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin6_sim) - 3 # 1.043993
+skewness(DIN_bin6_sim) # 0.7814984
+var(DIN_bin6_sim) # 80.59317
+mean(DIN_bin6_sim) # 24.21176
+
+
+############################# bin 7
+mu_DIN_bin7   <-     26.43533
+sigma_DIN_bin7 <-    0.4575213
+nu_DIN_bin7  <-    0.3221296
+tau_DIN_bin7  <- 2.523017
+
+set.seed(7)
+DIN_bin7_sim <- rBCPE(N, mu = mu_DIN_bin7, sigma = sigma_DIN_bin7, nu = nu_DIN_bin7, tau = tau_DIN_bin7)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin7_sim) - 3 # 0.3952519
+skewness(DIN_bin7_sim) # 0.735436
+var(DIN_bin7_sim) # 158.5022
+mean(DIN_bin7_sim) # 28.32225
+
+
+############################# bin 8
+mu_DIN_bin8   <-     28.21057
+sigma_DIN_bin8 <-    0.6696904
+nu_DIN_bin8  <-    0.1331123
+tau_DIN_bin8  <- 4.439182
+
+set.seed(8)
+DIN_bin8_sim <- rBCPE(N, mu = mu_DIN_bin8, sigma = sigma_DIN_bin8, nu = nu_DIN_bin8, tau = tau_DIN_bin8)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin8_sim) - 3 # 0.4191868
+skewness(DIN_bin8_sim) # 0.9668979
+var(DIN_bin8_sim) # 474.1645
+mean(DIN_bin8_sim) # 33.88857
+
+
+
+## without seasonality ======================================================================
+
+DIN_all_BCPE_bins_noseason_spline_predict <- list(
+  "1" = rBCPE(656, mu = 15.35985, sigma = 0.4722517, nu = -0.248743410, tau = 1.576428),
+  "2" = rBCPE(532, mu = 15.13255, sigma = 0.5348510, nu = 0.002369268, tau = 1.712444),
+  "3" = rBCPE(562, mu = 15.24094, sigma = 0.5300953, nu = 0.225169428, tau = 1.636829),
+  "4" = rBCPE(862, mu = 17.53925, sigma = 0.5012095, nu = 0.225809414, tau = 1.948899),
+  "5" = rBCPE(959, mu = 20.25049, sigma = 0.4871626, nu = 0.299247661, tau = 2.430468),
+  "6" = rBCPE(980, mu = 23.24447, sigma = 0.5015433, nu = 0.501801058, tau = 2.295098),
+  "7" = rBCPE(973, mu = 25.98744, sigma = 0.5796489, nu = 0.491649628, tau = 2.046770),
+  "8" = rBCPE(968, mu = 26.18295, sigma = 0.7839106, nu = 0.275310304, tau = 2.414724)
+)
+
+############################## bin 1
+mu_DIN_bin1_noseason   <- 15.35985    
+sigma_DIN_bin1_noseason <- 0.4722517   
+nu_DIN_bin1_noseason  <- -0.248743410   
+tau_DIN_bin1_noseason  <- 1.576428
+
+set.seed(11)
+DIN_bin1_noseason_sim <- rBCPE(N, mu = mu_DIN_bin1_noseason, sigma = sigma_DIN_bin1_noseason,
+                               nu = nu_DIN_bin1_noseason, tau = tau_DIN_bin1_noseason)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin1_noseason_sim) - 3 # 4133.439
+skewness(DIN_bin1_noseason_sim) # 26.87133
+var(DIN_bin1_noseason_sim) # 161.9267
+mean(DIN_bin1_noseason_sim) # 18.02925
+
+
+############################# bin 2
+mu_DIN_bin2_noseason   <- 15.13255    
+sigma_DIN_bin2_noseason <- 0.5348510   
+nu_DIN_bin2_noseason  <- 0.002369268   
+tau_DIN_bin2_noseason  <- 1.712444
+
+set.seed(22)
+DIN_bin2_noseason_sim <- rBCPE(N, mu = mu_DIN_bin2_noseason, sigma = sigma_DIN_bin2_noseason,
+                               nu = nu_DIN_bin2_noseason, tau = tau_DIN_bin2_noseason)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin2_noseason_sim) - 3 # 13.56433
+skewness(DIN_bin2_noseason_sim) # 2.473163
+var(DIN_bin2_noseason_sim) # 108.1929
+mean(DIN_bin2_noseason_sim) # 17.46857
+
+
+############################# bin 3
+mu_DIN_bin3_noseason   <- 15.24094    
+sigma_DIN_bin3_noseason <- 0.5300953   
+nu_DIN_bin3_noseason  <- 0.225169428   
+tau_DIN_bin3_noseason  <- 1.636829
+
+set.seed(33)
+DIN_bin3_noseason_sim <- rBCPE(N, mu = mu_DIN_bin3_noseason, sigma = sigma_DIN_bin3_noseason,
+                               nu = nu_DIN_bin3_noseason, tau = tau_DIN_bin3_noseason)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin3_noseason_sim) - 3 # 5.167582
+skewness(DIN_bin3_noseason_sim) # 1.594645
+var(DIN_bin3_noseason_sim) # 82.03065
+mean(DIN_bin3_noseason_sim) # 16.91762
+
+
+############################# bin 4
+mu_DIN_bin4_noseason   <- 17.53925    
+sigma_DIN_bin4_noseason <- 0.5012095   
+nu_DIN_bin4_noseason  <- 0.225809414   
+tau_DIN_bin4_noseason  <- 1.948899
+
+set.seed(44)
+DIN_bin4_noseason_sim <- rBCPE(N, mu = mu_DIN_bin4_noseason, sigma = sigma_DIN_bin4_noseason,
+                               nu = nu_DIN_bin4_noseason, tau = tau_DIN_bin4_noseason)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin4_noseason_sim) - 3 # 2.431368
+skewness(DIN_bin4_noseason_sim) # 1.198697
+var(DIN_bin4_noseason_sim) # 92.08855
+mean(DIN_bin4_noseason_sim) # 19.26622
+
+
+############################# bin 5
+mu_DIN_bin5_noseason   <- 20.25049    
+sigma_DIN_bin5_noseason <- 0.4871626   
+nu_DIN_bin5_noseason  <- 0.299247661   
+tau_DIN_bin5_noseason  <- 2.430468
+
+set.seed(55)
+DIN_bin5_noseason_sim <- rBCPE(N, mu = mu_DIN_bin5_noseason, sigma = sigma_DIN_bin5_noseason,
+                               nu = nu_DIN_bin5_noseason, tau = tau_DIN_bin5_noseason)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin5_noseason_sim) - 3 # 0.7242271
+skewness(DIN_bin5_noseason_sim) # 0.8370996
+var(DIN_bin5_noseason_sim) # 107.6741
+mean(DIN_bin5_noseason_sim) # 21.92153
+
+
+############################# bin 6
+mu_DIN_bin6_noseason   <- 23.24447    
+sigma_DIN_bin6_noseason <- 0.5015433   
+nu_DIN_bin6_noseason  <- 0.501801058   
+tau_DIN_bin6_noseason  <- 2.295098
+
+set.seed(66)
+DIN_bin6_noseason_sim <- rBCPE(N, mu = mu_DIN_bin6_noseason, sigma = sigma_DIN_bin6_noseason,
+                               nu = nu_DIN_bin6_noseason, tau = tau_DIN_bin6_noseason)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin6_noseason_sim) - 3 # 0.2841474
+skewness(DIN_bin6_noseason_sim) # 0.6428815
+var(DIN_bin6_noseason_sim) # 139.7718
+mean(DIN_bin6_noseason_sim) # 24.71611
+
+
+############################# bin 7
+mu_DIN_bin7_noseason   <- 25.98744    
+sigma_DIN_bin7_noseason <- 0.5796489   
+nu_DIN_bin7_noseason  <- 0.491649628   
+tau_DIN_bin7_noseason  <- 2.046770
+
+set.seed(77)
+DIN_bin7_noseason_sim <- rBCPE(N, mu = mu_DIN_bin7_noseason, sigma = sigma_DIN_bin7_noseason,
+                               nu = nu_DIN_bin7_noseason, tau = tau_DIN_bin7_noseason)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin7_noseason_sim) - 3 # 0.9180623
+skewness(DIN_bin7_noseason_sim) # 0.8405822
+var(DIN_bin7_noseason_sim) # 237.5082
+mean(DIN_bin7_noseason_sim) # 28.22634
+
+
+############################# bin 8
+mu_DIN_bin8_noseason   <- 26.18295    
+sigma_DIN_bin8_noseason <- 0.7839106   
+nu_DIN_bin8_noseason  <- 0.275310304   
+tau_DIN_bin8_noseason  <- 2.414724
+
+set.seed(88)
+DIN_bin8_noseason_sim <- rBCPE(N, mu = mu_DIN_bin8_noseason, sigma = sigma_DIN_bin8_noseason,
+                               nu = nu_DIN_bin8_noseason, tau = tau_DIN_bin8_noseason)
+
+# get skewness and kurtosis 
+kurtosis(DIN_bin8_noseason_sim) - 3 # 2.601064
+skewness(DIN_bin8_noseason_sim) # 1.381829
+var(DIN_bin8_noseason_sim) # 561.0685
+mean(DIN_bin8_noseason_sim) # 32.11708
+
+
+
+
+
+
+
+
+
+
+
+
+
+##======= getting standard errors =========##
+
+##### simulation sampling variability by bootstrapping 
+
+set.seed(1)
+bootstrap_moments_sim_only <- function(y, B = 2000) {
+  n <- length(y)
+  sk <- numeric(B); exk <- numeric(B); mu <- numeric(B); s2 <- numeric(B)
+  for(b in 1:B) {
+    samp <- sample(y, size = n, replace = TRUE)
+    mu[b] <- mean(samp)
+    s2[b] <- var(samp)              # sample variance (n-1)
+    sk[b] <- mean((samp - mean(samp))^3)/sd(samp)^3
+    exk[b] <- mean((samp - mean(samp))^4)/sd(samp)^4 - 3
+  }
+  list(
+    se = c(mean = sd(mu), var = sd(s2), skew = sd(sk), exkurt = sd(exk)),
+    ci = rbind(
+      mean = quantile(mu, c(0.025,0.975)),
+      var  = quantile(s2, c(0.025,0.975)),
+      skew = quantile(sk, c(0.025,0.975)),
+      exk  = quantile(exk, c(0.025,0.975))
+    ),
+    boot_reps = list(mean = mu, var = s2, skew = sk, exkurt = exk)
+  )
+}
+
+# get them errors gurll (seasonaility)
+DIN_bin1_sim_se <- bootstrap_moments_sim_only(DIN_bin1_sim) 
+DIN_bin2_sim_se <- bootstrap_moments_sim_only(DIN_bin2_sim) 
+DIN_bin3_sim_se <- bootstrap_moments_sim_only(DIN_bin3_sim) 
+DIN_bin4_sim_se <- bootstrap_moments_sim_only(DIN_bin4_sim) 
+DIN_bin5_sim_se <- bootstrap_moments_sim_only(DIN_bin5_sim) 
+DIN_bin6_sim_se <- bootstrap_moments_sim_only(DIN_bin6_sim) 
+DIN_bin7_sim_se <- bootstrap_moments_sim_only(DIN_bin7_sim) 
+DIN_bin8_sim_se <- bootstrap_moments_sim_only(DIN_bin8_sim) 
+
+DIN_bin_sim_se$se
+
+# get them errors gurll (no seasonaility)
+DIN_bin1_noseason_sim_se <- bootstrap_moments_sim_only(DIN_bin1_noseason_sim) 
+DIN_bin2_noseason_sim_se <- bootstrap_moments_sim_only(DIN_bin2_noseason_sim) 
+DIN_bin3_noseason_sim_se <- bootstrap_moments_sim_only(DIN_bin3_noseason_sim) 
+DIN_bin4_noseason_sim_se <- bootstrap_moments_sim_only(DIN_bin4_noseason_sim) 
+DIN_bin5_noseason_sim_se <- bootstrap_moments_sim_only(DIN_bin5_noseason_sim) 
+DIN_bin6_noseason_sim_se <- bootstrap_moments_sim_only(DIN_bin6_noseason_sim) 
+DIN_bin7_noseason_sim_se <- bootstrap_moments_sim_only(DIN_bin7_noseason_sim) 
+DIN_bin8_noseason_sim_se <- bootstrap_moments_sim_only(DIN_bin8_noseason_sim) 
+
+DIN_bin8_noseason_sim_se$se
+
+DIN_bins_df <- tibble::tibble(
+  year_mid = c(1964, 1968, 1972, 1976, 1980, 1984, 1988, 1992),
+  mean = c(17.871,17.951,18.141,19.421,21.283,24.211,28.322,33.889),
+  variance = c(53.377,60.253,60.318,58.975,61.107,80.593,158.502,474.165),
+  skewness = c(0.436,0.650,0.828,1.039,1.030,0.781,0.735,0.967),
+  kurtosis = c(-0.283,0.376,1.038,2.001,2.122,1.044,0.395,0.419)
+)
+
+DIN_se_df <- tibble::tibble(
+  year_mid = df$year_mid,
+  se_mean = c(0.010306205,0.01093010,0.010975780,0.010889395,
+              0.011115839,0.01278470,0.018202419,0.03081060),
+  se_variance = c(0.098832581,0.13149763,0.149360467,0.167194544,
+                  0.177430045,0.19541194,0.349876593,1.03674250),
+  se_skew = c(0.002754898,0.00394651,0.005058384,0.008070872,
+              0.008002874,0.00535313,0.003689457,0.00320749),
+  se_kurt = c(0.006601600,0.01536872,0.025791753,0.069681021,
+              0.056682017,0.02646837,0.014115509,0.01174154)
+)
+
+# join and pivot to long form
+DIN_df_long <- DIN_bins_df %>%
+  left_join(DIN_se_df, by = "year_mid") %>%
+  pivot_longer(cols = c(mean, variance, skewness, kurtosis),
+               names_to = "stat", values_to = "value") %>%
+  # attach the corresponding se column based on stat name
+  rowwise() %>%
+  mutate(se = case_when(
+    stat == "mean"     ~ se_mean,
+    stat == "variance" ~ se_variance,
+    stat == "skewness" ~ se_skew,
+    stat == "kurtosis" ~ se_kurt,
+    TRUE ~ NA_real_
+  )) %>%
+  ungroup() %>%
+  # compute 95% normal-approx CIs; if you already have lo/hi use them
+  mutate(lo = value - 1.96 * se,
+         hi = value + 1.96 * se)
+
+
+
+
+DIN_bins_noseason_df <- tibble::tibble(
+  year_mid = c(1964, 1968, 1972, 1976, 1980, 1984, 1988, 1992),
+  kurtosis = c(4133.2,13.5,5.2,2.4,0.7,0.3,0.9,2.6),
+  se_kurt = c(2.779079e+03,0.75530708,0.18146585,0.059107893,
+              0.02008191,0.013860975,0.024428169,0.047358488)
+)
+
+
+ggplot(data = DIN_bins_noseason_df, aes(x = year_mid, y = kurtosis)) +
+  geom_line(aes(y = kurtosis), color = "azure4") +
+  geom_point(aes(y = kurtosis), color = "azure4") +
+  geom_errorbar(aes(ymin = kurtosis - 1.96 * se_kurt, ymax = kurtosis + 1.96 * se_kurt),
+                  width = 0.7, color = "azure4") +
+  geom_hline(yintercept = 0, color = "darkred", linetype = "dashed") +
+  theme_bw()
+  
+  
+  
+  
+  
+  
 

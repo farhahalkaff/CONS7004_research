@@ -58,16 +58,16 @@ dev.off()
 
 # another one 
 sim_results2 <- data.frame(
-  sim = c("1", "2", "3", "4"),
-  sim_skew = c("symmetrical", "positively skewed", "symmetrical", "positively skewed"),
-  sim_kurt = c("mesokurtic", "mesokurtic", "leptokurtic", "leptokurtic"),
-  best_model = c("NO", "SN2", "SST", "ST3"),
-  model_skew = c("symmetrical", "both", "both", "both"),
-  model_kurt = c("mesokurtic", "mesokurtic", "leptokurtic", "leptokurtic")
+  sim = c("1", "2", "3", "4", "5", "6"),
+  sim_skew = c("symmetrical", "positively skewed", "symmetrical", "positively skewed", "symmetrical", "positively skewed"),
+  sim_kurt = c("mesokurtic", "mesokurtic", "leptokurtic", "leptokurtic", "platykurtic", "platykurtic"),
+  best_model = c("NO", "SN2", "SST", "ST3", "PE", "SHASH"),
+  model_skew = c("symmetrical", "flexible", "flexible", "flexible", "symmetrical", "flexible"),
+  model_kurt = c("mesokurtic", "mesokurtic", "leptokurtic", "leptokurtic", "flexible", "flexible")
 )
 # change column names 
-colnames(sim_results) <- c("simulations", "simulated skewness", "simulated kurtosis", "best family", 
-                           "best family skewness", "best family kurtosis")
+colnames(sim_results2) <- c("Simulations", "Simulated skewness", "Simulated kurtosis", "Best family", 
+                           "Best family skewness", "Best family kurtosis")
 # make them table 
 sim_results_table2 <- ggtexttable(sim_results2, rows = NULL, theme = ttheme("light", base_size = 12))
 
@@ -75,16 +75,16 @@ sim_results_table2 <- ggtexttable(sim_results2, rows = NULL, theme = ttheme("lig
 
 # another one with changing parameters 
 sim_change_results <- data.frame(
-  sim = c("5", "6", "7"),
+  sim = c("7", "8", "9"),
   sim_skew = c("negative to positive", "positively skewed", "negative to positive"),
   sim_kurt = c("leptokurtic", "mesokurtic to leptokurtic", "mesokurtic to leptokurtic"),
   best_model = c("SST", "SEP2", "ST3"),
-  model_skew = c("both", "both", "both"),
-  model_kurt = c("leptokurtic", "both", "leptokurtic")
+  model_skew = c("flexible", "flexible", "flexible"),
+  model_kurt = c("leptokurtic", "flexible", "leptokurtic")
 )
 # change column names 
-colnames(sim_change_results) <- c("simulations", "simulated skewness", "simulated kurtosis", "best family", 
-                           "best family skewness", "best family kurtosis")
+colnames(sim_change_results) <- c("Simulations", "Simulated skewness", "Simulated kurtosis", "Best family", 
+                           "Best family skewness", "Best family kurtosis")
 # make them table 
 sim_change_results_table <- ggtexttable(sim_change_results, rows = NULL, theme = ttheme("light", base_size = 12))
 

@@ -1538,6 +1538,7 @@ AIC(ni_all_JSU)
 Nitrate$mu_hat_JSU_best <- predict(ni_all_JSU, what = "mu", type = "response")
 Nitrate$mu_hat_SHASHo <- predict(ni_all_SHASHo, what = "mu", type = "response")
 Nitrate$mu_hat_GAF <- predict(ni_all_GAF, what = "mu", type = "response")
+Nitrate$mu_hat_BCTo <- predict(ni_all_BCTo, what = "mu", type = "response")
 
 Nitrate$JSU_sigma <- predict(ni_all_JSU, what = "sigma", type = "response")
 
@@ -1547,7 +1548,7 @@ ggplot(Nitrate, aes(x = Date, y = Nitrate)) +
   #geom_line(aes(y = am_mu_hat_meanonly_SSTtr), color = "steelblue", linewidth = 1) +
   geom_line(aes(y = mu_hat_JSU_best), color = "goldenrod", linewidth = 1) +
   #geom_line(aes(y = mu_hat_SHASHo), color = "steelblue", linewidth = 1) +
-  geom_line(aes(y = mu_hat_GAF), color = "steelblue", linewidth = 1) +
+  geom_line(aes(y = mu_hat_BCTo), color = "steelblue", linewidth = 1) +
   labs(x = "Time", y = "Nitrite (µmol/l)") +
   theme_minimal()
 
@@ -1565,7 +1566,7 @@ ni_all_SHASHo <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo
 
 ni_all_BCTo <- gamlss(Nitrate ~ year + month, sigma.fo = ~ year + month, nu.fo = ~ year + month, tau.fo = ~ year + month,
                         family = BCTo(), data = Nitrate,
-                        mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate), nu.start = 2, tau.start = 2,
+                        #mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate), nu.start = 2, tau.start = 2,
                         method = mixed(10,200),
                         control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = TRUE)) 
 
@@ -1611,6 +1612,8 @@ ni_all_GB2 <- gamlss(Nitrate ~ pb(year) + month, sigma.fo = ~ year + month, nu.f
                      mu.start = mean(Nitrate$Nitrate), sigma.start = sd(Nitrate$Nitrate), nu.start = 2, tau.start = 2,
                      method = mixed(10,200),
                      control = gamlss.control(n.cyc = 200, c.crit = 0.01, trace = TRUE))
+
+
 
 
 

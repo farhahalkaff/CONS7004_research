@@ -1480,3 +1480,39 @@ final <- pAIC_1a + ni_sim_pdf + pAIC_2a + nii_sim_pdf + pAIC_3a + am_sim_pdf + p
 pdf("data_plots.pdf", width = 14, height = 12)
 final
 dev.off()
+
+
+### adding legends 
+
+plot.new() 
+
+par(fig = c(0, 0.95, 0, 1), new = TRUE)
+plot.new()
+legend(
+  "center",
+  legend = c("Symmetrical", "Flexible", "Positively skewed", "Negatively skewed"),
+  col = c("blue4", "black", "gray48", "grey88"),
+  pch = 15,
+  pt.cex = 2,
+  title = expression(bold("Skewness")),
+  bty = "n"
+) 
+  
+par(fig = c(0.38, 1 , 0.05, 1), new = TRUE)
+plot.new()
+legend(
+  "center",
+  legend = c("Normal tails", "Flexible" ,"Heavy tails"),
+  pch = c(2, 0, 1),
+  pt.cex = 1.75,
+  title = expression(bold("Kurtosis")),
+  bty = "n"
+)
+
+rect(
+  xleft = 0, ybottom = 0.05,
+  xright = 0.95, ytop = 0.95,
+  border = "black", lwd = 1
+)
+
+
